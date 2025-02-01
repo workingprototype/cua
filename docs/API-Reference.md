@@ -38,7 +38,7 @@ curl --connect-timeout 6000 \
   -H "Content-Type: application/json" \
   -d '{
     "noDisplay": false,
-    "sharedDirectory": [
+    "sharedDirectories": [
       {
         "hostPath": "~/Projects",
         "readOnly": false
@@ -147,10 +147,10 @@ curl --connect-timeout 6000 \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{
-    "image": "monterey:latest",
-    "name": "my-vm-name",  # Optional, defaults to image name
-    "registry": "ghcr.io", # Optional, defaults to ghcr.io
-    "organization": "trycua" # Optional, defaults to trycua
+    "image": "macos-sequoia-vanilla:latest",
+    "name": "my-vm-name",
+    "registry": "ghcr.io",
+    "organization": "trycua"
   }' \
   http://localhost:3000/lume/pull
 ```
