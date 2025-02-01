@@ -351,17 +351,12 @@ final class LumeController {
 
     public struct ImageInfo: Codable {
         public let repository: String
-        public let tag: String
-        public let manifestId: String
-        
-        public var fullName: String {
-            return "\(repository):\(tag)"
-        }
+        public let imageId: String  // This will be the shortened manifest ID
     }
 
     public struct ImageList: Codable {
         public let local: [ImageInfo]
-        public let remote: [String]
+        public let remote: [String]  // Keep this for future remote registry support
     }
 
     @MainActor
@@ -372,10 +367,13 @@ final class LumeController {
         let cachedImages = try await imageContainerRegistry.getImages()
         
         let imageInfos = cachedImages.map { image in
-            ImageInfo(repository: image.repository, tag: image.tag, manifestId: image.manifestId)
+            ImageInfo(
+                repository: image.repository,
+                imageId: String(image.manifestId.prefix(12))
+            )
         }
         
-        ImagesPrinter.print(images: imageInfos.map { $0.fullName })
+        ImagesPrinter.print(images: imageInfos.map { "\($0.repository):\($0.imageId)" })
         return ImageList(local: imageInfos, remote: [])
     }
 

@@ -197,6 +197,20 @@
                 "swift"
             ],
             "args": [
+                "images"
+            ],
+            "cwd": "${workspaceFolder:lume}",
+            "name": "Debug lume images",
+            "program": "${workspaceFolder:lume}/.build/debug/lume",
+            "preLaunchTask": "build-debug"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [
                 "stop",
                 "macos-vm"
             ],

@@ -31,8 +31,14 @@ struct RepositoryTags: Codable {
 
 struct CachedImage {
     let repository: String
-    let tag: String
+    let imageId: String
     let manifestId: String
+}
+
+struct ImageMetadata: Codable {
+    let image: String
+    let manifestId: String
+    let timestamp: Date
 }
 
 actor ProgressTracker {
@@ -84,14 +90,15 @@ class ImageContainerRegistry: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: orgDir, withIntermediateDirectories: true)
     }
     
-    private func getManifestIdentifier(_ manifest: Manifest) -> String {
-        // Use config digest if available, otherwise create a hash from layers
-        if let config = manifest.config {
-            return config.digest.replacingOccurrences(of: ":", with: "_")
-        }
-        // If no config layer, create a hash from all layer digests
-        let layerHash = manifest.layers.map { $0.digest }.joined(separator: "+")
-        return layerHash.replacingOccurrences(of: ":", with: "_")
+    private func getManifestIdentifier(_ manifest: Manifest, manifestDigest: String) -> String {
+        // Use the manifest's own digest as the identifier
+        return manifestDigest.replacingOccurrences(of: ":", with: "_")
+    }
+    
+    private func getShortImageId(_ digest: String) -> String {
+        // Take first 12 characters of the digest after removing the "sha256:" prefix
+        let id = digest.replacingOccurrences(of: "sha256:", with: "")
+        return String(id.prefix(12))
     }
     
     private func getImageCacheDirectory(manifestId: String) -> URL {
@@ -179,6 +186,48 @@ class ImageContainerRegistry: @unchecked Sendable {
         }
     }
     
+    private func saveImageMetadata(image: String, manifestId: String) throws {
+        let metadataPath = getImageCacheDirectory(manifestId: manifestId).appendingPathComponent("metadata.json")
+        let metadata = ImageMetadata(
+            image: image,
+            manifestId: manifestId,
+            timestamp: Date()
+        )
+        try JSONEncoder().encode(metadata).write(to: metadataPath)
+    }
+    
+    private func cleanupOldVersions(currentManifestId: String, image: String) throws {
+        Logger.info("Checking for old versions of image to clean up", metadata: [
+            "image": image,
+            "current_manifest_id": currentManifestId
+        ])
+        
+        let orgDir = cacheDirectory.appendingPathComponent(organization)
+        guard FileManager.default.fileExists(atPath: orgDir.path) else { return }
+        
+        let contents = try FileManager.default.contentsOfDirectory(atPath: orgDir.path)
+        for item in contents {
+            if item == currentManifestId { continue }
+            
+            let itemPath = orgDir.appendingPathComponent(item)
+            let metadataPath = itemPath.appendingPathComponent("metadata.json")
+            
+            if let metadataData = try? Data(contentsOf: metadataPath),
+               let metadata = try? JSONDecoder().decode(ImageMetadata.self, from: metadataData) {
+                if metadata.image == image {
+                    try FileManager.default.removeItem(at: itemPath)
+                    Logger.info("Removed old version of image", metadata: [
+                        "image": image,
+                        "old_manifest_id": item
+                    ])
+                }
+                continue
+            }
+            
+            Logger.info("Skipping cleanup check for item without metadata", metadata: ["item": item])
+        }
+    }
+    
     func pull(image: String, name: String?) async throws {
         // Validate home directory
         let home = Home()
@@ -202,30 +251,46 @@ class ImageContainerRegistry: @unchecked Sendable {
         
         // Fetch manifest
         Logger.info("Fetching Image manifest")
-        let manifest: Manifest = try await fetchManifest(
+        let (manifest, manifestDigest): (Manifest, String) = try await fetchManifest(
             repository: "\(self.organization)/\(imageName)",
             tag: tag,
             token: token
         )
         
-        // Get manifest identifier
-        let manifestId = getManifestIdentifier(manifest)
+        // Get manifest identifier using the manifest's own digest
+        let manifestId = getManifestIdentifier(manifest, manifestDigest: manifestDigest)
+        
+        Logger.info("Pulling image", metadata: [
+            "repository": imageName,
+            "manifest_id": manifestId
+        ])
         
         // Create VM directory
         try FileManager.default.createDirectory(at: URL(fileURLWithPath: vmDir.dir.path), withIntermediateDirectories: true)
         
         // Check if we have a valid cached version
+        Logger.info("Checking cache for manifest ID: \(manifestId)")
         if validateCache(manifest: manifest, manifestId: manifestId) {
             Logger.info("Using cached version of image")
             try await copyFromCache(manifest: manifest, manifestId: manifestId, to: URL(fileURLWithPath: vmDir.dir.path))
             return
         }
         
+        // Clean up old versions of this repository before setting up new cache
+        try cleanupOldVersions(currentManifestId: manifestId, image: imageName)
+        
+        Logger.info("Cache miss or invalid cache, setting up new cache")
         // Setup new cache directory
         try setupImageCache(manifestId: manifestId)
         
         // Save new manifest
         try saveManifest(manifest, manifestId: manifestId)
+        
+        // Save image metadata
+        try saveImageMetadata(
+            image: imageName,
+            manifestId: manifestId
+        )
         
         // Create temporary directory for new downloads
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -396,45 +461,6 @@ class ImageContainerRegistry: @unchecked Sendable {
         }
         
         Logger.info("Download complete: Files extracted to \(vmDir.dir.path)")
-        
-        // If this was a "latest" tag pull and we successfully downloaded and cached the new version,
-        // clean up any old versions
-        if tag.lowercased() == "latest" {
-            let orgDir = cacheDirectory.appendingPathComponent(organization)
-            if FileManager.default.fileExists(atPath: orgDir.path) {
-                let contents = try FileManager.default.contentsOfDirectory(atPath: orgDir.path)
-                for item in contents {
-                    // Skip if it's the current manifest
-                    if item == manifestId { continue }
-                    
-                    let itemPath = orgDir.appendingPathComponent(item)
-                    var isDirectory: ObjCBool = false
-                    guard FileManager.default.fileExists(atPath: itemPath.path, isDirectory: &isDirectory),
-                          isDirectory.boolValue else { continue }
-                    
-                    // Check for manifest.json
-                    let manifestPath = itemPath.appendingPathComponent("manifest.json")
-                    guard let manifestData = try? Data(contentsOf: manifestPath),
-                    let oldManifest = try? JSONDecoder().decode(Manifest.self, from: manifestData),
-                    let config = oldManifest.config else { continue }
-                    let configPath = getCachedLayerPath(manifestId: item, digest: config.digest)
-                    guard let configData = try? Data(contentsOf: configPath),
-                    let configJson = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
-                    let labels = configJson["config"] as? [String: Any],
-                    let imageConfig = labels["Labels"] as? [String: String],
-                    let oldRepository = imageConfig["org.opencontainers.image.source"]?.components(separatedBy: "/").last else { continue }
-                    
-                    // Only delete if it's from the same repository
-                    if oldRepository == imageName {
-                        try FileManager.default.removeItem(at: itemPath)
-                        Logger.info("Removed outdated cached version", metadata: [
-                            "old_manifest_id": item,
-                            "repository": imageName
-                        ])
-                    }
-                }
-            }
-        }
     }
     
     private func copyFromCache(manifest: Manifest, manifestId: String, to destination: URL) async throws {
@@ -524,18 +550,20 @@ class ImageContainerRegistry: @unchecked Sendable {
         return token
     }
     
-    private func fetchManifest(repository: String, tag: String, token: String) async throws -> Manifest {
+    private func fetchManifest(repository: String, tag: String, token: String) async throws -> (Manifest, String) {
         var request = URLRequest(url: URL(string: "https://\(self.registry)/v2/\(repository)/manifests/\(tag)")!)
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.addValue("application/vnd.oci.image.manifest.v1+json", forHTTPHeaderField: "Accept")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+              httpResponse.statusCode == 200,
+              let digest = httpResponse.value(forHTTPHeaderField: "Docker-Content-Digest") else {
             throw PullError.manifestFetchFailed
         }
         
-        return try JSONDecoder().decode(Manifest.self, from: data)
+        let manifest = try JSONDecoder().decode(Manifest.self, from: data)
+        return (manifest, digest)
     }
     
     private func downloadLayer(
@@ -679,66 +707,69 @@ class ImageContainerRegistry: @unchecked Sendable {
     }
 
     func getImages() async throws -> [CachedImage] {
+        Logger.info("Scanning for cached images in \(cacheDirectory.path)")
         var images: [CachedImage] = []
         let orgDir = cacheDirectory.appendingPathComponent(organization)
         
         if FileManager.default.fileExists(atPath: orgDir.path) {
             let contents = try FileManager.default.contentsOfDirectory(atPath: orgDir.path)
+            Logger.info("Found \(contents.count) items in cache directory")
+            
             for item in contents {
                 let itemPath = orgDir.appendingPathComponent(item)
                 var isDirectory: ObjCBool = false
                 
-                // Check if it's a directory
                 guard FileManager.default.fileExists(atPath: itemPath.path, isDirectory: &isDirectory),
                       isDirectory.boolValue else { continue }
                 
-                // Check for manifest.json
+                // First try to read metadata file
+                let metadataPath = itemPath.appendingPathComponent("metadata.json")
+                if let metadataData = try? Data(contentsOf: metadataPath),
+                   let metadata = try? JSONDecoder().decode(ImageMetadata.self, from: metadataData) {
+                    Logger.info("Found metadata for image", metadata: [
+                        "image": metadata.image,
+                        "manifest_id": metadata.manifestId
+                    ])
+                    images.append(CachedImage(
+                        repository: metadata.image,
+                        imageId: String(metadata.manifestId.prefix(12)),
+                        manifestId: metadata.manifestId
+                    ))
+                    continue
+                }
+                
+                // Fallback to checking manifest if metadata doesn't exist
+                Logger.info("No metadata found for \(item), checking manifest")
                 let manifestPath = itemPath.appendingPathComponent("manifest.json")
                 guard FileManager.default.fileExists(atPath: manifestPath.path),
                       let manifestData = try? Data(contentsOf: manifestPath),
-                      let manifest = try? JSONDecoder().decode(Manifest.self, from: manifestData) else { continue }
+                      let manifest = try? JSONDecoder().decode(Manifest.self, from: manifestData) else {
+                    Logger.info("No valid manifest found for \(item)")
+                    continue
+                }
                 
-                // The directory name is now just the manifest ID
                 let manifestId = item
                 
                 // Verify the manifest ID matches
-                let currentManifestId = getManifestIdentifier(manifest)
+                let currentManifestId = getManifestIdentifier(manifest, manifestDigest: "")
+                Logger.info("Manifest check", metadata: [
+                    "item": item,
+                    "current_manifest_id": currentManifestId,
+                    "matches": "\(currentManifestId == manifestId)"
+                ])
                 if currentManifestId == manifestId {
-                    // Add the image with just the manifest ID for now
-                    images.append(CachedImage(
-                        repository: "unknown",
-                        tag: "unknown",
-                        manifestId: manifestId
-                    ))
+                    // Skip if we can't determine the repository name
+                    // This should be rare since we now save metadata during pull
+                    Logger.info("Skipping image without metadata: \(item)")
+                    continue
                 }
             }
+        } else {
+            Logger.info("Cache directory does not exist")
         }
         
-        // For each cached image, try to find its repository and tag by checking the config
-        for i in 0..<images.count {
-            let manifestId = images[i].manifestId
-            let manifestPath = getCachedManifestPath(manifestId: manifestId)
-            
-            if let manifestData = try? Data(contentsOf: manifestPath),
-               let manifest = try? JSONDecoder().decode(Manifest.self, from: manifestData),
-               let config = manifest.config,
-               let configData = try? Data(contentsOf: getCachedLayerPath(manifestId: manifestId, digest: config.digest)),
-               let configJson = try? JSONSerialization.jsonObject(with: configData) as? [String: Any],
-               let labels = configJson["config"] as? [String: Any],
-               let imageConfig = labels["Labels"] as? [String: String],
-               let repository = imageConfig["org.opencontainers.image.source"]?.components(separatedBy: "/").last,
-               let tag = imageConfig["org.opencontainers.image.version"] {
-                
-                // Found repository and tag information in the config
-                images[i] = CachedImage(
-                    repository: repository,
-                    tag: tag,
-                    manifestId: manifestId
-                )
-            }
-        }
-        
-        return images.sorted { $0.repository == $1.repository ? $0.tag < $1.tag : $0.repository < $1.repository }
+        Logger.info("Found \(images.count) cached images")
+        return images.sorted { $0.repository == $1.repository ? $0.imageId < $1.imageId : $0.repository < $1.repository }
     }
 
     private func listRemoteImageTags(repository: String) async throws -> [String] {

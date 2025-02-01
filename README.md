@@ -101,7 +101,7 @@ These images come with an SSH server pre-configured and auto-login enabled.
 |-------|------------|-------------|------|
 | `macos-sequoia-vanilla` | `latest`, `15.2` | macOS Sonoma 15.2 | 40GB |
 | `macos-sequoia-xcode` | `latest`, `15.2` | macOS Sonoma 15.2 with Xcode command line tools | 50GB |
-| `ubuntu-vanilla` | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB |
+| `ubuntu-noble-vanilla` | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB |
 
 For additional disk space, resize the VM disk after pulling the image using the `lume set <name> --disk-size <size>` command.
 

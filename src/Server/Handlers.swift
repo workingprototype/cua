@@ -257,7 +257,6 @@ extension Server {
     }
     
     func handleGetImages(_ request: HTTPRequest) async throws -> HTTPResponse {
-        // Parse query parameters from URL path and query string
         let pathAndQuery = request.path.split(separator: "?", maxSplits: 1)
         let queryParams = pathAndQuery.count > 1 ? pathAndQuery[1]
             .split(separator: "&")
@@ -272,12 +271,18 @@ extension Server {
         
         do {
             let vmController = LumeController()
-            let images = try await vmController.getImages(organization: organization)
+            let imageList = try await vmController.getImages(organization: organization)
+            
+            // Create a response format that matches the CLI output
+            let response = imageList.local.map { [
+                "repository": $0.repository,
+                "imageId": $0.imageId
+            ] }
             
             return HTTPResponse(
                 statusCode: .ok,
                 headers: ["Content-Type": "application/json"],
-                body: try JSONEncoder().encode(images)
+                body: try JSONEncoder().encode(response)
             )
         } catch {
             return HTTPResponse(

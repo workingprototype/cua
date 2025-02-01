@@ -9,7 +9,7 @@ struct ImagesPrinter {
     
     private static let columns: [Column] = [
         Column(header: "name", width: 28) { $0.split(separator: ":").first.map(String.init) ?? $0 },
-        Column(header: "tag", width: 16) { $0.split(separator: ":").last.map(String.init) ?? "-" }
+        Column(header: "image_id", width: 16) { $0.split(separator: ":").last.map(String.init) ?? "-" }
     ]
     
     static func print(images: [String]) {
