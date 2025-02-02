@@ -63,19 +63,21 @@ final class LumeController {
 
     @MainActor
     public func clone(name: String, newName: String) throws {
-        Logger.info("Cloning VM", metadata: ["source": name, "destination": newName])
+        let normalizedName = normalizeVMName(name: name)
+        let normalizedNewName = normalizeVMName(name: newName)
+        Logger.info("Cloning VM", metadata: ["source": normalizedName, "destination": normalizedNewName])
 
         do {
-            try self.validateVMExists(name)
+            try self.validateVMExists(normalizedName)
             
             // Copy the VM directory
-            try home.copyVMDirectory(from: name, to: newName)
+            try home.copyVMDirectory(from: normalizedName, to: normalizedNewName)
             
             // Update MAC address in the cloned VM to ensure uniqueness
-            let clonedVM = try get(name: newName)
+            let clonedVM = try get(name: normalizedNewName)
             try clonedVM.setMacAddress(VZMACAddress.randomLocallyAdministered().string)
             
-            Logger.info("VM cloned successfully", metadata: ["source": name, "destination": newName])
+            Logger.info("VM cloned successfully", metadata: ["source": normalizedName, "destination": normalizedNewName])
         } catch {
             Logger.error("Failed to clone VM", metadata: ["error": error.localizedDescription])
             throw error
@@ -84,10 +86,11 @@ final class LumeController {
 
     @MainActor
     public func get(name: String) throws -> VM {
+        let normalizedName = normalizeVMName(name: name)
         do {
-            try self.validateVMExists(name)
+            try self.validateVMExists(normalizedName)
 
-            let vm = try self.loadVM(name: name)
+            let vm = try self.loadVM(name: normalizedName)
             return vm
         } catch {
             Logger.error("Failed to get VM", metadata: ["error": error.localizedDescription])
@@ -148,19 +151,21 @@ final class LumeController {
 
     @MainActor
     public func delete(name: String) async throws {
-        Logger.info("Deleting VM", metadata: ["name": name])
+        let normalizedName = normalizeVMName(name: name)
+        Logger.info("Deleting VM", metadata: ["name": normalizedName])
 
         do {
-            try self.validateVMExists(name)
+            try self.validateVMExists(normalizedName)
 
             // Stop VM if it's running
-            if SharedVM.shared.getVM(name: name) != nil {
-                try await stopVM(name: name)
+            if SharedVM.shared.getVM(name: normalizedName) != nil {
+                try await stopVM(name: normalizedName)
             }
 
-            let vmDir = home.getVMDirectory(name)
+            let vmDir = home.getVMDirectory(normalizedName)
             try vmDir.delete()
-            Logger.info("VM deleted successfully", metadata: ["name": name])
+
+            Logger.info("VM deleted successfully", metadata: ["name": normalizedName])
 
         } catch {
             Logger.error("Failed to delete VM", metadata: ["error": error.localizedDescription])
@@ -177,18 +182,19 @@ final class LumeController {
         memory: UInt64? = nil,
         diskSize: UInt64? = nil
     ) throws {
+        let normalizedName = normalizeVMName(name: name)
         Logger.info(
             "Updating VM settings",
             metadata: [
-                "name": name,
+                "name": normalizedName,
                 "cpu": cpu.map { "\($0)" } ?? "unchanged",
                 "memory": memory.map { "\($0 / 1024 / 1024)MB" } ?? "unchanged",
                 "disk_size": diskSize.map { "\($0 / 1024 / 1024)MB" } ?? "unchanged",
             ])
         do {
-            try self.validateVMExists(name)
+            try self.validateVMExists(normalizedName)
 
-            let vm = try get(name: name)
+            let vm = try get(name: normalizedName)
 
             // Apply settings in order
             if let cpu = cpu {
@@ -201,7 +207,7 @@ final class LumeController {
                 try vm.setDiskSize(diskSize)
             }
 
-            Logger.info("VM settings updated successfully", metadata: ["name": name])
+            Logger.info("VM settings updated successfully", metadata: ["name": normalizedName])
         } catch {
             Logger.error(
                 "Failed to update VM settings", metadata: ["error": error.localizedDescription])
@@ -211,26 +217,27 @@ final class LumeController {
 
     @MainActor
     public func stopVM(name: String) async throws {
-        Logger.info("Stopping VM", metadata: ["name": name])
+        let normalizedName = normalizeVMName(name: name)
+        Logger.info("Stopping VM", metadata: ["name": normalizedName])
 
         do {
-            try self.validateVMExists(name)
+            try self.validateVMExists(normalizedName)
 
             // Try to get VM from cache first
             let vm: VM
-            if let cachedVM = SharedVM.shared.getVM(name: name) {
+            if let cachedVM = SharedVM.shared.getVM(name: normalizedName) {
                 vm = cachedVM
             } else {
-                vm = try get(name: name)
+                vm = try get(name: normalizedName)
             }
 
             try await vm.stop()
             // Remove VM from cache after stopping
-            SharedVM.shared.removeVM(name: name)
-            Logger.info("VM stopped successfully", metadata: ["name": name])
+            SharedVM.shared.removeVM(name: normalizedName)
+            Logger.info("VM stopped successfully", metadata: ["name": normalizedName])
         } catch {
             // Clean up cache even if stop fails
-            SharedVM.shared.removeVM(name: name)
+            SharedVM.shared.removeVM(name: normalizedName)
             Logger.error("Failed to stop VM", metadata: ["error": error.localizedDescription])
             throw error
         }
@@ -241,27 +248,41 @@ final class LumeController {
         name: String,
         noDisplay: Bool = false,
         sharedDirectories: [SharedDirectory] = [],
-        mount: Path? = nil
+        mount: Path? = nil,
+        registry: String = "ghcr.io",
+        organization: String = "trycua"
     ) async throws {
+        let normalizedName = normalizeVMName(name: name)
         Logger.info(
             "Running VM",
             metadata: [
-                "name": name,
+                "name": normalizedName,
                 "no_display": "\(noDisplay)",
                 "shared_directories": "\(sharedDirectories.map( { $0.string } ).joined(separator: ", "))",
                 "mount": mount?.path ?? "none",
             ])
 
         do {
-            try validateRunParameters(
-                name: name, sharedDirectories: sharedDirectories, mount: mount)
+            // Check if this is an image reference (contains a tag)
+            let components = name.split(separator: ":")
+            if components.count == 2 {
+                do {
+                    try self.validateVMExists(normalizedName)
+                } catch {
+                    // If the VM doesn't exist, try to pull the image
+                    try await pullImage(image: name, name: nil, registry: registry, organization: organization)
+                }
+            }
 
-            let vm = try get(name: name)
-            SharedVM.shared.setVM(name: name, vm: vm)
+            try validateRunParameters(
+                name: normalizedName, sharedDirectories: sharedDirectories, mount: mount)
+
+            let vm = try get(name: normalizedName)
+            SharedVM.shared.setVM(name: normalizedName, vm: vm)
             try await vm.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount)
-            Logger.info("VM started successfully", metadata: ["name": name])
+            Logger.info("VM started successfully", metadata: ["name": normalizedName])
         } catch {
-            SharedVM.shared.removeVM(name: name)
+            SharedVM.shared.removeVM(name: normalizedName)
             Logger.error("Failed to run VM", metadata: ["error": error.localizedDescription])
             throw error
         }
@@ -290,7 +311,7 @@ final class LumeController {
         async throws
     {
         do {
-            let vmName: String = name ?? image.split(separator: ":").first.map(String.init) ?? image
+            let vmName: String = name ?? normalizeVMName(name: image)
 
             Logger.info(
                 "Pulling image",
@@ -378,6 +399,12 @@ final class LumeController {
     }
 
     // MARK: - Private Helper Methods
+
+    /// Normalizes a VM name by replacing colons with underscores
+    private func normalizeVMName(name: String) -> String {
+        let components = name.split(separator: ":")
+        return components.count == 2 ? "\(components[0])_\(components[1])" : name
+    }
 
     @MainActor
     private func createTempVMConfig(

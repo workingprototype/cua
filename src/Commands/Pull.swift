@@ -23,8 +23,6 @@ struct Pull: AsyncParsableCommand {
     @MainActor
     func run() async throws {
         let vmController = LumeController()
-        let components = image.split(separator: ":")
-        let vmName = name ?? (components.count == 2 ? "\(components[0])_\(components[1])" : image)
-        try await vmController.pullImage(image: image, name: vmName, registry: registry, organization: organization)
+        try await vmController.pullImage(image: image, name: name, registry: registry, organization: organization)
     }
 }
