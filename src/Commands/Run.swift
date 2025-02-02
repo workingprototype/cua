@@ -68,30 +68,14 @@ struct Run: AsyncParsableCommand {
     func run() async throws {
         let vmController = LumeController()
         let dirs = try parsedSharedDirectories
-
-        var vmName = name
-        
-        // Shorthand for pulling an image directly during run
-        let components = name.split(separator: ":")
-        if components.count == 2 {
-            // This is an image reference, try to pull it first
-            let image = name
-            vmName = "\(components[0])_\(components[1])"
-            
-            do {
-                try vmController.validateVMExists(vmName)
-            }
-            catch {
-                // If the VM doesn't exist, try to pull the image
-                try await vmController.pullImage(image: image, name: vmName, registry: registry, organization: organization)
-            }
-        } 
         
         try await vmController.runVM(
-            name: vmName,
+            name: name,
             noDisplay: noDisplay,
             sharedDirectories: dirs,
-            mount: mount
+            mount: mount,
+            registry: registry,
+            organization: organization
         )
     }
 }
