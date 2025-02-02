@@ -29,6 +29,8 @@
 lume run macos-sequoia-vanilla:latest
 ```
 
+For a python interface, check out [pylume](https://github.com/trycua/pylume).
+
 ## Usage
 
 ```bash
