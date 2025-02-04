@@ -96,8 +96,10 @@ You can also download the `lume.pkg.tar.gz` archive from the [latest release](ht
 
 ## Prebuilt Images
 
-Pre-built images are available on [ghcr.io/trycua](https://github.com/orgs/trycua/packages). 
+Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages). 
 These images come with an SSH server pre-configured and auto-login enabled.
+
+For the security of your VM, change the default password `lume` immediately after your first login.
 
 | Image | Tag | Description | Size |
 |-------|------------|-------------|------|
