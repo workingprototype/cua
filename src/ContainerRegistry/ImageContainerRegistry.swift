@@ -301,13 +301,13 @@ class ImageContainerRegistry: @unchecked Sendable {
         
         // Set total size and file count
         let totalFiles = manifest.layers.filter { $0.mediaType != "application/vnd.oci.empty.v1+json" }.count
-        await progress.setTotal(
-            manifest.layers.reduce(0) { $0 + Int64($1.size) },
-            files: totalFiles
-        )
+        let totalSize = manifest.layers.reduce(0) { $0 + Int64($1.size) }
+        Logger.info("Total download size: \(ByteCountFormatter.string(fromByteCount: totalSize, countStyle: .file))")
+        await progress.setTotal(totalSize, files: totalFiles)
         
         // Process layers with limited concurrency
         Logger.info("Processing Image layers")
+        Logger.info("This may take several minutes depending on the image size and your internet connection. Please wait...")
         var diskParts: [(Int, URL)] = []
         var totalParts = 0
         let maxConcurrentTasks = 5
