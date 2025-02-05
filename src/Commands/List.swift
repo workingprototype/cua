@@ -14,6 +14,10 @@ struct List: AsyncParsableCommand {
     func run() async throws {
         let manager = LumeController()
         let vms = try manager.list()
-        VMDetailsPrinter.printStatus(vms)
+        if vms.isEmpty {
+            print("No virtual machines found")
+        } else {
+            VMDetailsPrinter.printStatus(vms)
+        }
     }
 }
