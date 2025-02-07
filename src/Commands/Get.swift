@@ -9,6 +9,9 @@ struct Get: AsyncParsableCommand {
     @Argument(help: "Name of the virtual machine", completion: .custom(completeVMName))
     var name: String
     
+    @Flag(name: .long, help: "Outputs the images as a machine-readable JSON.")
+    var json = false
+    
     init() {
     }
     
@@ -16,6 +19,6 @@ struct Get: AsyncParsableCommand {
     func run() async throws {
         let vmController = LumeController()
         let vm = try vmController.get(name: name)
-        VMDetailsPrinter.printStatus([vm.details])
+        try VMDetailsPrinter.printStatus([vm.details], json: self.json)
     }
 } 
