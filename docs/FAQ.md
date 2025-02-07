@@ -34,7 +34,7 @@ lume create <name> --os macos --ipsw latest
 ```
 
 #### Create a new macOS VM using a specific IPSW image:
-To create a macOS virtual machine from an older or specific IPSW file, first download the desired IPSW file from a trusted source.
+To create a macOS virtual machine from an older or specific IPSW file, first download the desired IPSW (UniversalMac) from a trusted source.
 
 Then, use the downloaded IPSW path:
 
