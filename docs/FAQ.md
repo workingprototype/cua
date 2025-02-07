@@ -24,9 +24,27 @@ lume ipsw
 lume delete <name>
 ```
 
-### How do I install a custom linux image?
+### How to Install macOS from an IPSW Image
 
-The process for creating a custom linux image differs than macOS, with IPSW restore files not being used. You need to create a linux VM first, then mount a setup image file to the VM for the first boot.
+#### Create a new macOS VM using the latest supported IPSW image:
+Run the following command to create a new macOS virtual machine using the latest available IPSW image:
+
+```bash
+lume create <name> --os macos --ipsw latest
+```
+
+#### Create a new macOS VM using a specific IPSW image:
+To create a macOS virtual machine from an older or specific IPSW file, first download the desired IPSW file from a trusted source.
+
+Then, use the downloaded IPSW path:
+
+```bash
+lume create <name> --os macos --ipsw <downloaded_ipsw_path>
+```
+
+### How do I install a custom Linux image?
+
+The process for creating a custom Linux image differs than macOS, with IPSW restore files not being used. You need to create a linux VM first, then mount a setup image file to the VM for the first boot.
 
 ```bash
 lume create <name> --os linux
