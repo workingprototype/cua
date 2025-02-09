@@ -36,4 +36,4 @@ Documentation improvements are always welcome. You can:
 
 For detailed instructions on setting up your development environment and submitting code contributions, please see our [Development.md](docs/Development.md) guide.
 
-Feel free to join our [Discord community](https://discord.com/channels/1328377437301641247) to discuss ideas or get help with your contributions. 
+Feel free to join our [Discord community](https://discord.com/invite/5ngXY2Wn) to discuss ideas or get help with your contributions. 
