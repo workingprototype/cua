@@ -70,9 +70,10 @@ Command Options:
     --mount <path>       For Linux VMs only, attach a read-only disk image
 
   set:
-    --cpu <cores>        New number of CPU cores
-    --memory <size>      New memory size
-    --disk-size <size>   New disk size
+    --cpu <cores>        New number of CPU cores (e.g., 4)
+    --memory <size>      New memory size (e.g., 8192MB or 8GB)
+    --disk-size <size>   New disk size (e.g., 40960MB or 40GB)
+    --display <res>      New display resolution in format WIDTHxHEIGHT (e.g., 1024x768)
 
   delete:
     --force              Force deletion without confirmation

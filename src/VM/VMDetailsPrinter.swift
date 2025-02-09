@@ -20,6 +20,7 @@ enum VMDetailsPrinter {
         Column(header: "disk", width: 16, getValue: { 
             "\($0.diskSize.formattedAllocated)/\($0.diskSize.formattedTotal)"
         }),
+        Column(header: "display", width: 12, getValue: { $0.display }),
         Column(header: "status", width: 16, getValue: { 
             $0.status
         }),

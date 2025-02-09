@@ -22,7 +22,7 @@ struct VMConfig: Codable {
     private var _memorySize: UInt64?
     private var _diskSize: UInt64?
     private var _macAddress: String?
-    let display: VMDisplayResolution
+    private var _display: VMDisplayResolution
     private var _hardwareModel: Data?
     private var _machineIdentifier: Data?
     
@@ -42,9 +42,14 @@ struct VMConfig: Codable {
         self._memorySize = memorySize
         self._diskSize = diskSize
         self._macAddress = macAddress
-        self.display = VMDisplayResolution(string: display) ?? VMDisplayResolution(string: "1024x768")!
+        self._display = VMDisplayResolution(string: display) ?? VMDisplayResolution(string: "1024x768")!
         self._hardwareModel = hardwareModel
         self._machineIdentifier = machineIdentifier
+    }
+    
+    var display: VMDisplayResolution {
+        get { _display }
+        set { _display = newValue }
     }
     
     var cpuCount: Int? {
@@ -97,10 +102,14 @@ struct VMConfig: Codable {
         _machineIdentifier = machineIdentifier
     }
 
-    mutating func setMacAddress(_ macAddress: String) {
-        _macAddress = macAddress
+    mutating func setMacAddress(_ newMacAddress: String) {
+        self._macAddress = newMacAddress
     }
-    
+
+    mutating func setDisplay(_ newDisplay: VMDisplayResolution) {
+        self._display = newDisplay
+    }
+
     // MARK: - Codable
     enum CodingKeys: String, CodingKey {
         case _cpuCount = "cpuCount"
@@ -121,7 +130,7 @@ struct VMConfig: Codable {
         _memorySize = try container.decodeIfPresent(UInt64.self, forKey: ._memorySize)
         _diskSize = try container.decodeIfPresent(UInt64.self, forKey: ._diskSize)
         _macAddress = try container.decodeIfPresent(String.self, forKey: .macAddress)
-        display = VMDisplayResolution(string: try container.decode(String.self, forKey: .display))!
+        _display = VMDisplayResolution(string: try container.decode(String.self, forKey: .display))!
         _hardwareModel = try container.decodeIfPresent(Data.self, forKey: ._hardwareModel)
         _machineIdentifier = try container.decodeIfPresent(Data.self, forKey: ._machineIdentifier)
     }

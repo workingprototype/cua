@@ -35,7 +35,30 @@ struct VMDetails: Codable {
     let cpuCount: Int
     let memorySize: UInt64
     let diskSize: DiskSize
+    let display: String
     let status: String
     let vncUrl: String?
     let ipAddress: String?
+    
+    init(
+        name: String,
+        os: String,
+        cpuCount: Int,
+        memorySize: UInt64,
+        diskSize: DiskSize,
+        display: String,
+        status: String,
+        vncUrl: String?,
+        ipAddress: String?
+    ) {
+        self.name = name
+        self.os = os
+        self.cpuCount = cpuCount
+        self.memorySize = memorySize
+        self.diskSize = diskSize
+        self.display = display
+        self.status = status
+        self.vncUrl = vncUrl
+        self.ipAddress = ipAddress
+    }
 }

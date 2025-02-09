@@ -124,7 +124,8 @@ extension Server {
                 name: name,
                 cpu: request.cpu,
                 memory: sizes.memory,
-                diskSize: sizes.diskSize
+                diskSize: sizes.diskSize,
+                display: sizes.display?.string
             )
             
             return HTTPResponse(

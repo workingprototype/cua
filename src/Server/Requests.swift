@@ -71,11 +71,18 @@ struct SetVMRequest: Codable {
     let cpu: Int?
     let memory: String?
     let diskSize: String?
+    let display: String?
     
-    func parse() throws -> (memory: UInt64?, diskSize: UInt64?) {
+    func parse() throws -> (memory: UInt64?, diskSize: UInt64?, display: VMDisplayResolution?) {
         return (
             memory: try memory.map { try parseSize($0) },
-            diskSize: try diskSize.map { try parseSize($0) }
+            diskSize: try diskSize.map { try parseSize($0) },
+            display: try display.map { 
+                guard let resolution = VMDisplayResolution(string: $0) else {
+                    throw ValidationError("Invalid display resolution format: \($0). Expected format: WIDTHxHEIGHT")
+                }
+                return resolution
+            }
         )
     }
 }
