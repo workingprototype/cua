@@ -180,7 +180,8 @@ final class LumeController {
         name: String,
         cpu: Int? = nil,
         memory: UInt64? = nil,
-        diskSize: UInt64? = nil
+        diskSize: UInt64? = nil,
+        display: String? = nil
     ) throws {
         let normalizedName = normalizeVMName(name: name)
         Logger.info(
@@ -190,6 +191,7 @@ final class LumeController {
                 "cpu": cpu.map { "\($0)" } ?? "unchanged",
                 "memory": memory.map { "\($0 / 1024 / 1024)MB" } ?? "unchanged",
                 "disk_size": diskSize.map { "\($0 / 1024 / 1024)MB" } ?? "unchanged",
+                "display": display ?? "unchanged",
             ])
         do {
             try self.validateVMExists(normalizedName)
@@ -205,6 +207,9 @@ final class LumeController {
             }
             if let diskSize = diskSize {
                 try vm.setDiskSize(diskSize)
+            }
+            if let display = display {
+                try vm.setDisplay(display)
             }
 
             Logger.info("VM settings updated successfully", metadata: ["name": normalizedName])

@@ -127,7 +127,7 @@ enum VMError: Error, LocalizedError {
     case vncNotConfigured
     case internalError(String)
     case unsupportedOS(String)
-    
+    case invalidDisplayResolution(String)
     var errorDescription: String? {
         switch self {
         case .alreadyExists(let name):
@@ -152,6 +152,8 @@ enum VMError: Error, LocalizedError {
             return "Internal error: \(message)"
         case .unsupportedOS(let os):
             return "Unsupported operating system: \(os)"
+        case .invalidDisplayResolution(let resolution):
+            return "Invalid display resolution: \(resolution)"
         }
     }
 }

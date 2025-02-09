@@ -18,6 +18,9 @@ struct Set: AsyncParsableCommand {
     @Option(help: "New disk size, e.g., 20480MB or 20GB.", transform: { try parseSize($0) })
     var diskSize: UInt64?
 
+    @Option(help: "New display resolution in format WIDTHxHEIGHT.")
+    var display: VMDisplayResolution?
+
     init() {
     }
 
@@ -28,7 +31,8 @@ struct Set: AsyncParsableCommand {
             name: name,
             cpu: cpu,
             memory: memory,
-            diskSize: diskSize
+            diskSize: diskSize,
+            display: display?.string
         )
     }
 }

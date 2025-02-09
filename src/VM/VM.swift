@@ -79,6 +79,7 @@ class VM {
             cpuCount: vmDirContext.config.cpuCount ?? 0,
             memorySize: vmDirContext.config.memorySize ?? 0,
             diskSize: try! getDiskSize(),
+            display: vmDirContext.config.display.string,
             status: isRunning ? "running" : "stopped",
             vncUrl: vncUrl,
             ipAddress: isRunning ? DHCPLeaseParser.getIPAddress(forMAC: vmDirContext.config.macAddress!) : nil
@@ -292,6 +293,17 @@ class VM {
     func setDiskSize(_ newDiskSize: UInt64) throws {
         try vmDirContext.setDisk(newDiskSize)
         vmDirContext.config.setDiskSize(newDiskSize)
+        try vmDirContext.saveConfig()
+    }
+
+    func setDisplay(_ newDisplay: String) throws {
+        guard !isRunning else {
+            throw VMError.alreadyRunning(vmDirContext.name)
+        }
+        guard let display: VMDisplayResolution = VMDisplayResolution(string: newDisplay) else {
+            throw VMError.invalidDisplayResolution(newDisplay)
+        }
+        vmDirContext.config.setDisplay(display)
         try vmDirContext.saveConfig()
     }
 
