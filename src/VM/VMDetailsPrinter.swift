@@ -34,17 +34,25 @@ enum VMDetailsPrinter {
     
     /// Prints the status of all VMs in a formatted table
     /// - Parameter vms: Array of VM status objects to display
-    static func printStatus(_ vms: [VMDetails]) {
-        printHeader()
-        vms.forEach(printVM)
+    static func printStatus(_ vms: [VMDetails], format: FormatOption, print: (String) -> () = { print($0) }) throws {
+        if format == .json {
+            let jsonEncoder = JSONEncoder()
+            jsonEncoder.outputFormatting = .prettyPrinted
+            let jsonData = try jsonEncoder.encode(vms)
+            let jsonString = String(data: jsonData, encoding: .utf8)!
+            print(jsonString)
+        } else {
+            printHeader(print: print)
+            vms.forEach({ printVM($0, print: print)})
+        }
     }
     
-    private static func printHeader() {
+    private static func printHeader(print: (String) -> () = { print($0) }) {
         let paddedHeaders = columns.map { $0.header.paddedToWidth($0.width) }
         print(paddedHeaders.joined())
     }
     
-    private static func printVM(_ vm: VMDetails) {
+    private static func printVM(_ vm: VMDetails, print: (String) -> Void = { print($0) }) {
         let paddedColumns = columns.map { column in
             column.getValue(vm).paddedToWidth(column.width)
         }
