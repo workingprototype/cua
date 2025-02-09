@@ -42,7 +42,13 @@ struct VMDetailsPrinterTests {
         try VMDetailsPrinter.printStatus(vms, json: false, print: { printedLines.append($0) })
 
         // Then
-        #expect(printedLines.popLast() == "name                              os      2       0.00G   24.0B/30.0B     status          0.0.0.0         vncUrl                                            ")
-        #expect(printedLines.popLast() == "name                              os      cpu     memory  disk            status          ip              vnc                                               ")
+        #expect(printedLines.count == 2)
+        
+        
+        let headerParts = printedLines[0].split(whereSeparator: \.isWhitespace)
+        #expect(headerParts == ["name", "os", "cpu", "memory", "disk", "status", "ip", "vnc"])
+
+        let vmParts = printedLines[1].split(whereSeparator: \.isWhitespace)
+        #expect(vmParts == ["name", "os", "2", "0.00G", "24.0B/30.0B", "status", "0.0.0.0", "vncUrl"])        
     }
 }
