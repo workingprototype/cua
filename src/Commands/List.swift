@@ -7,8 +7,8 @@ struct List: AsyncParsableCommand {
         abstract: "List virtual machines"
     )
     
-    @Flag(name: .long, help: "Outputs the images as a machine-readable JSON.")
-    var json = false
+    @Option(name: [.long, .customShort("f")], help: "Output format (json|text)")
+    var format: FormatOption = .text
     
     init() {
     }
@@ -17,10 +17,10 @@ struct List: AsyncParsableCommand {
     func run() async throws {
         let manager = LumeController()
         let vms = try manager.list()
-        if vms.isEmpty && !json {
+        if vms.isEmpty && self.format == .text {
             print("No virtual machines found")
         } else {
-            try VMDetailsPrinter.printStatus(vms, json: self.json)
+            try VMDetailsPrinter.printStatus(vms, format: self.format)
         }
     }
 }

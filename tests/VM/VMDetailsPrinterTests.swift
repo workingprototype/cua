@@ -20,7 +20,7 @@ struct VMDetailsPrinterTests {
         
         // When
         var printedStatus: String?
-        try VMDetailsPrinter.printStatus(vms, json: true, print: { printedStatus = $0 })
+        try VMDetailsPrinter.printStatus(vms, format: .json, print: { printedStatus = $0 })
 
         // Then
         #expect(printedStatus == expectedOutput)
@@ -39,7 +39,7 @@ struct VMDetailsPrinterTests {
         
         // When
         var printedLines: [String] = []
-        try VMDetailsPrinter.printStatus(vms, json: false, print: { printedLines.append($0) })
+        try VMDetailsPrinter.printStatus(vms, format: .text, print: { printedLines.append($0) })
 
         // Then
         #expect(printedLines.count == 2)
@@ -49,6 +49,6 @@ struct VMDetailsPrinterTests {
         #expect(headerParts == ["name", "os", "cpu", "memory", "disk", "status", "ip", "vnc"])
 
         let vmParts = printedLines[1].split(whereSeparator: \.isWhitespace)
-        #expect(vmParts == ["name", "os", "2", "0.00G", "24.0B/30.0B", "status", "0.0.0.0", "vncUrl"])        
+        #expect(vmParts == ["name", "os", "2", "0.00G", "24.0B/30.0B", "status", "0.0.0.0", "vncUrl"])
     }
 }

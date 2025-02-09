@@ -33,8 +33,8 @@ enum VMDetailsPrinter {
     
     /// Prints the status of all VMs in a formatted table
     /// - Parameter vms: Array of VM status objects to display
-    static func printStatus(_ vms: [VMDetails], json: Bool, print: (String) -> () = { print($0) }) throws {
-        if json {
+    static func printStatus(_ vms: [VMDetails], format: FormatOption, print: (String) -> () = { print($0) }) throws {
+        if format == .json {
             let jsonEncoder = JSONEncoder()
             jsonEncoder.outputFormatting = .prettyPrinted
             let jsonData = try jsonEncoder.encode(vms)
