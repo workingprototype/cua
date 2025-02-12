@@ -49,7 +49,7 @@ The process for creating a custom Linux image differs than macOS, with IPSW rest
 ```bash
 lume create <name> --os linux
 
-lume run <name> --mount <path-to-setup-image> --start-vnc
+lume run <name> --mount <path-to-setup-image>
 
-lume run <name> --start-vnc
+lume run <name>
 ```
