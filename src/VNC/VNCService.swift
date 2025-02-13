@@ -30,8 +30,11 @@ final class DefaultVNCService: VNCService {
     func start(port: Int, virtualMachine: Any?) async throws {
         let password = Array(PassphraseGenerator().prefix(4)).joined(separator: "-")
         let securityConfiguration = Dynamic._VZVNCAuthenticationSecurityConfiguration(password: password)
+        
+        // Create VNC server with specified port
         let server = Dynamic._VZVNCServer(port: port, queue: DispatchQueue.main,
                                       securityConfiguration: securityConfiguration)
+        
         if let vm = virtualMachine as? VZVirtualMachine {
             server.virtualMachine = vm
         }
@@ -39,20 +42,64 @@ final class DefaultVNCService: VNCService {
         
         vncServer = server
         
-        // Wait for port to be assigned
-        while true {
-            if let port: UInt16 = server.port.asUInt16, port != 0 {
-                let url = "vnc://:\(password)@127.0.0.1:\(port)"
+        // Wait for port to be assigned if using port 0 (auto-assign)
+        while port == 0 {
+            if let assignedPort: UInt16 = server.port.asUInt16, assignedPort != 0 {
+                // Get the local IP address for the URL - prefer IPv4
+                let hostIP = try getLocalIPAddress() ?? "127.0.0.1"
+                let url = "vnc://:\(password)@127.0.0.1:\(assignedPort)"  // Use localhost for local connections
+                let externalUrl = "vnc://:\(password)@\(hostIP):\(assignedPort)"  // External URL for remote connections
                 
-                // Save session information
-                let session = VNCSession(
-                    url: url
-                )
+                Logger.info("VNC server started", metadata: [
+                    "local": url,
+                    "external": externalUrl
+                ])
+                
+                // Save session information with local URL for the client
+                let session = VNCSession(url: url)
                 try vmDirectory.saveSession(session)
                 break
             }
             try await Task.sleep(nanoseconds: 50_000_000)
         }
+    }
+    
+    // Modified to prefer IPv4 addresses
+    private func getLocalIPAddress() throws -> String? {
+        var address: String?
+        
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0 else {
+            return nil
+        }
+        defer { freeifaddrs(ifaddr) }
+        
+        var ptr = ifaddr
+        while ptr != nil {
+            defer { ptr = ptr?.pointee.ifa_next }
+            
+            let interface = ptr?.pointee
+            let family = interface?.ifa_addr.pointee.sa_family
+            
+            // Only look for IPv4 addresses
+            if family == UInt8(AF_INET) {
+                let name = String(cString: (interface?.ifa_name)!)
+                if name == "en0" { // Primary interface
+                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    getnameinfo(interface?.ifa_addr,
+                              socklen_t((interface?.ifa_addr.pointee.sa_len)!),
+                              &hostname,
+                              socklen_t(hostname.count),
+                              nil,
+                              0,
+                              NI_NUMERICHOST)
+                    address = String(cString: hostname, encoding: .utf8)
+                    break
+                }
+            }
+        }
+        
+        return address
     }
     
     func stop() {

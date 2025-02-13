@@ -25,6 +25,7 @@ struct VMConfig: Codable {
     private var _display: VMDisplayResolution
     private var _hardwareModel: Data?
     private var _machineIdentifier: Data?
+    private var _vncPort: Int?
     
     // MARK: - Initialization
     init(
@@ -35,7 +36,8 @@ struct VMConfig: Codable {
         macAddress: String? = nil,
         display: String,
         hardwareModel: Data? = nil,
-        machineIdentifier: Data? = nil
+        machineIdentifier: Data? = nil,
+        vncPort: Int? = nil
     ) throws {
         self.os = os
         self._cpuCount = cpuCount
@@ -45,6 +47,7 @@ struct VMConfig: Codable {
         self._display = VMDisplayResolution(string: display) ?? VMDisplayResolution(string: "1024x768")!
         self._hardwareModel = hardwareModel
         self._machineIdentifier = machineIdentifier
+        self._vncPort = vncPort
     }
     
     var display: VMDisplayResolution {
@@ -81,6 +84,11 @@ struct VMConfig: Codable {
         get { _macAddress }
         set { _macAddress = newValue }
     }
+
+    var vncPort: Int? {
+        get { _vncPort }
+        set { _vncPort = newValue }
+    }
     
     mutating func setCpuCount(_ count: Int) {
         _cpuCount = count
@@ -110,6 +118,10 @@ struct VMConfig: Codable {
         self._display = newDisplay
     }
 
+    mutating func setVNCPort(_ port: Int) {
+        _vncPort = port
+    }
+
     // MARK: - Codable
     enum CodingKeys: String, CodingKey {
         case _cpuCount = "cpuCount"
@@ -120,6 +132,7 @@ struct VMConfig: Codable {
         case _hardwareModel = "hardwareModel"
         case _machineIdentifier = "machineIdentifier"
         case os
+        case _vncPort = "vncPort"
     }
     
     init(from decoder: Decoder) throws {
@@ -133,6 +146,7 @@ struct VMConfig: Codable {
         _display = VMDisplayResolution(string: try container.decode(String.self, forKey: .display))!
         _hardwareModel = try container.decodeIfPresent(Data.self, forKey: ._hardwareModel)
         _machineIdentifier = try container.decodeIfPresent(Data.self, forKey: ._machineIdentifier)
+        _vncPort = try container.decodeIfPresent(Int.self, forKey: ._vncPort)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -146,5 +160,6 @@ struct VMConfig: Codable {
         try container.encode(display.string, forKey: .display)
         try container.encodeIfPresent(_hardwareModel, forKey: ._hardwareModel)
         try container.encodeIfPresent(_machineIdentifier, forKey: ._machineIdentifier)
+        try container.encodeIfPresent(_vncPort, forKey: ._vncPort)
     }
 }

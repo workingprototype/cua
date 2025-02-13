@@ -342,7 +342,9 @@ class VM {
             throw VMError.internalError("Virtualization service not initialized")
         }
         
-        try await vncService.start(port: 0, virtualMachine: service.getVirtualMachine())
+        // Use configured port or default to 0 (auto-assign)
+        let port = vmDirContext.config.vncPort ?? 0
+        try await vncService.start(port: port, virtualMachine: service.getVirtualMachine())
         
         guard let url = vncService.url else {
             throw VMError.vncNotConfigured
@@ -398,5 +400,14 @@ class VM {
     /// Post-installation step to move the VM directory to the home directory
     func finalize(to name: String, home: Home) throws {
         try vmDirContext.finalize(to: name)
+    }
+
+    // Add method to set VNC port
+    func setVNCPort(_ port: Int) throws {
+        guard !isRunning else {
+            throw VMError.alreadyRunning(vmDirContext.name)
+        }
+        vmDirContext.config.setVNCPort(port)
+        try vmDirContext.saveConfig()
     }
 } 
