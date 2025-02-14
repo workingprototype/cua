@@ -25,6 +25,9 @@ struct Run: AsyncParsableCommand {
     @Option(help: "Organization to pull the images from. Defaults to trycua")
     var organization: String = "trycua"
     
+    @Option(name: [.customLong("vnc-port")], help: "Port to use for the VNC server. Defaults to 0 (auto-assign)")
+    var vncPort: Int = 0
+    
     private var parsedSharedDirectories: [SharedDirectory] {
         get throws {
             try sharedDirectories.map { dirString -> SharedDirectory in
@@ -75,7 +78,8 @@ struct Run: AsyncParsableCommand {
             sharedDirectories: dirs,
             mount: mount,
             registry: registry,
-            organization: organization
+            organization: organization,
+            vncPort: vncPort
         )
     }
 }
