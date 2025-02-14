@@ -88,7 +88,7 @@ class VM {
 
     // MARK: - VM Lifecycle Management
     
-    func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?) async throws {
+    func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?, vncPort: Int = 0) async throws {
         guard vmDirContext.initialized else {
             throw VMError.notInitialized(vmDirContext.name)
         }
@@ -111,7 +111,8 @@ class VM {
             "diskSize": "\(vmDirContext.config.diskSize ?? 0)",
             "sharedDirectories": sharedDirectories.map(
                 { $0.string }
-            ).joined(separator: ", ")
+            ).joined(separator: ", "),
+            "vncPort": "\(vncPort)"
         ])
 
         // Create and configure the VM
@@ -125,7 +126,7 @@ class VM {
             )
             virtualizationService = try virtualizationServiceFactory(config)
             
-            let vncInfo = try await setupVNC(noDisplay: noDisplay)
+            let vncInfo = try await setupVNC(noDisplay: noDisplay, port: vncPort)
             Logger.info("VNC info", metadata: ["vncInfo": vncInfo])
             
             // Start the VM
@@ -337,13 +338,11 @@ class VM {
         return vncService.url
     }
     
-    private func setupVNC(noDisplay: Bool) async throws -> String {
+    private func setupVNC(noDisplay: Bool, port: Int = 0) async throws -> String {
         guard let service = virtualizationService else {
             throw VMError.internalError("Virtualization service not initialized")
         }
         
-        // Use configured port or default to 0 (auto-assign)
-        let port = vmDirContext.config.vncPort ?? 0
         try await vncService.start(port: port, virtualMachine: service.getVirtualMachine())
         
         guard let url = vncService.url else {
@@ -400,14 +399,5 @@ class VM {
     /// Post-installation step to move the VM directory to the home directory
     func finalize(to name: String, home: Home) throws {
         try vmDirContext.finalize(to: name)
-    }
-
-    // Add method to set VNC port
-    func setVNCPort(_ port: Int) throws {
-        guard !isRunning else {
-            throw VMError.alreadyRunning(vmDirContext.name)
-        }
-        vmDirContext.config.setVNCPort(port)
-        try vmDirContext.saveConfig()
     }
 } 

@@ -68,6 +68,9 @@ Command Options:
     --no-display         Do not start the VNC client app
     --shared-dir <dir>   Share directory with VM (format: path[:ro|rw])
     --mount <path>       For Linux VMs only, attach a read-only disk image
+    --registry <url>     Container registry URL (default: ghcr.io)
+    --organization <org> Organization to pull from (default: trycua)
+    --vnc-port <port>    Port to use for the VNC server (default: 0 for auto-assign)
 
   set:
     --cpu <cores>        New number of CPU cores (e.g., 4)

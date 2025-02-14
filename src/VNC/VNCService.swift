@@ -42,25 +42,45 @@ final class DefaultVNCService: VNCService {
         
         vncServer = server
         
-        // Wait for port to be assigned if using port 0 (auto-assign)
-        while port == 0 {
-            if let assignedPort: UInt16 = server.port.asUInt16, assignedPort != 0 {
-                // Get the local IP address for the URL - prefer IPv4
-                let hostIP = try getLocalIPAddress() ?? "127.0.0.1"
-                let url = "vnc://:\(password)@127.0.0.1:\(assignedPort)"  // Use localhost for local connections
-                let externalUrl = "vnc://:\(password)@\(hostIP):\(assignedPort)"  // External URL for remote connections
-                
-                Logger.info("VNC server started", metadata: [
-                    "local": url,
-                    "external": externalUrl
-                ])
-                
-                // Save session information with local URL for the client
-                let session = VNCSession(url: url)
-                try vmDirectory.saveSession(session)
-                break
+        // Wait for port to be assigned (both for auto-assign and specific port)
+        var attempts = 0
+        let maxAttempts = 20  // 1 second total wait time
+        while true {
+            if let assignedPort: UInt16 = server.port.asUInt16 {
+                // If we got a non-zero port, check if it matches our request
+                if assignedPort != 0 {
+                    // For specific port requests, verify we got the requested port
+                    if port != 0 && Int(assignedPort) != port {
+                        throw VMError.vncPortBindingFailed(requested: port, actual: Int(assignedPort))
+                    }
+                    
+                    // Get the local IP address for the URL - prefer IPv4
+                    let hostIP = try getLocalIPAddress() ?? "127.0.0.1"
+                    let url = "vnc://:\(password)@127.0.0.1:\(assignedPort)"  // Use localhost for local connections
+                    let externalUrl = "vnc://:\(password)@\(hostIP):\(assignedPort)"  // External URL for remote connections
+                    
+                    Logger.info("VNC server started", metadata: [
+                        "local": url,
+                        "external": externalUrl
+                    ])
+                    
+                    // Save session information with local URL for the client
+                    let session = VNCSession(url: url)
+                    try vmDirectory.saveSession(session)
+                    break
+                }
             }
-            try await Task.sleep(nanoseconds: 50_000_000)
+            
+            attempts += 1
+            if attempts >= maxAttempts {
+                // If we've timed out and we requested a specific port, it likely means binding failed
+                vncServer = nil
+                if port != 0 {
+                    throw VMError.vncPortBindingFailed(requested: port, actual: -1)
+                }
+                throw VMError.internalError("Timeout waiting for VNC server to start")
+            }
+            try await Task.sleep(nanoseconds: 50_000_000)  // 50ms delay between checks
         }
     }
     

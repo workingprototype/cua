@@ -125,6 +125,7 @@ enum VMError: Error, LocalizedError {
     case stopTimeout(String)
     case resizeTooSmall(current: UInt64, requested: UInt64)
     case vncNotConfigured
+    case vncPortBindingFailed(requested: Int, actual: Int)
     case internalError(String)
     case unsupportedOS(String)
     case invalidDisplayResolution(String)
@@ -148,6 +149,11 @@ enum VMError: Error, LocalizedError {
             return "Cannot resize disk to \(requested) bytes, current size is \(current) bytes"
         case .vncNotConfigured:
             return "VNC is not configured for this virtual machine"
+        case .vncPortBindingFailed(let requested, let actual):
+            if actual == -1 {
+                return "Could not bind to VNC port \(requested) (port already in use). Try a different port or use port 0 for auto-assign."
+            }
+            return "Could not bind to VNC port \(requested) (port already in use). System assigned port \(actual) instead. Try a different port or use port 0 for auto-assign."
         case .internalError(let message):
             return "Internal error: \(message)"
         case .unsupportedOS(let os):
