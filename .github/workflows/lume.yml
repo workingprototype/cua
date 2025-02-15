@@ -1,0 +1,28 @@
+name: lume
+on:
+  push:
+    branches:
+      - "main"
+  pull_request: {}
+
+concurrency:
+  group: lume-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Runner images: https://github.com/actions/runner-images
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-15-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.app # Swift 6.0
+      - run: swift test
+  build:
+    name: Release build
+    runs-on: macos-15-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.app # Swift 6.0
+      - run: swift build --configuration release
