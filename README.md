@@ -133,7 +133,7 @@ For detailed API documentation, please refer to [API Reference](docs/API-Referen
 
 We welcome and greatly appreciate contributions to lume! Whether you're improving documentation, adding new features, fixing bugs, or adding new VM images, your efforts help make lume better for everyone. For detailed instructions on how to contribute, please refer to our [Contributing Guidelines](CONTRIBUTING.md).
 
-Join our [Discord community](https://discord.gg/8p56E2KJ) to discuss ideas or get assistance.
+Join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas or get assistance.
 
 ## License
 
