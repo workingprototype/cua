@@ -14,15 +14,17 @@ concurrency:
 jobs:
   test:
     name: Test
-    runs-on: macos-15-arm64
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: uname -a
       - run: xcode-select -s /Applications/Xcode_16.app # Swift 6.0
       - run: swift test
   build:
     name: Release build
-    runs-on: macos-15-arm64
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: uname -a
       - run: xcode-select -s /Applications/Xcode_16.app # Swift 6.0
       - run: swift build --configuration release
