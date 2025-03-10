@@ -161,7 +161,7 @@ extension Server {
     }
 
     func handleRunVM(name: String, body: Data?) async throws -> HTTPResponse {
-        let request = body.flatMap { try? JSONDecoder().decode(RunVMRequest.self, from: $0) } ?? RunVMRequest(noDisplay: nil, sharedDirectories: nil, recoveryMode: false)
+        let request = body.flatMap { try? JSONDecoder().decode(RunVMRequest.self, from: $0) } ?? RunVMRequest(noDisplay: nil, sharedDirectories: nil, recoveryMode: nil)
         
         do {
             let dirs = try request.parse()

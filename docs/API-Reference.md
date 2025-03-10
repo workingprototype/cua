@@ -44,7 +44,7 @@ curl --connect-timeout 6000 \
         "readOnly": false
       }
     ],
-    recoveryMode: false
+    "recoveryMode": false
   }' \
   http://localhost:3000/lume/vms/lume_vm/run
 ```
