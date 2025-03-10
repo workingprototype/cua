@@ -11,6 +11,7 @@ struct VMDetailsPrinterTests {
                                              cpuCount: 2,
                                              memorySize: 1024,
                                              diskSize: .init(allocated: 24, total: 30),
+                                             display: "1024x768",
                                              status: "status",
                                              vncUrl: "vncUrl",
                                              ipAddress: "0.0.0.0")]
@@ -49,6 +50,7 @@ struct VMDetailsPrinterTests {
                                              cpuCount: 2,
                                              memorySize: 1024,
                                              diskSize: .init(allocated: 24, total: 30),
+                                             display: "1024x768",
                                              status: "status",
                                              vncUrl: "vncUrl",
                                              ipAddress: "0.0.0.0")]
@@ -61,8 +63,8 @@ struct VMDetailsPrinterTests {
             #expect(printedLines.count == 2)
             
             let headerParts = printedLines[0].split(whereSeparator: \.isWhitespace)
-            #expect(headerParts == ["name", "os", "cpu", "memory", "disk", "status", "ip", "vnc"])
+            #expect(headerParts == ["name", "os", "cpu", "memory", "disk", "display", "status", "ip", "vnc"])
 
-            #expect(printedLines[1].split(whereSeparator: \.isWhitespace).map(String.init) == ["name", "os", "2", "0.00G", "24.0B/30.0B", "status", "0.0.0.0", "vncUrl"])
+            #expect(printedLines[1].split(whereSeparator: \.isWhitespace).map(String.init) == ["name", "os", "2", "0.00G", "24.0B/30.0B", "1024x768", "status", "0.0.0.0", "vncUrl"])
         }
 }
