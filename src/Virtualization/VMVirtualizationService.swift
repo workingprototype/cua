@@ -48,6 +48,9 @@ class BaseVirtualizationService: VMVirtualizationService {
                 if #available(macOS 13, *) {
                     let startOptions = VZMacOSVirtualMachineStartOptions()
                     startOptions.startUpFromMacOSRecovery = recoveryMode
+                    if recoveryMode {
+                        Logger.info("Starting VM in recovery mode")
+                    }
                     virtualMachine.start(options: startOptions) { error in
                         if let error = error {
                             continuation.resume(throwing: error)
