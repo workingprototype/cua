@@ -27,7 +27,10 @@ struct Run: AsyncParsableCommand {
     
     @Option(name: [.customLong("vnc-port")], help: "Port to use for the VNC server. Defaults to 0 (auto-assign)")
     var vncPort: Int = 0
-    
+
+    @Option(help: "For MacOS VMs only, boot into the VM in recovery mode")
+    var recoveryMode: Bool = false
+
     private var parsedSharedDirectories: [SharedDirectory] {
         get throws {
             try sharedDirectories.map { dirString -> SharedDirectory in

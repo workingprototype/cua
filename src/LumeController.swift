@@ -256,7 +256,8 @@ final class LumeController {
         mount: Path? = nil,
         registry: String = "ghcr.io",
         organization: String = "trycua",
-        vncPort: Int = 0
+        vncPort: Int = 0,
+        recoveryMode: Bool = false
     ) async throws {
         let normalizedName = normalizeVMName(name: name)
         Logger.info(
@@ -267,6 +268,7 @@ final class LumeController {
                 "shared_directories": "\(sharedDirectories.map( { $0.string } ).joined(separator: ", "))",
                 "mount": mount?.path ?? "none",
                 "vnc_port": "\(vncPort)",
+                "recovery_mode": "\(recoveryMode)",
             ])
 
         do {
