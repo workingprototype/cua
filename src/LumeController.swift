@@ -288,7 +288,7 @@ final class LumeController {
 
             let vm = try get(name: normalizedName)
             SharedVM.shared.setVM(name: normalizedName, vm: vm)
-            try await vm.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort)
+            try await vm.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort, recoveryMode: recoveryMode)
             Logger.info("VM started successfully", metadata: ["name": normalizedName])
         } catch {
             SharedVM.shared.removeVM(name: normalizedName)

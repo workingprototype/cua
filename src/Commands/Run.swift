@@ -82,7 +82,8 @@ struct Run: AsyncParsableCommand {
             mount: mount,
             registry: registry,
             organization: organization,
-            vncPort: vncPort
+            vncPort: vncPort,
+            recoveryMode: recoveryMode
         )
     }
 }
