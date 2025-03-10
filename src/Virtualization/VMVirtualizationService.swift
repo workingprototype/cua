@@ -45,21 +45,14 @@ class BaseVirtualizationService: VMVirtualizationService {
     func start() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Task { @MainActor in
-                // Check if it's a macOS VM and should start in recovery mode
-                if #available(macOS 14.0, *),
-                   let macVM = virtualMachine as? VZMacOSVirtualMachine,
-                   recoveryMode {
-
+                if #available(macOS 13, *) {
                     let startOptions = VZMacOSVirtualMachineStartOptions()
-                    startOptions.startUpFrom = .useRecoveryPartition  // Boot into recovery mode
-
-                    Logger.info("Starting macOS VM in Recovery Mode")
-                    macVM.start(options: startOptions) { result in
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case .failure(let error):
+                    startOptions.startUpFromMacOSRecovery = recoveryMode
+                    virtualMachine.start(options: startOptions) { error in
+                        if let error = error {
                             continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
                         }
                     }
                 } else {
