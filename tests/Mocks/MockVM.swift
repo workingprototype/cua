@@ -18,13 +18,13 @@ class MockVM: VM {
         try vmDirContext.saveConfig()
     }
     
-    override func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?, vncPort: Int = 0) async throws {
+    override func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?, vncPort: Int = 0, recoveryMode: Bool = false) async throws {
         mockIsRunning = true
-        try await super.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort)
+        try await super.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort, recoveryMode: recoveryMode)
     }
     
     override func stop() async throws {
         mockIsRunning = false
         try await super.stop()
     }
-} 
+}
