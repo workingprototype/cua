@@ -43,7 +43,8 @@ curl --connect-timeout 6000 \
         "hostPath": "~/Projects",
         "readOnly": false
       }
-    ]
+    ],
+    recoveryMode: false
   }' \
   http://localhost:3000/lume/vms/lume_vm/run
 ```
