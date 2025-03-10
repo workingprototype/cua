@@ -5,6 +5,7 @@ import Virtualization
 struct RunVMRequest: Codable {
     let noDisplay: Bool?
     let sharedDirectories: [SharedDirectoryRequest]?
+    let recoveryMode: Bool?
     
     struct SharedDirectoryRequest: Codable {
         let hostPath: String

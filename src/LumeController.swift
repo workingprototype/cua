@@ -256,7 +256,8 @@ final class LumeController {
         mount: Path? = nil,
         registry: String = "ghcr.io",
         organization: String = "trycua",
-        vncPort: Int = 0
+        vncPort: Int = 0,
+        recoveryMode: Bool = false
     ) async throws {
         let normalizedName = normalizeVMName(name: name)
         Logger.info(
@@ -267,6 +268,7 @@ final class LumeController {
                 "shared_directories": "\(sharedDirectories.map( { $0.string } ).joined(separator: ", "))",
                 "mount": mount?.path ?? "none",
                 "vnc_port": "\(vncPort)",
+                "recovery_mode": "\(recoveryMode)",
             ])
 
         do {
@@ -286,7 +288,7 @@ final class LumeController {
 
             let vm = try get(name: normalizedName)
             SharedVM.shared.setVM(name: normalizedName, vm: vm)
-            try await vm.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort)
+            try await vm.run(noDisplay: noDisplay, sharedDirectories: sharedDirectories, mount: mount, vncPort: vncPort, recoveryMode: recoveryMode)
             Logger.info("VM started successfully", metadata: ["name": normalizedName])
         } catch {
             SharedVM.shared.removeVM(name: normalizedName)

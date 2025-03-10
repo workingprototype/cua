@@ -13,6 +13,7 @@ struct VMVirtualizationServiceContext {
     let macAddress: String
     let diskPath: Path
     let nvramPath: Path
+    let recoveryMode: Bool
 }
 
 /// Protocol defining the interface for virtualization operations
@@ -30,30 +31,48 @@ protocol VMVirtualizationService {
 @MainActor
 class BaseVirtualizationService: VMVirtualizationService {
     let virtualMachine: VZVirtualMachine
+    let recoveryMode: Bool  // Store whether we should start in recovery mode
     
     var state: VZVirtualMachine.State {
         virtualMachine.state
     }
     
-    init(virtualMachine: VZVirtualMachine) {
+    init(virtualMachine: VZVirtualMachine, recoveryMode: Bool = false) {
         self.virtualMachine = virtualMachine
+        self.recoveryMode = recoveryMode
     }
     
     func start() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Task { @MainActor in
-                virtualMachine.start { result in
-                    switch result {
-                    case .success:
-                        continuation.resume()
-                    case .failure(let error):
-                        continuation.resume(throwing: error)
+                if #available(macOS 13, *) {
+                    let startOptions = VZMacOSVirtualMachineStartOptions()
+                    startOptions.startUpFromMacOSRecovery = recoveryMode
+                    if recoveryMode {
+                        Logger.info("Starting VM in recovery mode")
+                    }
+                    virtualMachine.start(options: startOptions) { error in
+                        if let error = error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
+                        }
+                    }
+                } else {
+                    Logger.info("Starting VM in normal mode")
+                    virtualMachine.start { result in
+                        switch result {
+                        case .success:
+                            continuation.resume()
+                        case .failure(let error):
+                            continuation.resume(throwing: error)
+                        }
                     }
                 }
             }
         }
     }
-    
+
     func stop() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             virtualMachine.stop { error in
@@ -210,7 +229,7 @@ final class DarwinVirtualizationService: BaseVirtualizationService {
     
     init(configuration: VMVirtualizationServiceContext) throws {
         let vzConfig = try Self.createConfiguration(configuration)
-        super.init(virtualMachine: VZVirtualMachine(configuration: vzConfig))
+        super.init(virtualMachine: VZVirtualMachine(configuration: vzConfig), recoveryMode: configuration.recoveryMode)
     }
     
     func installMacOS(imagePath: Path, progressHandler: (@Sendable (Double) -> Void)?) async throws {
@@ -326,4 +345,4 @@ final class LinuxVirtualizationService: BaseVirtualizationService {
         let vzConfig = try Self.createConfiguration(configuration)
         super.init(virtualMachine: VZVirtualMachine(configuration: vzConfig))
     }
-} 
+}

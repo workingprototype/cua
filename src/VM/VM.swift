@@ -88,7 +88,7 @@ class VM {
 
     // MARK: - VM Lifecycle Management
     
-    func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?, vncPort: Int = 0) async throws {
+    func run(noDisplay: Bool, sharedDirectories: [SharedDirectory], mount: Path?, vncPort: Int = 0, recoveryMode: Bool = false) async throws {
         guard vmDirContext.initialized else {
             throw VMError.notInitialized(vmDirContext.name)
         }
@@ -112,7 +112,8 @@ class VM {
             "sharedDirectories": sharedDirectories.map(
                 { $0.string }
             ).joined(separator: ", "),
-            "vncPort": "\(vncPort)"
+            "vncPort": "\(vncPort)",
+            "recoveryMode": "\(recoveryMode)"
         ])
 
         // Create and configure the VM
@@ -122,7 +123,8 @@ class VM {
                 memorySize: memorySize,
                 display: vmDirContext.config.display.string,
                 sharedDirectories: sharedDirectories,
-                mount: mount
+                mount: mount,
+                recoveryMode: recoveryMode
             )
             virtualizationService = try virtualizationServiceFactory(config)
             
@@ -368,7 +370,8 @@ class VM {
         memorySize: UInt64,
         display: String,
         sharedDirectories: [SharedDirectory] = [],
-        mount: Path? = nil
+        mount: Path? = nil,
+        recoveryMode: Bool = false
     ) throws -> VMVirtualizationServiceContext {
         return VMVirtualizationServiceContext(
             cpuCount: cpuCount,
@@ -380,7 +383,8 @@ class VM {
             machineIdentifier: vmDirContext.config.machineIdentifier,
             macAddress: vmDirContext.config.macAddress!,
             diskPath: vmDirContext.diskPath,
-            nvramPath: vmDirContext.nvramPath
+            nvramPath: vmDirContext.nvramPath,
+            recoveryMode: recoveryMode
         )
     }
 
@@ -400,4 +404,4 @@ class VM {
     func finalize(to name: String, home: Home) throws {
         try vmDirContext.finalize(to: name)
     }
-} 
+}
