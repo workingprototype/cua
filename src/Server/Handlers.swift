@@ -161,7 +161,7 @@ extension Server {
     }
 
     func handleRunVM(name: String, body: Data?) async throws -> HTTPResponse {
-        let request = body.flatMap { try? JSONDecoder().decode(RunVMRequest.self, from: $0) } ?? RunVMRequest(noDisplay: nil, sharedDirectories: nil)
+        let request = body.flatMap { try? JSONDecoder().decode(RunVMRequest.self, from: $0) } ?? RunVMRequest(noDisplay: nil, sharedDirectories: nil, recoveryMode: false)
         
         do {
             let dirs = try request.parse()
@@ -170,7 +170,8 @@ extension Server {
             startVM(
                 name: name,
                 noDisplay: request.noDisplay ?? false,
-                sharedDirectories: dirs
+                sharedDirectories: dirs,
+                recoveryMode: request.recoveryMode ?? false
             )
             
             // Return response immediately
@@ -299,7 +300,8 @@ extension Server {
     nonisolated private func startVM(
         name: String,
         noDisplay: Bool,
-        sharedDirectories: [SharedDirectory] = []
+        sharedDirectories: [SharedDirectory] = [],
+        recoveryMode: Bool = false
     ) {
         Task.detached { @MainActor @Sendable in
             Logger.info("Starting VM in background", metadata: ["name": name])
@@ -308,7 +310,8 @@ extension Server {
                 try await vmController.runVM(
                     name: name,
                     noDisplay: noDisplay,
-                    sharedDirectories: sharedDirectories
+                    sharedDirectories: sharedDirectories,
+                    recoveryMode: recoveryMode
                 )
                 Logger.info("VM started successfully in background", metadata: ["name": name])
             } catch {
