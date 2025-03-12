@@ -12,6 +12,7 @@
   [![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0)](#)
   [![Homebrew](https://img.shields.io/badge/Homebrew-FBB040?logo=homebrew&logoColor=fff)](#install)
   [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.com/invite/mVnXXpdE85)
+  [![All Contributors](https://img.shields.io/github/all-contributors/trycua/lume?color=ee8449&style=flat-square)](#contributors)
 </h1>
 </div>
 
@@ -147,3 +148,14 @@ Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonica
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/trycua/lume.svg?variant=adaptive)](https://starchart.cc/trycua/lume)
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
