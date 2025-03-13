@@ -1,5 +1,18 @@
 import Foundation
 import Network
+import Darwin
+
+// MARK: - Error Types
+enum PortError: Error, LocalizedError {
+    case alreadyInUse(port: UInt16)
+    
+    var errorDescription: String? {
+        switch self {
+        case .alreadyInUse(let port):
+            return "Port \(port) is already in use by another process"
+        }
+    }
+}
 
 // MARK: - Server Class
 @MainActor
@@ -145,10 +158,128 @@ final class Server {
         ]
     }
     
+    // MARK: - Port Utilities
+    private func isPortAvailable(port: Int) async -> Bool {
+        // Create a socket
+        let socketFD = socket(AF_INET, SOCK_STREAM, 0)
+        if socketFD == -1 {
+            return false
+        }
+        
+        // Set socket options to allow reuse
+        var value: Int32 = 1
+        if setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, &value, socklen_t(MemoryLayout<Int32>.size)) == -1 {
+            close(socketFD)
+            return false
+        }
+        
+        // Set up the address structure
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = UInt16(port).bigEndian
+        addr.sin_addr.s_addr = INADDR_ANY.bigEndian
+        
+        // Bind to the port
+        let bindResult = withUnsafePointer(to: &addr) { addrPtr in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { addrPtr in
+                Darwin.bind(socketFD, addrPtr, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        
+        // Clean up
+        close(socketFD)
+        
+        // If bind failed, the port is in use
+        return bindResult == 0
+    }
+    
     // MARK: - Server Lifecycle
     func start() async throws {
+        // First check if the port is already in use
+        if !(await isPortAvailable(port: Int(port.rawValue))) {
+            // Don't log anything here, just throw the error
+            throw PortError.alreadyInUse(port: port.rawValue)
+        }
+        
         let parameters = NWParameters.tcp
         listener = try NWListener(using: parameters, on: port)
+        
+        // Create an actor to safely manage state transitions
+        actor StartupState {
+            var error: Error?
+            var isComplete = false
+            
+            func setError(_ error: Error) {
+                self.error = error
+                self.isComplete = true
+            }
+            
+            func setComplete() {
+                self.isComplete = true
+            }
+            
+            func checkStatus() -> (isComplete: Bool, error: Error?) {
+                return (isComplete, error)
+            }
+        }
+        
+        let startupState = StartupState()
+        
+        // Set up a state update handler to detect port binding errors
+        listener?.stateUpdateHandler = { state in
+            Task {
+                switch state {
+                case .setup:
+                    // Initial state, no action needed
+                    Logger.info("Listener setup", metadata: ["port": "\(self.port.rawValue)"])
+                    break
+                case .waiting(let error):
+                    // Log the full error details to see what we're getting
+                    Logger.error("Listener waiting", metadata: [
+                        "error": error.localizedDescription,
+                        "debugDescription": error.debugDescription,
+                        "localizedDescription": error.localizedDescription,
+                        "port": "\(self.port.rawValue)"
+                    ])
+                    
+                    // Check for different port in use error messages
+                    if error.debugDescription.contains("Address already in use") || 
+                       error.localizedDescription.contains("in use") ||
+                       error.localizedDescription.contains("address already in use") {
+                        Logger.error("Port conflict detected", metadata: ["port": "\(self.port.rawValue)"])
+                        await startupState.setError(PortError.alreadyInUse(port: self.port.rawValue))
+                    } else {
+                        // Wait for a short period to see if the listener recovers
+                        // Some network errors are transient
+                        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                        
+                        // If we're still waiting after delay, consider it an error
+                        if case .waiting = await self.listener?.state {
+                            await startupState.setError(error)
+                        }
+                    }
+                case .failed(let error):
+                    // Log the full error details
+                    Logger.error("Listener failed", metadata: [
+                        "error": error.localizedDescription,
+                        "debugDescription": error.debugDescription,
+                        "port": "\(self.port.rawValue)"
+                    ])
+                    await startupState.setError(error)
+                case .ready:
+                    // Listener successfully bound to port
+                    Logger.info("Listener ready", metadata: ["port": "\(self.port.rawValue)"])
+                    await startupState.setComplete()
+                case .cancelled:
+                    // Listener was cancelled
+                    Logger.info("Listener cancelled", metadata: ["port": "\(self.port.rawValue)"])
+                    break
+                @unknown default:
+                    Logger.info("Unknown listener state", metadata: ["state": "\(state)", "port": "\(self.port.rawValue)"])
+                    break
+                }
+            }
+        }
         
         listener?.newConnectionHandler = { [weak self] connection in
             Task { @MainActor [weak self] in
@@ -158,6 +289,20 @@ final class Server {
         }
         
         listener?.start(queue: .main)
+        
+        // Wait for either successful startup or an error
+        var status: (isComplete: Bool, error: Error?) = (false, nil)
+        repeat {
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            status = await startupState.checkStatus()
+        } while !status.isComplete
+        
+        // If there was a startup error, throw it
+        if let error = status.error {
+            self.stop()
+            throw error
+        }
+        
         isRunning = true
         
         Logger.info("Server started", metadata: ["port": "\(port.rawValue)"])
