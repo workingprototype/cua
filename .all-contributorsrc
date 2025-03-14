@@ -1,4 +1,21 @@
 {
   "projectName": "lume",
-  "projectOwner": "trycua"
+  "projectOwner": "trycua",
+  "files": [
+    "README.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "f-trycua",
+      "name": "f-trycua",
+      "avatar_url": "https://avatars.githubusercontent.com/u/195596869?v=4",
+      "profile": "https://github.com/f-trycua",
+      "contributions": [
+        "code"
+      ]
+    }
+  ]
 }
