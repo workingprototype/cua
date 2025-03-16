@@ -231,12 +231,3 @@ ignore
 
 # .release
 .release/
-
-# Shared folder
-shared
-
-# Trajectories
-trajectories/
-
-# Installation ID Storage
-.storage/

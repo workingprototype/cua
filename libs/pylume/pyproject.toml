@@ -1,0 +1,78 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "pylume"
+version = "0.1.0"
+description = "Python SDK for lume - run macOS and Linux VMs on Apple Silicon"
+authors = [
+    { name = "TryCua", email = "gh@trycua.com" }
+]
+dependencies = [
+    "pydantic>=2.0.0"
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["macos", "virtualization", "vm", "apple-silicon"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+homepage = "https://github.com/trycua/pylume"
+repository = "https://github.com/trycua/pylume"
+
+[tool.pdm]
+distribution = true
+package-dir = "."
+includes = [
+    "pylume/lume"
+]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "black>=23.0.0",
+    "isort>=5.12.0"
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "B", "I"]
+fix = true
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.pdm.build]
+includes = ["pylume/"]
+source-includes = ["tests/", "README.md", "LICENSE"]
