@@ -1,5 +1,5 @@
 {
-  "projectName": "lume",
+  "projectName": "computer",
   "projectOwner": "trycua",
   "files": [
     "README.md"
@@ -22,6 +22,15 @@
       "name": "Pedro Piñera Buendía",
       "avatar_url": "https://avatars.githubusercontent.com/u/663605?v=4",
       "profile": "http://pepicrft.me",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "aktech",
+      "name": "Amit Kumar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5647941?v=4",
+      "profile": "https://iamit.in",
       "contributions": [
         "code"
       ]
