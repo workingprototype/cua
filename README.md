@@ -54,7 +54,7 @@ Demos of the Computer-Use Agent in action. Share your most impressive demos in C
 <summary><b>Notebook: Fix GitHub issue in Cursor</b></summary>
 <br>
 <div align="center">
-    <video src="https://github.com/user-attachments/assets/" width="800" controls></video>
+    <video src="https://github.com/user-attachments/assets/f67f0107-a1e1-46dc-aa9f-0146eb077077" width="800" controls></video>
 </div>
 
 </details>
