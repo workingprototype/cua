@@ -1,6 +1,6 @@
-# Contributing to lume
+# Contributing to cua
 
-We deeply appreciate your interest in contributing to lume! Whether you're reporting bugs, suggesting enhancements, improving docs, or submitting pull requests, your contributions help improve the project for everyone.
+We deeply appreciate your interest in contributing to cua! Whether you're reporting bugs, suggesting enhancements, improving docs, or submitting pull requests, your contributions help improve the project for everyone.
 
 ## Reporting Bugs
 
@@ -34,6 +34,6 @@ Documentation improvements are always welcome. You can:
 - Improve API documentation
 - Add tutorials or guides
 
-For detailed instructions on setting up your development environment and submitting code contributions, please see our [Development.md](docs/Development.md) guide.
+For detailed instructions on setting up your development environment and submitting code contributions, please see our [Developer-Guide.md](docs/Developer-Guide.md) guide.
 
 Feel free to join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas or get help with your contributions. 

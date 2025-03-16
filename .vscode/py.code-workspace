@@ -1,0 +1,292 @@
+{
+    "folders": [
+        {
+            "name": "cua-root",
+            "path": ".."
+        },
+        {
+            "name": "computer",
+            "path": "../libs/computer"
+        },
+        {
+            "name": "agent",
+            "path": "../libs/agent"
+        },
+        {
+            "name": "som",
+            "path": "../libs/som"
+        },
+        {
+            "name": "computer-server",
+            "path": "../libs/computer-server"
+        },
+        {
+            "name": "pylume",
+            "path": "../libs/pylume"
+        },
+        {
+            "name": "core",
+            "path": "../libs/core"
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.git": true,
+            "**/.svn": true,
+            "**/.hg": true,
+            "**/CVS": true,
+            "**/.DS_Store": true,
+            "**/__pycache__": true,
+            "**/.pytest_cache": true,
+            "**/*.pyc": true
+        },
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.nosetestsEnabled": false,
+        "python.testing.pytestArgs": [
+            "libs"
+        ],
+        "python.analysis.extraPaths": [
+            "${workspaceFolder:cua-root}/libs/core",
+            "${workspaceFolder:cua-root}/libs/computer",
+            "${workspaceFolder:cua-root}/libs/agent",
+            "${workspaceFolder:cua-root}/libs/som",
+            "${workspaceFolder:cua-root}/libs/pylume",
+            "${workspaceFolder:cua-root}/.vscode/typings"
+        ],
+        "python.envFile": "${workspaceFolder:cua-root}/.env",
+        "python.defaultInterpreterPath": "${workspaceFolder:cua-root}/.venv/bin/python",
+        "python.analysis.diagnosticMode": "workspace",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.analysis.autoSearchPaths": true,
+        "python.analysis.stubPath": "${workspaceFolder:cua-root}/.vscode/typings",
+        "python.analysis.indexing": false,
+        "python.analysis.exclude": [
+            "**/node_modules/**",
+            "**/__pycache__/**",
+            "**/.*/**",
+            "**/venv/**",
+            "**/.venv/**", 
+            "**/dist/**",
+            "**/build/**",
+            ".pdm-build/**",
+            "**/.git/**",
+            "examples/**",
+            "notebooks/**",
+            "logs/**",
+            "screenshots/**"
+        ],
+        "python.analysis.packageIndexDepths": [
+            {
+                "name": "computer",
+                "depth": 2
+            },
+            {
+                "name": "agent",
+                "depth": 2
+            },
+            {
+                "name": "som",
+                "depth": 2
+            },
+            {
+                "name": "pylume",
+                "depth": 2
+            },
+            {
+                "name": "core",
+                "depth": 2
+            }
+        ],
+        "python.autoComplete.extraPaths": [
+            "${workspaceFolder:cua-root}/libs/core",
+            "${workspaceFolder:cua-root}/libs/computer",
+            "${workspaceFolder:cua-root}/libs/agent",
+            "${workspaceFolder:cua-root}/libs/som",
+            "${workspaceFolder:cua-root}/libs/pylume"
+        ],
+        "python.languageServer": "Pylance",
+        "[python]": {
+            "editor.formatOnSave": true,
+            "editor.defaultFormatter": "ms-python.black-formatter",
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": "explicit"
+            }
+        },
+        "files.associations": {
+            "examples/computer_examples.py": "python",
+            "examples/agent_examples.py": "python"
+        },
+        "python.interpreterPaths": {
+            "examples/computer_examples.py": "${workspaceFolder}/libs/computer/.venv/bin/python",
+            "examples/agent_examples.py": "${workspaceFolder}/libs/agent/.venv/bin/python"
+        }
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Build Dependencies",
+                "type": "shell",
+                "command": "${workspaceFolder}/scripts/build.sh",
+                "presentation": {
+                    "reveal": "always",
+                    "panel": "new",
+                    "clear": true
+                },
+                "group": {
+                    "kind": "build",
+                    "isDefault": true
+                },
+                "options": {
+                    "shell": {
+                        "executable": "/bin/bash",
+                        "args": ["-l", "-c"]
+                    }
+                },
+                "problemMatcher": []
+            }
+        ]
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Run Computer Examples",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "examples/computer_examples.py",
+                "console": "integratedTerminal",
+                "justMyCode": true,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "Run Agent Examples",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "examples/agent_examples.py",
+                "console": "integratedTerminal",
+                "justMyCode": false,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "Run PyLume Examples",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "examples/pylume_examples.py",
+                "console": "integratedTerminal",
+                "justMyCode": true,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "SOM: Run Experiments (No OCR)",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "examples/som_examples.py",
+                "args": [
+                    "examples/test_data",
+                    "--output-dir", "examples/output",
+                    "--ocr", "none",
+                    "--mode", "experiment"
+                ],
+                "console": "integratedTerminal",
+                "justMyCode": false,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "SOM: Run Experiments (EasyOCR)",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "examples/som_examples.py",
+                "args": [
+                    "examples/test_data",
+                    "--output-dir", "examples/output",
+                    "--ocr", "easyocr",
+                    "--mode", "experiment"
+                ],
+                "console": "integratedTerminal",
+                "justMyCode": false,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "Run Computer Server",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "${workspaceFolder}/libs/computer-server/run_server.py",
+                "console": "integratedTerminal",
+                "justMyCode": true,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                }
+            },
+            {
+                "name": "Run Computer Server with Args",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "${workspaceFolder}/libs/computer-server/run_server.py",
+                "args": [
+                    "--host", "0.0.0.0", 
+                    "--port", "8000",
+                    "--log-level", "debug"
+                ],
+                "console": "integratedTerminal",
+                "justMyCode": false,
+                "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+                "cwd": "${workspaceFolder:cua-root}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer-server"
+                }
+            }
+        ]
+    },
+    "compounds": [
+        {
+            "name": "Run Computer Examples + Server",
+            "configurations": ["Run Computer Examples", "Run Computer Server"],
+            "stopAll": true,
+            "presentation": {
+                "group": "Computer",
+                "order": 1
+            }
+        },
+        {
+            "name": "Run Server with Keep-Alive Client",
+            "configurations": ["Run Computer Server", "Test Server Connection (Keep Alive)"],
+            "stopAll": true,
+            "presentation": {
+                "group": "Computer",
+                "order": 2
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "imagePath",
+            "type": "promptString",
+            "description": "Path to the image file or directory for icon detection",
+            "default": "${workspaceFolder}/examples/test_data"
+        }
+    ]
+}
