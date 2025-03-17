@@ -154,10 +154,17 @@ jobs:
         id: generate_checksums
         working-directory: ./libs/lume/.release
         run: |
-          echo "## SHA256 Checksums" > checksums.txt
-          echo '```' >> checksums.txt
-          shasum -a 256 lume.tar.gz >> checksums.txt
-          echo '```' >> checksums.txt
+          # Use existing checksums file if it exists, otherwise generate one
+          if [ -f "checksums.txt" ]; then
+            echo "Using existing checksums file"
+            cat checksums.txt
+          else
+            echo "## SHA256 Checksums" > checksums.txt
+            echo '```' >> checksums.txt
+            shasum -a 256 lume*.tar.gz >> checksums.txt
+            echo '```' >> checksums.txt
+          fi
+          
           checksums=$(cat checksums.txt)
           echo "checksums<<EOF" >> $GITHUB_OUTPUT
           echo "$checksums" >> $GITHUB_OUTPUT
@@ -168,16 +175,32 @@ jobs:
         with:
           name: lume-notarized
           path: |
-            ./libs/lume/.release/lume.tar.gz
-            ./libs/lume/.release/lume.pkg.tar.gz
+            ./libs/lume/.release/lume*.tar.gz
+            ./libs/lume/.release/lume*.pkg.tar.gz
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./libs/lume/.release/lume.tar.gz
-            ./libs/lume/.release/lume.pkg.tar.gz
+            ./libs/lume/.release/lume*.tar.gz
+            ./libs/lume/.release/lume*.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
+            
+            ### Installation with Mise and Ubi
+            
+            ```
+            mise use -g ubi:trycua/cua
+            
+            # Or run it directly
+            mise x ubi:trycua/cua@latest -- lume
+            ```
+
+            ### Installation with Brew
+
+            ```
+            brew tap trycua/lume
+            brew install lume
+            ```
           generate_release_notes: true 
