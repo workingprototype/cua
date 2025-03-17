@@ -98,6 +98,22 @@ jobs:
           CERT_INSTALLER_NAME: "Developer ID Installer: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.TEAM_ID }})"
         working-directory: ./libs/lume
         run: |
+          # Debug information
+          pwd
+          ls -la
+          echo "Swift version:"
+          swift --version
+          
+          # Ensure .release directory exists
+          mkdir -p .release
+          
+          # Build the project first
+          swift build -c release --product lume
+          
+          # Debug build output
+          ls -la .build/release/
+          
+          # Make script executable and run it
           chmod +x scripts/build/build-release-notarized.sh
           ./scripts/build/build-release-notarized.sh
 
