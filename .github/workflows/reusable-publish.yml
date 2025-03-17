@@ -96,43 +96,12 @@ jobs:
     - name: Download and setup lume binary
       if: inputs.is_lume_package
       run: |
-        # Install required packages
-        pip install requests
-        
-        # Create a simple Python script for better error handling
-        cat > get_lume_version.py << 'EOF'
-        import requests, re, json, sys
-        try:
-            response = requests.get('https://api.github.com/repos/trycua/lume/releases/latest')
-            sys.stderr.write(f"API Status Code: {response.status_code}\n")
-            sys.stderr.write(f"API Response: {response.text}\n")
-            data = json.loads(response.text)
-            if 'tag_name' not in data:
-                sys.stderr.write(f"Warning: tag_name not found in API response. Keys: {list(data.keys())}\n")
-                print('0.1.9')
-            else:
-                tag_name = data['tag_name']
-                match = re.match(r'v(\d+\.\d+\.\d+)', tag_name)
-                if match:
-                    print(match.group(1))
-                else:
-                    sys.stderr.write("Error: Could not parse version from tag\n")
-                    print('0.1.9')
-        except Exception as e:
-            sys.stderr.write(f"Error fetching release info: {str(e)}\n")
-            print('0.1.9')
-        EOF
-        
-        # Execute the script to get the version
-        LUME_VERSION=$(python get_lume_version.py)
-        echo "Using lume version: $LUME_VERSION"
-        
         # Create a temporary directory for extraction
         mkdir -p temp_lume
         
-        # Download the lume release (silently)
-        echo "Downloading lume version v${LUME_VERSION}..."
-        curl -sL "https://github.com/trycua/lume/releases/download/v${LUME_VERSION}/lume.tar.gz" -o temp_lume/lume.tar.gz
+        # Download the latest lume release directly
+        echo "Downloading latest lume version..."
+        curl -sL "https://github.com/trycua/lume/releases/latest/download/lume.tar.gz" -o temp_lume/lume.tar.gz
         
         # Extract the tar file (ignore ownership and suppress warnings)
         cd temp_lume && tar --no-same-owner -xzf lume.tar.gz
@@ -146,6 +115,10 @@ jobs:
         
         # Verify the binary exists and is executable
         test -x "${GITHUB_WORKSPACE}/${{ inputs.package_dir }}/pylume/lume" || { echo "lume binary not found or not executable"; exit 1; }
+        
+        # Get the version from the downloaded binary for reference
+        LUME_VERSION=$(./lume --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+        echo "Using lume version: $LUME_VERSION"
         
         # Cleanup
         cd "${GITHUB_WORKSPACE}" && rm -rf temp_lume
