@@ -120,15 +120,26 @@ jobs:
           # Debug certificate variables
           echo "CERT_APPLICATION_NAME: $CERT_APPLICATION_NAME"
           echo "CERT_INSTALLER_NAME: $CERT_INSTALLER_NAME"
-          echo "Certificate identities for installer signing:"
-          security find-identity -v -p installer
+          echo "All certificate identities:"
+          security find-identity -v
           
           # Verify installer certificate availability
-          if security find-identity -v -p installer | grep -q "$TEAM_ID"; then
+          if security find-identity -v | grep -q "Developer ID Installer"; then
             echo "Installer certificate found"
           else
             echo "ERROR: Installer certificate not found. Make sure it's imported correctly."
-            exit 1
+            echo "Recreating certificate file and reimporting..."
+            echo $INSTALLER_CERT_BASE64 | base64 --decode > installer.p12
+            security import installer.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild -T /usr/bin/productbuild
+            rm installer.p12
+            echo "Retrying after reimport..."
+            security find-identity -v
+            if security find-identity -v | grep -q "Developer ID Installer"; then
+              echo "Installer certificate found after reimport"
+            else
+              echo "ERROR: Installer certificate still not found after reimport."
+              exit 1
+            fi
           fi
           
           # Build the project first
@@ -151,12 +162,17 @@ jobs:
           
           # Test pkgbuild with verbose output
           echo "Testing pkgbuild with certificate"
+          echo "Command: pkgbuild --root '$TEST_ROOT' --identifier 'com.trycua.lume' --version '1.0' --install-location '/' --sign '$CERT_INSTALLER_NAME' ./.release/test.pkg"
           pkgbuild --root "$TEST_ROOT" \
                  --identifier "com.trycua.lume" \
                  --version "1.0" \
                  --install-location "/" \
                  --sign "$CERT_INSTALLER_NAME" \
-                 ./.release/test.pkg
+                 ./.release/test.pkg 2>&1 | tee pkgbuild_output.log
+          
+          # Show pkgbuild output for debugging
+          echo "pkgbuild output:"
+          cat pkgbuild_output.log
           
           # Make script executable and run it if signing works
           if [ -f "./.release/test.pkg" ]; then
