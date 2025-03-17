@@ -3,7 +3,7 @@ name: Publish Notarized Lume
 on:
   push:
     tags:
-      - 'v*'
+      - 'lume-v*'
   workflow_dispatch:
     inputs:
       version:
@@ -69,8 +69,8 @@ jobs:
         id: set_version
         run: |
           # Determine version from tag or input
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$GITHUB_REF" == refs/tags/lume-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/lume-v}"
             echo "Using version from tag: $VERSION"
           elif [[ -n "${{ inputs.version }}" ]]; then
             VERSION="${{ inputs.version }}"
@@ -225,7 +225,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/lume-v')
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -238,19 +238,8 @@ jobs:
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
-            ### Installation with Mise and Ubi
-            
-            ```bash
-            # Using the parent repository (contains all Cua tools)
-            mise use -g ubi:trycua/cua
-            
-            # Or run it directly
-            mise x ubi:trycua/cua@latest -- lume
-            ```
-            
-            ### Installation with Homebrew
-            
-            ```bash
-            brew install trycua/tap/lume
+            ### Installation with script
+
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
             ```
           generate_release_notes: true 
