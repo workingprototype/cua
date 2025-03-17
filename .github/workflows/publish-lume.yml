@@ -3,7 +3,7 @@ name: Publish Notarized Lume
 on:
   push:
     tags:
-      - 'lume-v*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -69,8 +69,8 @@ jobs:
         id: set_version
         run: |
           # Determine version from tag or input
-          if [[ "$GITHUB_REF" == refs/tags/lume-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/lume-v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
             echo "Using version from tag: $VERSION"
           elif [[ -n "${{ inputs.version }}" ]]; then
             VERSION="${{ inputs.version }}"
@@ -191,6 +191,21 @@ jobs:
           echo "All files in release directory:"
           ls -la
 
+      - name: Create Standard Version Releases
+        working-directory: ./libs/lume/.release
+        run: |
+          VERSION=${{ steps.set_version.outputs.version }}
+          ARCH=$(uname -m)
+          OS_IDENTIFIER="darwin-${ARCH}"
+          
+          # Create OS-tagged symlinks
+          ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" "lume-darwin.tar.gz"
+          ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" "lume-darwin.pkg.tar.gz"
+          
+          # List all files (including symlinks)
+          echo "Files with symlinks in release directory:"
+          ls -la
+
       - name: Upload Notarized Package (Tarball)
         uses: actions/upload-artifact@v4
         with:
@@ -212,15 +227,24 @@ jobs:
           files: |
             ./libs/lume/${{ steps.build_notarize.outputs.tarball_path }}
             ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
+            ./libs/lume/.release/lume-darwin.tar.gz
+            ./libs/lume/.release/lume-darwin.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
-            ### Installation with Ubi
+            ### Installation with Mise and Ubi
             
-            ```
-            mise use -g ubi:trycua/lume
+            ```bash
+            # Using the parent repository (contains all Cua tools)
+            mise use -g ubi:trycua/cua
             
             # Or run it directly
-            mise x ubi:trycua/lume@latest -- lume
+            mise x ubi:trycua/cua@latest -- lume
+            ```
+            
+            ### Installation with Homebrew
+            
+            ```bash
+            brew install trycua/tap/lume
             ```
           generate_release_notes: true 
