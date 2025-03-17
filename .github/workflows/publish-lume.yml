@@ -183,24 +183,17 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./libs/lume/.release/lume*.tar.gz
-            ./libs/lume/.release/lume*.pkg.tar.gz
+            ./libs/lume/.release/lume-*-darwin-*.tar.gz
+            ./libs/lume/.release/lume-*-darwin-*.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
-            ### Installation with Mise and Ubi
+            ### Installation with Ubi
             
             ```
-            mise use -g ubi:trycua/cua
+            mise use -g ubi:trycua/lume
             
             # Or run it directly
-            mise x ubi:trycua/cua@latest -- lume
-            ```
-
-            ### Installation with Brew
-
-            ```
-            brew tap trycua/lume
-            brew install lume
+            mise x ubi:trycua/lume@latest -- lume
             ```
           generate_release_notes: true 
