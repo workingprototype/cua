@@ -117,7 +117,17 @@ jobs:
           
           # Make script executable and run it
           chmod +x scripts/build/build-release-notarized.sh
+          
+          # Create a temporary directory for the build
+          BUILD_DIR=$(mktemp -d)
+          cp -r . "$BUILD_DIR/"
+          cd "$BUILD_DIR/lume"
+          
+          # Run the build script
           ./scripts/build/build-release-notarized.sh
+          
+          # Copy the results back
+          cp -r .release/* ../.release/
 
       - name: Generate SHA256 Checksums
         id: generate_checksums
