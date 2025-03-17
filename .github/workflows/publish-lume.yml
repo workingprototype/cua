@@ -104,11 +104,14 @@ jobs:
           echo "Swift version:"
           swift --version
           
+          # Select Xcode 16 for Swift 6.0
+          sudo xcode-select -s /Applications/Xcode_16.app
+          
           # Ensure .release directory exists
           mkdir -p .release
           
           # Build the project first
-          swift build -c release --product lume
+          swift build --configuration release
           
           # Debug build output
           ls -la .build/release/
