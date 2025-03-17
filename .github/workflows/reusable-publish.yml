@@ -24,6 +24,11 @@ on:
         description: 'PyPI package name (e.g. pylume, cua-agent)'
         required: true
         type: string
+      make_latest:
+        description: 'Whether to mark this release as latest (should only be true for lume)'
+        required: false
+        type: boolean
+        default: false
     secrets:
       PYPI_TOKEN:
         required: true
@@ -238,5 +243,6 @@ jobs:
         files: ${{ inputs.package_dir }}/${{ env.WHEEL_FILE }}
         draft: false
         prerelease: false
+        make_latest: ${{ inputs.make_latest }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

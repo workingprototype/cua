@@ -59,9 +59,10 @@ jobs:
     uses: ./.github/workflows/reusable-publish.yml
     with:
       package_name: "som"
-      package_dir: "libs/som"  # Updated to the new directory name
+      package_dir: "libs/som"
       version: ${{ needs.determine-version.outputs.version }}
       is_lume_package: false
       base_package_name: "cua-som"
+      make_latest: false
     secrets:
       PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }} 
