@@ -49,7 +49,7 @@ Demos of the Computer-Use Agent in action. Share your most impressive demos in C
 <summary><b>AI-Gradio: multi-app workflow requiring browser, VS Code and terminal access</b></summary>
 <br>
 <div align="center">
-    <video src="https://github.com/user-attachments/assets/c1efb4e3-2a2e-4fd5-8675-d39d9b34b2d0" width="800" controls></video>
+    <video src="https://github.com/user-attachments/assets/723a115d-1a07-4c8e-b517-88fbdf53ed0f" width="800" controls></video>
 </div>
 
 </details>
