@@ -49,6 +49,7 @@ jobs:
     runs-on: macos-15
     outputs:
       sha256_checksums: ${{ steps.generate_checksums.outputs.checksums }}
+      version: ${{ steps.set_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -121,6 +122,7 @@ jobs:
           rm application.p12 installer.p12
 
       - name: Build and Notarize
+        id: build_notarize
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
@@ -155,7 +157,15 @@ jobs:
           
           # Debug: List what files were actually created
           echo "Files in .release directory:"
-          ls -la .release
+          find .release -type f -name "*.tar.gz" -o -name "*.pkg.tar.gz"
+          
+          # Get architecture for output filename
+          ARCH=$(uname -m)
+          OS_IDENTIFIER="darwin-${ARCH}"
+          
+          # Output paths for later use
+          echo "tarball_path=.release/lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" >> $GITHUB_OUTPUT
+          echo "pkg_path=.release/lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Generate SHA256 Checksums
         id: generate_checksums
@@ -181,20 +191,27 @@ jobs:
           echo "All files in release directory:"
           ls -la
 
-      - name: Upload Notarized Package
+      - name: Upload Notarized Package (Tarball)
         uses: actions/upload-artifact@v4
         with:
-          name: lume-notarized
-          path: ./libs/lume/.release/lume-*.tar.gz
-          if-no-files-found: warn
+          name: lume-notarized-tarball
+          path: ./libs/lume/${{ steps.build_notarize.outputs.tarball_path }}
+          if-no-files-found: error
+
+      - name: Upload Notarized Package (Installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lume-notarized-installer
+          path: ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
+          if-no-files-found: error
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./libs/lume/.release/lume-*.tar.gz
-            ./libs/lume/.release/lume-*.pkg.tar.gz
+            ./libs/lume/${{ steps.build_notarize.outputs.tarball_path }}
+            ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
