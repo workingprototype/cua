@@ -63,6 +63,31 @@ jobs:
 
       - name: Create .release directory
         run: mkdir -p .release
+        
+      - name: Set version
+        id: set_version
+        run: |
+          # Determine version from tag or input
+          if [[ "$GITHUB_REF" == refs/tags/lume-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/lume-v}"
+            echo "Using version from tag: $VERSION"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using version from input: $VERSION"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using version from workflow_call input: $VERSION"
+          else
+            echo "Error: No version found in tag or input"
+            exit 1
+          fi
+          
+          # Update version in Main.swift
+          echo "Updating version in Main.swift to $VERSION"
+          sed -i '' "s/static let current: String = \".*\"/static let current: String = \"$VERSION\"/" libs/lume/src/Main.swift
+          
+          # Set output for later steps
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Import Certificates
         env:
@@ -103,11 +128,13 @@ jobs:
           # These will now reference the imported certificates
           CERT_APPLICATION_NAME: "Developer ID Application: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.TEAM_ID }})"
           CERT_INSTALLER_NAME: "Developer ID Installer: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.TEAM_ID }})"
+          VERSION: ${{ steps.set_version.outputs.version }}
         working-directory: ./libs/lume
         run: |
           # Minimal debug information
           echo "Starting build process..."
           echo "Swift version: $(swift --version | head -n 1)"
+          echo "Building version: $VERSION"
           
           # Ensure .release directory exists
           mkdir -p .release
