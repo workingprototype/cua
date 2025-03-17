@@ -46,7 +46,7 @@ env:
 
 jobs:
   notarize:
-    runs-on: macos-latest
+    runs-on: macos-15
     outputs:
       sha256_checksums: ${{ steps.generate_checksums.outputs.checksums }}
     steps:
@@ -116,7 +116,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload Notarized Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lume-notarized
           path: |
