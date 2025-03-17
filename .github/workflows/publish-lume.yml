@@ -149,7 +149,11 @@ jobs:
           chmod +x scripts/build/build-release-notarized.sh
           cd scripts/build
           LOG_LEVEL=minimal ./build-release-notarized.sh
-
+          
+          # Debug: List what files were actually created
+          echo "Files in .release directory:"
+          ls -la ../../../.release
+          
       - name: Generate SHA256 Checksums
         id: generate_checksums
         working-directory: ./libs/lume/.release
@@ -161,7 +165,7 @@ jobs:
           else
             echo "## SHA256 Checksums" > checksums.txt
             echo '```' >> checksums.txt
-            shasum -a 256 lume*.tar.gz >> checksums.txt
+            shasum -a 256 lume-*.tar.gz >> checksums.txt
             echo '```' >> checksums.txt
           fi
           
@@ -174,17 +178,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lume-notarized
-          path: |
-            ./libs/lume/.release/lume*.tar.gz
-            ./libs/lume/.release/lume*.pkg.tar.gz
+          path: ./libs/lume/.release/lume-*.tar.gz
+          if-no-files-found: warn
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./libs/lume/.release/lume-*-darwin-*.tar.gz
-            ./libs/lume/.release/lume-*-darwin-*.pkg.tar.gz
+            ./libs/lume/.release/lume-*.tar.gz
+            ./libs/lume/.release/lume-*.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
