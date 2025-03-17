@@ -87,6 +87,9 @@ jobs:
           # Allow codesign to access the certificates
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           
+          # List the certificates to ensure they were imported correctly
+          security find-identity -v -p codesigning
+          
           # Clean up certificate files
           rm application.p12 installer.p12
 
@@ -108,6 +111,11 @@ jobs:
           
           # Ensure .release directory exists
           mkdir -p .release
+          chmod 755 .release
+          
+          # Show available signing identities
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning
           
           # Build the project first
           swift build --configuration release
@@ -115,10 +123,38 @@ jobs:
           # Debug build output
           ls -la .build/release/
           
-          # Make script executable and run it
-          cd scripts/build
-          chmod +x ./build-release-notarized.sh
-          ./build-release-notarized.sh
+          # Try signing manually to test certificate
+          echo "Testing code signing with certificate"
+          codesign --force --options runtime \
+                 --entitlement ./resources/lume.entitlements \
+                 --sign "$CERT_APPLICATION_NAME" \
+                 .build/release/lume
+          
+          # Create test directory for pkgbuild
+          TEST_ROOT=$(mktemp -d)
+          mkdir -p "$TEST_ROOT/usr/local/bin"
+          cp -f .build/release/lume "$TEST_ROOT/usr/local/bin/"
+          
+          # Test pkgbuild with verbose output
+          echo "Testing pkgbuild with certificate"
+          pkgbuild --root "$TEST_ROOT" \
+                 --identifier "com.trycua.lume" \
+                 --version "1.0" \
+                 --install-location "/" \
+                 --sign "$CERT_INSTALLER_NAME" \
+                 --verbose \
+                 ./.release/test.pkg
+          
+          # Make script executable and run it if signing works
+          if [ -f "./.release/test.pkg" ]; then
+            echo "Test package created successfully, proceeding with build script"
+            chmod +x scripts/build/build-release-notarized.sh
+            cd scripts/build
+            ./build-release-notarized.sh
+          else
+            echo "Test package creation failed, aborting script execution"
+            exit 1
+          fi
 
       - name: Generate SHA256 Checksums
         id: generate_checksums
