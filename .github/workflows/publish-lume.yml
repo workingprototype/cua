@@ -120,8 +120,17 @@ jobs:
           
           # Create a temporary directory for the build
           BUILD_DIR=$(mktemp -d)
+          echo "Created temporary directory: $BUILD_DIR"
+          
+          # Copy the current directory to the temporary directory
           cp -r . "$BUILD_DIR/"
-          cd "$BUILD_DIR/lume"
+          
+          # Debug the temporary directory
+          echo "Contents of temporary directory:"
+          ls -la "$BUILD_DIR"
+          
+          # Change to the temporary directory
+          cd "$BUILD_DIR"
           
           # Run the build script
           ./scripts/build/build-release-notarized.sh
