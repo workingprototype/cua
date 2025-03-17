@@ -150,10 +150,13 @@ jobs:
           cd scripts/build
           LOG_LEVEL=minimal ./build-release-notarized.sh
           
+          # Return to the lume directory
+          cd ../..
+          
           # Debug: List what files were actually created
           echo "Files in .release directory:"
-          ls -la ../../../.release
-          
+          ls -la .release
+
       - name: Generate SHA256 Checksums
         id: generate_checksums
         working-directory: ./libs/lume/.release
@@ -173,6 +176,10 @@ jobs:
           echo "checksums<<EOF" >> $GITHUB_OUTPUT
           echo "$checksums" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Debug: Show all files in the release directory
+          echo "All files in release directory:"
+          ls -la
 
       - name: Upload Notarized Package
         uses: actions/upload-artifact@v4
