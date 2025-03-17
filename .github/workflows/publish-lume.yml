@@ -202,6 +202,10 @@ jobs:
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" "lume-darwin.tar.gz"
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" "lume-darwin.pkg.tar.gz"
           
+          # Create simple symlinks
+          ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" "lume.tar.gz"
+          ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" "lume.pkg.tar.gz"
+          
           # List all files (including symlinks)
           echo "Files with symlinks in release directory:"
           ls -la
@@ -229,6 +233,8 @@ jobs:
             ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
             ./libs/lume/.release/lume-darwin.tar.gz
             ./libs/lume/.release/lume-darwin.pkg.tar.gz
+            ./libs/lume/.release/lume.tar.gz
+            ./libs/lume/.release/lume.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
             
