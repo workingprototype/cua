@@ -84,8 +84,8 @@ jobs:
           security import application.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild
           security import installer.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild
           
-          # Allow codesign to access the certificates
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          # Allow codesign and pkgbuild to access the certificates
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,pkgbuild: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           
           # List the certificates to ensure they were imported correctly
           security find-identity -v -p codesigning
@@ -117,6 +117,20 @@ jobs:
           echo "Available signing identities:"
           security find-identity -v -p codesigning
           
+          # Debug certificate variables
+          echo "CERT_APPLICATION_NAME: $CERT_APPLICATION_NAME"
+          echo "CERT_INSTALLER_NAME: $CERT_INSTALLER_NAME"
+          echo "Certificate identities for installer signing:"
+          security find-identity -v -p installer
+          
+          # Verify installer certificate availability
+          if security find-identity -v -p installer | grep -q "$TEAM_ID"; then
+            echo "Installer certificate found"
+          else
+            echo "ERROR: Installer certificate not found. Make sure it's imported correctly."
+            exit 1
+          fi
+          
           # Build the project first
           swift build --configuration release
           
@@ -142,7 +156,6 @@ jobs:
                  --version "1.0" \
                  --install-location "/" \
                  --sign "$CERT_INSTALLER_NAME" \
-                 --verbose \
                  ./.release/test.pkg
           
           # Make script executable and run it if signing works
