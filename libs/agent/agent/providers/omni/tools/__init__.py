@@ -7,6 +7,5 @@ from .manager import OmniToolManager
 __all__ = [
     "OmniBashTool",
     "OmniComputerTool",
-    "OmniEditTool",
     "OmniToolManager",
 ]

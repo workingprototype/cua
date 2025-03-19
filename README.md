@@ -23,7 +23,7 @@ Create and run high-performance macOS and Linux VMs on Apple Silicon, with built
 |---------|-------------|--------------|---------|
 | [**Lume**](./libs/lume/README.md) | CLI for running macOS/Linux VMs with near-native performance using Apple's `Virtualization.Framework`. | [![Download](https://img.shields.io/badge/Download-333333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/trycua/cua/releases/latest/download/lume.pkg.tar.gz) | [![GitHub release](https://img.shields.io/github/v/release/trycua/cua?color=333333)](https://github.com/trycua/cua/releases) |
 | [**Computer**](./libs/computer/README.md) | Computer-Use Interface (CUI) framework for interacting with macOS/Linux sandboxes | `pip install cua-computer` | [![PyPI](https://img.shields.io/pypi/v/cua-computer?color=333333)](https://pypi.org/project/cua-computer/) |
-| [**Agent**](./libs/agent/README.md) | Computer-Use Agent (CUA) framework for running agentic workflows in macOS/Linux dedicated sandboxes | `pip install cua-agent` | [![PyPI](https://img.shields.io/pypi/v/cua-agent?color=333333)](https://pypi.org/project/cua-agent/) |
+| [**Agent (Experimental)**](./libs/agent/README.md) | Computer-Use Agent (CUA) framework for running agentic workflows in macOS/Linux dedicated sandboxes | `pip install cua-agent` | [![PyPI](https://img.shields.io/pypi/v/cua-agent?color=333333)](https://pypi.org/project/cua-agent/) |
 
 ## Lume
 
