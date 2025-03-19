@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 from anthropic.types.beta import BetaToolUnionParam
 from computer.computer import Computer
 
@@ -37,7 +37,7 @@ class ToolManager(BaseToolManager):
         """Get tool parameters for Anthropic API calls."""
         if self.tools is None:
             raise RuntimeError("Tools not initialized. Call initialize() first.")
-        return self.tools.to_params()
+        return cast(List[BetaToolUnionParam], self.tools.to_params())
 
     async def execute_tool(self, name: str, tool_input: dict[str, Any]) -> ToolResult:
         """Execute a tool with the given input.

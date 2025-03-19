@@ -1,6 +1,14 @@
 from typing import Optional, List, Literal, Dict, Any, Union, TYPE_CHECKING, cast
 from pylume import PyLume
-from pylume.models import VMRunOpts, VMUpdateOpts, ImageRef, SharedDirectory
+from pylume.models import (
+    VMRunOpts,
+    VMUpdateOpts,
+    ImageRef,
+    SharedDirectory,
+    VMStatus,
+    VMConfig,
+    CloneSpec,
+)
 import asyncio
 from .models import Computer as ComputerConfig, Display
 from .interface.factory import InterfaceFactory
@@ -13,6 +21,7 @@ from .logger import Logger, LogLevel
 import json
 import logging
 from .telemetry import record_computer_initialization
+import os
 
 OSType = Literal["macos", "linux"]
 
@@ -36,6 +45,8 @@ class Computer:
         use_host_computer_server: bool = False,
         verbosity: Union[int, LogLevel] = logging.INFO,
         telemetry_enabled: bool = True,
+        port: Optional[int] = 3000,
+        host: str = os.environ.get("PYLUME_HOST", "localhost"),
     ):
         """Initialize a new Computer instance.
 
@@ -55,6 +66,8 @@ class Computer:
             verbosity: Logging level (standard Python logging levels: logging.DEBUG, logging.INFO, etc.)
                       LogLevel enum values are still accepted for backward compatibility
             telemetry_enabled: Whether to enable telemetry tracking. Defaults to True.
+            port: Optional port to use for the PyLume server
+            host: Host to use for PyLume connections (e.g. "localhost", "host.docker.internal")
         """
         if TYPE_CHECKING:
             from .interface.base import BaseComputerInterface
@@ -64,6 +77,8 @@ class Computer:
 
         # Store original parameters
         self.image = image
+        self.port = port
+        self.host = host
 
         # Store telemetry preference
         self._telemetry_enabled = telemetry_enabled
@@ -185,6 +200,26 @@ class Computer:
                 if not self._pylume_context:
                     try:
                         self.logger.verbose("Initializing PyLume context...")
+
+                        # Configure PyLume based on initialization parameters
+                        pylume_kwargs = {
+                            "debug": self.verbosity <= LogLevel.DEBUG,
+                            "server_start_timeout": 120,  # Increase timeout to 2 minutes
+                        }
+
+                        # Add port if specified
+                        if hasattr(self, "port") and self.port is not None:
+                            pylume_kwargs["port"] = self.port
+                            self.logger.verbose(f"Using specified port for PyLume: {self.port}")
+
+                        # Add host if specified
+                        if hasattr(self, "host") and self.host != "localhost":
+                            pylume_kwargs["host"] = self.host
+                            self.logger.verbose(f"Using specified host for PyLume: {self.host}")
+
+                        # Create PyLume instance with configured parameters
+                        self.config.pylume = PyLume(**pylume_kwargs)
+
                         self._pylume_context = await self.config.pylume.__aenter__()  # type: ignore[attr-defined]
                         self.logger.verbose("PyLume context initialized successfully")
                     except Exception as e:

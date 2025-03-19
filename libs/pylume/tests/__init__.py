@@ -1,3 +1,0 @@
-"""
-PyLume tests package
-""" 

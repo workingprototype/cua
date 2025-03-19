@@ -122,8 +122,9 @@ class OmniParser:
             # Create a minimal valid result for error cases
             return ParseResult(
                 elements=[],
+                screen_info=None,
                 annotated_image_base64="",
-                parsed_content_list=[f"Error: {str(e)}"],
+                parsed_content_list=[{"error": str(e)}],
                 metadata=ParserMetadata(
                     image_size=(0, 0),
                     num_icons=0,

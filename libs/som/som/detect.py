@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List, Dict, Any, Tuple, Optional
+from typing import Union, List, Dict, Any, Tuple, Optional, cast
 import logging
 import torch
 import torchvision.ops
@@ -179,16 +179,23 @@ class OmniParser:
             logger.info(f"Found {len(icon_detections)} interactive elements")
 
             # Convert icon detections to typed objects
-            elements: List[UIElement] = [
-                IconElement(
-                    bbox=BoundingBox(
-                        x1=det["bbox"][0], y1=det["bbox"][1], x2=det["bbox"][2], y2=det["bbox"][3]
-                    ),
-                    confidence=det["confidence"],
-                    scale=det.get("scale"),
-                )
-                for det in icon_detections
-            ]
+            elements: List[UIElement] = cast(
+                List[UIElement],
+                [
+                    IconElement(
+                        id=i + 1,
+                        bbox=BoundingBox(
+                            x1=det["bbox"][0],
+                            y1=det["bbox"][1],
+                            x2=det["bbox"][2],
+                            y2=det["bbox"][3],
+                        ),
+                        confidence=det["confidence"],
+                        scale=det.get("scale"),
+                    )
+                    for i, det in enumerate(icon_detections)
+                ],
+            )
 
             # Run OCR if enabled
             if use_ocr:
@@ -198,21 +205,25 @@ class OmniParser:
                     text_detections = []
                 logger.info(f"Found {len(text_detections)} text regions")
 
-                # Convert text detections to typed objects
+                # Convert text detections to typed objects and extend the list
                 elements.extend(
-                    [
-                        TextElement(
-                            bbox=BoundingBox(
-                                x1=det["bbox"][0],
-                                y1=det["bbox"][1],
-                                x2=det["bbox"][2],
-                                y2=det["bbox"][3],
-                            ),
-                            content=det["content"],
-                            confidence=det["confidence"],
-                        )
-                        for det in text_detections
-                    ]
+                    cast(
+                        List[UIElement],
+                        [
+                            TextElement(
+                                id=len(elements) + i + 1,
+                                bbox=BoundingBox(
+                                    x1=det["bbox"][0],
+                                    y1=det["bbox"][1],
+                                    x2=det["bbox"][2],
+                                    y2=det["bbox"][3],
+                                ),
+                                content=det["content"],
+                                confidence=det["confidence"],
+                            )
+                            for i, det in enumerate(text_detections)
+                        ],
+                    )
                 )
 
             # Calculate drawing parameters based on image size

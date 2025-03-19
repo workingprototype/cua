@@ -177,7 +177,7 @@ class OmniComputerTool(BaseComputerTool):
                     keys = text.split("+")
                     await self.computer.interface.hotkey(*keys)
                 else:
-                    await self.computer.interface.press(text)
+                    await self.computer.interface.press_key(text)
 
                 # Take screenshot after action
                 screenshot = await self.computer.interface.screenshot()
@@ -188,7 +188,8 @@ class OmniComputerTool(BaseComputerTool):
                 )
             elif action == "cursor_position":
                 pos = await self.computer.interface.get_cursor_position()
-                return ToolResult(output=f"X={int(pos[0])},Y={int(pos[1])}")
+                x, y = pos
+                return ToolResult(output=f"X={int(x)},Y={int(y)}")
             elif action == "scroll":
                 if direction == "down":
                     self.logger.info(f"Scrolling down, amount: {amount}")

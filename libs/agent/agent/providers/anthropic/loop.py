@@ -17,6 +17,7 @@ from anthropic.types.beta import (
     BetaTextBlock,
     BetaTextBlockParam,
     BetaToolUseBlockParam,
+    BetaContentBlockParam,
 )
 
 # Computer
@@ -24,12 +25,12 @@ from computer import Computer
 
 # Base imports
 from ...core.loop import BaseLoop
-from ...core.messages import ImageRetentionConfig
+from ...core.messages import ImageRetentionConfig as CoreImageRetentionConfig
 
 # Anthropic provider-specific imports
 from .api.client import AnthropicClientFactory, BaseAnthropicClient
 from .tools.manager import ToolManager
-from .messages.manager import MessageManager
+from .messages.manager import MessageManager, ImageRetentionConfig
 from .callbacks.manager import CallbackManager
 from .prompts import SYSTEM_PROMPT
 from .types import LLMProvider
@@ -48,8 +49,8 @@ class AnthropicLoop(BaseLoop):
     def __init__(
         self,
         api_key: str,
+        computer: Computer,
         model: str = "claude-3-7-sonnet-20250219",  # Fixed model
-        computer: Optional[Computer] = None,
         only_n_most_recent_images: Optional[int] = 2,
         base_dir: Optional[str] = "trajectories",
         max_retries: int = 3,
@@ -69,7 +70,7 @@ class AnthropicLoop(BaseLoop):
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
         """
-        # Initialize base class
+        # Initialize base class with core config
         super().__init__(
             computer=computer,
             model=model,
@@ -93,8 +94,8 @@ class AnthropicLoop(BaseLoop):
         self.message_manager = None
         self.callback_manager = None
 
-        # Configure image retention
-        self.image_retention_config = ImageRetentionConfig(
+        # Configure image retention with core config
+        self.image_retention_config = CoreImageRetentionConfig(
             num_images_to_keep=only_n_most_recent_images
         )
 
@@ -113,7 +114,7 @@ class AnthropicLoop(BaseLoop):
 
             # Initialize message manager
             self.message_manager = MessageManager(
-                ImageRetentionConfig(
+                image_retention_config=ImageRetentionConfig(
                     num_images_to_keep=self.only_n_most_recent_images, enable_caching=True
                 )
             )
@@ -250,6 +251,10 @@ class AnthropicLoop(BaseLoop):
                 await self._process_screen(parsed_screen, self.message_history)
 
                 # Prepare messages and make API call
+                if self.message_manager is None:
+                    raise RuntimeError(
+                        "Message manager not initialized. Call initialize_client() first."
+                    )
                 prepared_messages = self.message_manager.prepare_messages(
                     cast(List[BetaMessageParam], self.message_history.copy())
                 )
@@ -257,7 +262,7 @@ class AnthropicLoop(BaseLoop):
                 # Create new turn directory for this API call
                 self._create_turn_dir()
 
-                # Make API call
+                # Use _make_api_call instead of direct client call to ensure logging
                 response = await self._make_api_call(prepared_messages)
 
                 # Handle the response
@@ -287,6 +292,11 @@ class AnthropicLoop(BaseLoop):
         Returns:
             API response
         """
+        if self.client is None:
+            raise RuntimeError("Client not initialized. Call initialize_client() first.")
+        if self.tool_manager is None:
+            raise RuntimeError("Tool manager not initialized. Call initialize_client() first.")
+
         last_error = None
 
         for attempt in range(self.max_retries):
@@ -297,6 +307,7 @@ class AnthropicLoop(BaseLoop):
                     "max_tokens": self.max_tokens,
                     "system": SYSTEM_PROMPT,
                 }
+                # Let ExperimentManager handle sanitization
                 self._log_api_call("request", request_data)
 
                 # Setup betas and system
@@ -320,7 +331,7 @@ class AnthropicLoop(BaseLoop):
                     betas=betas,
                 )
 
-                # Log success response
+                # Let ExperimentManager handle sanitization
                 self._log_api_call("response", request_data, response)
 
                 return response
@@ -365,25 +376,38 @@ class AnthropicLoop(BaseLoop):
                 }
             )
 
+            if self.callback_manager is None:
+                raise RuntimeError(
+                    "Callback manager not initialized. Call initialize_client() first."
+                )
+
             # Handle tool use blocks and collect results
             tool_result_content = []
             for content_block in response_params:
                 # Notify callback of content
-                self.callback_manager.on_content(content_block)
+                self.callback_manager.on_content(cast(BetaContentBlockParam, content_block))
 
                 # Handle tool use
                 if content_block.get("type") == "tool_use":
+                    if self.tool_manager is None:
+                        raise RuntimeError(
+                            "Tool manager not initialized. Call initialize_client() first."
+                        )
                     result = await self.tool_manager.execute_tool(
                         name=content_block["name"],
                         tool_input=cast(Dict[str, Any], content_block["input"]),
                     )
 
                     # Create tool result and add to content
-                    tool_result = self._make_tool_result(result, content_block["id"])
+                    tool_result = self._make_tool_result(
+                        cast(ToolResult, result), content_block["id"]
+                    )
                     tool_result_content.append(tool_result)
 
                     # Notify callback of tool result
-                    self.callback_manager.on_tool_result(result, content_block["id"])
+                    self.callback_manager.on_tool_result(
+                        cast(ToolResult, result), content_block["id"]
+                    )
 
             # If no tool results, we're done
             if not tool_result_content:
@@ -495,13 +519,13 @@ class AnthropicLoop(BaseLoop):
             result_text = f"<s>{result.system}</s>\n{result_text}"
         return result_text
 
-    def _handle_content(self, content: Dict[str, Any]) -> None:
+    def _handle_content(self, content: BetaContentBlockParam) -> None:
         """Handle content updates from the assistant."""
         if content.get("type") == "text":
-            text = content.get("text", "")
+            text_content = cast(BetaTextBlockParam, content)
+            text = text_content["text"]
             if text == "<DONE>":
                 return
-
             logger.info(f"Assistant: {text}")
 
     def _handle_tool_result(self, result: ToolResult, tool_id: str) -> None:
@@ -517,5 +541,10 @@ class AnthropicLoop(BaseLoop):
         """Handle API interactions."""
         if error:
             logger.error(f"API error: {error}")
+            self._log_api_call("error", request, error=error)
         else:
             logger.debug(f"API request: {request}")
+            if response:
+                self._log_api_call("response", request, response)
+            else:
+                self._log_api_call("request", request)

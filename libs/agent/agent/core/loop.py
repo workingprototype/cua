@@ -141,9 +141,6 @@ class BaseLoop(ABC):
                 # Initialize API client
                 await self.initialize_client()
 
-                # Initialize computer
-                await self.computer.initialize()
-
                 logger.info("Initialization complete.")
                 return
             except Exception as e:
@@ -173,15 +170,22 @@ class BaseLoop(ABC):
             base64_image = ""
 
             # Handle different types of screenshot returns
-            if isinstance(screenshot, bytes):
+            if isinstance(screenshot, (bytes, bytearray, memoryview)):
                 # Raw bytes screenshot
                 base64_image = base64.b64encode(screenshot).decode("utf-8")
             elif hasattr(screenshot, "base64_image"):
                 # Object-style screenshot with attributes
-                base64_image = screenshot.base64_image
-                if hasattr(screenshot, "width") and hasattr(screenshot, "height"):
-                    width = screenshot.width
-                    height = screenshot.height
+                # Type checking can't infer these attributes, but they exist at runtime
+                # on certain screenshot return types
+                base64_image = getattr(screenshot, "base64_image")
+                width = (
+                    getattr(screenshot, "width", width) if hasattr(screenshot, "width") else width
+                )
+                height = (
+                    getattr(screenshot, "height", height)
+                    if hasattr(screenshot, "height")
+                    else height
+                )
 
             # Create parsed screen data
             parsed_screen = {

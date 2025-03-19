@@ -84,7 +84,21 @@ class ExperimentManager:
         if isinstance(data, dict):
             result = {}
             for k, v in data.items():
-                result[k] = self.sanitize_log_data(v)
+                # Special handling for 'data' field in Anthropic message source
+                if k == "data" and isinstance(v, str) and len(v) > 1000:
+                    result[k] = f"[BASE64_DATA_LENGTH_{len(v)}]"
+                # Special handling for the 'media_type' key which indicates we're in an image block
+                elif k == "media_type" and "image" in str(v):
+                    result[k] = v
+                    # If we're in an image block, look for a sibling 'data' field with base64 content
+                    if (
+                        "data" in result
+                        and isinstance(result["data"], str)
+                        and len(result["data"]) > 1000
+                    ):
+                        result["data"] = f"[BASE64_DATA_LENGTH_{len(result['data'])}]"
+                else:
+                    result[k] = self.sanitize_log_data(v)
             return result
         elif isinstance(data, list):
             return [self.sanitize_log_data(item) for item in data]
@@ -93,15 +107,18 @@ class ExperimentManager:
         else:
             return data
 
-    def save_screenshot(self, img_base64: str, action_type: str = "") -> None:
+    def save_screenshot(self, img_base64: str, action_type: str = "") -> Optional[str]:
         """Save a screenshot to the experiment directory.
 
         Args:
             img_base64: Base64 encoded screenshot
             action_type: Type of action that triggered the screenshot
+
+        Returns:
+            Path to the saved screenshot or None if there was an error
         """
         if not self.current_turn_dir:
-            return
+            return None
 
         try:
             # Increment screenshot counter

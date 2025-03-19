@@ -61,9 +61,9 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
 
     name: Literal["computer"] = "computer"
     api_type: Literal["computer_20250124"] = "computer_20250124"
-    width: int | None
-    height: int | None
-    display_num: int | None
+    width: int | None = None
+    height: int | None = None
+    display_num: int | None = None
     computer: Computer  # The CUA Computer instance
     logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
         display_size = await self.computer.interface.get_screen_size()
         self.width = display_size["width"]
         self.height = display_size["height"]
+        assert isinstance(self.width, int) and isinstance(self.height, int)
         self.logger.info(f"Initialized screen dimensions to {self.width}x{self.height}")
 
     async def __call__(
@@ -120,6 +121,8 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
             # Ensure dimensions are initialized
             if self.width is None or self.height is None:
                 await self.initialize_dimensions()
+                if self.width is None or self.height is None:
+                    raise ToolError("Failed to initialize screen dimensions")
         except Exception as e:
             raise ToolError(f"Failed to initialize dimensions: {e}")
 
@@ -147,7 +150,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     self.logger.info(
                         f"Scaling image from {pre_img.size} to {self.width}x{self.height} to match screen dimensions"
                     )
-                    pre_img = pre_img.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                    if not isinstance(self.width, int) or not isinstance(self.height, int):
+                        raise ToolError("Screen dimensions must be integers")
+                    size = (int(self.width), int(self.height))
+                    pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
 
                 self.logger.info(f"  Current dimensions: {pre_img.width}x{pre_img.height}")
 
@@ -160,15 +166,7 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     await self.computer.interface.move_cursor(x, y)
                     # Then perform drag operation - check if drag_to exists or we need to use other methods
                     try:
-                        if hasattr(self.computer.interface, "drag_to"):
-                            await self.computer.interface.drag_to(x, y)
-                        else:
-                            # Alternative approach: press mouse down, move, release
-                            await self.computer.interface.mouse_down()
-                            await asyncio.sleep(0.2)
-                            await self.computer.interface.move_cursor(x, y)
-                            await asyncio.sleep(0.2)
-                            await self.computer.interface.mouse_up()
+                        await self.computer.interface.drag_to(x, y)
                     except Exception as e:
                         self.logger.error(f"Error during drag operation: {str(e)}")
                         raise ToolError(f"Failed to perform drag: {str(e)}")
@@ -214,9 +212,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                         self.logger.info(
                             f"Scaling image from {pre_img.size} to {self.width}x{self.height} to match screen dimensions"
                         )
-                        pre_img = pre_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
+                        if not isinstance(self.width, int) or not isinstance(self.height, int):
+                            raise ToolError("Screen dimensions must be integers")
+                        size = (int(self.width), int(self.height))
+                        pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
                         # Save the scaled image back to bytes
                         buffer = io.BytesIO()
                         pre_img.save(buffer, format="PNG")
@@ -275,9 +274,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                         self.logger.info(
                             f"Scaling image from {pre_img.size} to {self.width}x{self.height}"
                         )
-                        pre_img = pre_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
+                        if not isinstance(self.width, int) or not isinstance(self.height, int):
+                            raise ToolError("Screen dimensions must be integers")
+                        size = (int(self.width), int(self.height))
+                        pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
 
                     # Perform the click action
                     if action == "left_click":
@@ -335,7 +335,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     self.logger.info(
                         f"Scaling image from {pre_img.size} to {self.width}x{self.height}"
                     )
-                    pre_img = pre_img.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                    if not isinstance(self.width, int) or not isinstance(self.height, int):
+                        raise ToolError("Screen dimensions must be integers")
+                    size = (int(self.width), int(self.height))
+                    pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
 
                 if action == "key":
                     # Special handling for page up/down on macOS
@@ -365,7 +368,7 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                         # Handle single key press
                         self.logger.info(f"Pressing key: {text}")
                         try:
-                            await self.computer.interface.press(text)
+                            await self.computer.interface.press_key(text)
                             output_text = text
                         except ValueError as e:
                             raise ToolError(f"Invalid key: {text}. {str(e)}")
@@ -442,7 +445,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                         self.logger.info(
                             f"Scaling image from {img.size} to {self.width}x{self.height}"
                         )
-                        img = img.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                        if not isinstance(self.width, int) or not isinstance(self.height, int):
+                            raise ToolError("Screen dimensions must be integers")
+                        size = (int(self.width), int(self.height))
+                        img = img.resize(size, Image.Resampling.LANCZOS)
                         buffer = io.BytesIO()
                         img.save(buffer, format="PNG")
                         screenshot = buffer.getvalue()
@@ -451,7 +457,8 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
 
                 elif action == "cursor_position":
                     pos = await self.computer.interface.get_cursor_position()
-                    return ToolResult(output=f"X={int(pos[0])},Y={int(pos[1])}")
+                    x, y = pos  # Unpack the tuple
+                    return ToolResult(output=f"X={int(x)},Y={int(y)}")
 
             except Exception as e:
                 self.logger.error(f"Error during {action} action: {str(e)}")
@@ -517,7 +524,10 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
             # Scale image if needed
             if img.size != (self.width, self.height):
                 self.logger.info(f"Scaling image from {img.size} to {self.width}x{self.height}")
-                img = img.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                if not isinstance(self.width, int) or not isinstance(self.height, int):
+                    raise ToolError("Screen dimensions must be integers")
+                size = (int(self.width), int(self.height))
+                img = img.resize(size, Image.Resampling.LANCZOS)
                 buffer = io.BytesIO()
                 img.save(buffer, format="PNG")
                 screenshot = buffer.getvalue()

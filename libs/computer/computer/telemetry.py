@@ -8,7 +8,12 @@ from typing import Any
 TELEMETRY_AVAILABLE = False
 
 try:
-    from core.telemetry import record_event, increment, is_telemetry_enabled
+    from core.telemetry import (
+        record_event,
+        increment,
+        is_telemetry_enabled,
+        is_telemetry_globally_disabled,
+    )
 
     def increment_counter(counter_name: str, value: int = 1) -> None:
         """Wrapper for increment to maintain backward compatibility."""
@@ -75,14 +80,8 @@ def enable_telemetry() -> bool:
 
     # Try to import and enable
     try:
-        from core.telemetry import (
-            is_telemetry_globally_disabled,
-        )
-
-        # Check again after import
-        if is_telemetry_globally_disabled():
-            logger.info("Telemetry is globally disabled via environment variable - cannot enable")
-            return False
+        # Verify we can import core telemetry
+        from core.telemetry import record_event  # type: ignore
 
         TELEMETRY_AVAILABLE = True
         logger.info("Telemetry successfully enabled")

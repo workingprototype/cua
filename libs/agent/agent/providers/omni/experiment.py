@@ -126,15 +126,18 @@ class ExperimentManager:
         # Since we no longer want to use the images/ folder, we'll skip this functionality
         return
 
-    def save_screenshot(self, img_base64: str, action_type: str = "") -> None:
+    def save_screenshot(self, img_base64: str, action_type: str = "") -> Optional[str]:
         """Save a screenshot to the experiment directory.
 
         Args:
             img_base64: Base64 encoded screenshot
             action_type: Type of action that triggered the screenshot
+
+        Returns:
+            Optional[str]: Path to the saved screenshot, or None if saving failed
         """
         if not self.current_turn_dir:
-            return
+            return None
 
         try:
             # Increment screenshot counter
