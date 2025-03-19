@@ -13,6 +13,7 @@ import asyncio
 from httpx import ConnectError, ReadTimeout
 import shutil
 import copy
+from typing import cast
 
 from .parser import OmniParser, ParseResult, ParserMetadata, UIElement
 from ...core.loop import BaseLoop
@@ -182,8 +183,6 @@ class OmniLoop(BaseLoop):
 
             if self.provider == LLMProvider.OPENAI:
                 self.client = OpenAIClient(api_key=self.api_key, model=self.model)
-            elif self.provider == LLMProvider.GROQ:
-                self.client = GroqClient(api_key=self.api_key, model=self.model)
             elif self.provider == LLMProvider.ANTHROPIC:
                 self.client = AnthropicClient(
                     api_key=self.api_key,
@@ -329,9 +328,14 @@ class OmniLoop(BaseLoop):
         raise RuntimeError(error_message)
 
     async def _handle_response(
-        self, response: Any, messages: List[Dict[str, Any]], parsed_screen: Dict[str, Any]
+        self, response: Any, messages: List[Dict[str, Any]], parsed_screen: ParseResult
     ) -> Tuple[bool, bool]:
         """Handle API response.
+
+        Args:
+            response: API response
+            messages: List of messages to update
+            parsed_screen: Current parsed screen information
 
         Returns:
             Tuple of (should_continue, action_screenshot_saved)
@@ -394,7 +398,9 @@ class OmniLoop(BaseLoop):
 
                             try:
                                 # Execute action with current parsed screen info
-                                await self._execute_action(parsed_content, parsed_screen)
+                                await self._execute_action(
+                                    parsed_content, cast(ParseResult, parsed_screen)
+                                )
                                 action_screenshot_saved = True
                             except Exception as e:
                                 logger.error(f"Error executing action: {str(e)}")
@@ -463,7 +469,7 @@ class OmniLoop(BaseLoop):
 
                 try:
                     # Execute action with current parsed screen info
-                    await self._execute_action(parsed_content, parsed_screen)
+                    await self._execute_action(parsed_content, cast(ParseResult, parsed_screen))
                     action_screenshot_saved = True
                 except Exception as e:
                     logger.error(f"Error executing action: {str(e)}")
@@ -488,7 +494,7 @@ class OmniLoop(BaseLoop):
 
                 try:
                     # Execute action with current parsed screen info
-                    await self._execute_action(content, parsed_screen)
+                    await self._execute_action(content, cast(ParseResult, parsed_screen))
                     action_screenshot_saved = True
                 except Exception as e:
                     logger.error(f"Error executing action: {str(e)}")

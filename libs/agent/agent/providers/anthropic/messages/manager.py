@@ -90,7 +90,9 @@ class MessageManager:
                     blocks_with_cache_control += 1
                     # Add cache control to the last content block only
                     if content and len(content) > 0:
-                        content[-1]["cache_control"] = {"type": "ephemeral"}
+                        content[-1]["cache_control"] = BetaCacheControlEphemeralParam(
+                            type="ephemeral"
+                        )
                 else:
                     # Remove any existing cache control
                     if content and len(content) > 0:

@@ -1,6 +1,5 @@
 """Core agent components."""
 
-from .base_agent import BaseComputerAgent
 from .loop import BaseLoop
 from .messages import (
     create_user_message,
@@ -12,7 +11,7 @@ from .messages import (
     ImageRetentionConfig,
 )
 from .callbacks import (
-    CallbackManager, 
+    CallbackManager,
     CallbackHandler,
     BaseCallbackManager,
     ContentCallback,
@@ -21,9 +20,8 @@ from .callbacks import (
 )
 
 __all__ = [
-    "BaseComputerAgent", 
-    "BaseLoop", 
-    "CallbackManager", 
+    "BaseLoop",
+    "CallbackManager",
     "CallbackHandler",
     "BaseMessageManager",
     "ImageRetentionConfig",

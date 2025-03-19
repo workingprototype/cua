@@ -33,18 +33,22 @@ from .exceptions import (
 )
 
 # Type variable for the decorator
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 def ensure_server(func: Callable[..., T]) -> Callable[..., T]:
     """Decorator to ensure server is running before executing the method."""
+
     @wraps(func)
-    async def wrapper(self: 'PyLume', *args: Any, **kwargs: Any) -> T:
+    async def wrapper(self: "PyLume", *args: Any, **kwargs: Any) -> T:
         # ensure_running is an async method, so we need to await it
         await self.server.ensure_running()
         # Initialize client if needed
         await self._init_client()
-        return await func(self, *args, **kwargs) # type: ignore
-    return wrapper # type: ignore
+        return await func(self, *args, **kwargs)  # type: ignore
+
+    return wrapper  # type: ignore
+
 
 class PyLume:
     def __init__(
@@ -52,10 +56,11 @@ class PyLume:
         debug: bool = False,
         server_start_timeout: int = 60,
         port: Optional[int] = None,
-        use_existing_server: bool = False
+        use_existing_server: bool = False,
+        host: str = "localhost",
     ):
         """Initialize the async PyLume client.
-        
+
         Args:
             debug: Enable debug logging
             auto_start_server: Whether to automatically start the lume server if not running
@@ -63,27 +68,35 @@ class PyLume:
             port: Port number for the lume server. Required when use_existing_server is True.
             use_existing_server: If True, will try to connect to an existing server on the specified port
                                instead of starting a new one.
+            host: Host to use for connections (e.g., "localhost", "127.0.0.1", "host.docker.internal")
         """
         if use_existing_server and port is None:
             raise LumeConfigError("Port must be specified when using an existing server")
-        
+
         self.server = LumeServer(
-            debug=debug, 
+            debug=debug,
             server_start_timeout=server_start_timeout,
             port=port,
-            use_existing_server=use_existing_server
+            use_existing_server=use_existing_server,
+            host=host,
         )
         self.client = None
 
-    async def __aenter__(self) -> 'PyLume':
+    async def __aenter__(self) -> "PyLume":
         """Async context manager entry."""
         if self.server.use_existing_server:
-            # Just set up the base URL and initialize client for existing server
-            self.server.port = self.server.requested_port
-            self.server.base_url = f"http://localhost:{self.server.port}/lume"
-        else:
-            await self.server.ensure_running()
-        
+            # Just ensure base_url is set for existing server
+            if self.server.requested_port is None:
+                raise LumeConfigError("Port must be specified when using an existing server")
+
+            if not self.server.base_url:
+                self.server.port = self.server.requested_port
+                self.server.base_url = f"http://{self.server.host}:{self.server.port}/lume"
+
+        # Ensure the server is running (will connect to existing or start new as needed)
+        await self.server.ensure_running()
+
+        # Initialize the client
         await self._init_client()
         return self
 
@@ -98,11 +111,7 @@ class PyLume:
         if self.client is None:
             if self.server.base_url is None:
                 raise RuntimeError("Server base URL not set")
-            self.client = LumeClient(
-                base_url=self.server.base_url,
-                timeout=300.0,
-                debug=self.server.debug
-            )
+            self.client = LumeClient(self.server.base_url, debug=self.server.debug)
 
     def _log_debug(self, message: str, **kwargs) -> None:
         """Log debug information if debug mode is enabled."""
@@ -117,19 +126,17 @@ class PyLume:
             raise LumeConnectionError(f"Failed to connect to PyLume server: {str(e)}")
         elif isinstance(e, asyncio.TimeoutError):
             raise LumeTimeoutError(f"Request timed out: {str(e)}")
-            
-        if not hasattr(e, 'status') and not isinstance(e, subprocess.CalledProcessError):
+
+        if not hasattr(e, "status") and not isinstance(e, subprocess.CalledProcessError):
             raise LumeServerError(f"Unknown error during {operation}: {str(e)}")
-            
-        status_code = getattr(e, 'status', 500)
+
+        status_code = getattr(e, "status", 500)
         response_text = str(e)
-        
+
         self._log_debug(
-            f"{operation} request failed",
-            status_code=status_code,
-            response_text=response_text
+            f"{operation} request failed", status_code=status_code, response_text=response_text
         )
-        
+
         if status_code == 404:
             raise LumeNotFoundError(f"Resource not found during {operation}")
         elif status_code == 400:
@@ -138,13 +145,11 @@ class PyLume:
             raise LumeServerError(
                 f"Server error during {operation}",
                 status_code=status_code,
-                response_text=response_text
+                response_text=response_text,
             )
         else:
             raise LumeServerError(
-                f"Error during {operation}",
-                status_code=status_code,
-                response_text=response_text
+                f"Error during {operation}", status_code=status_code, response_text=response_text
             )
 
     async def _read_output(self) -> None:
@@ -163,7 +168,7 @@ class PyLume:
                             break
                         line = line.strip()
                         self._log_debug(f"Server stdout: {line}")
-                        if "Server started" in line.decode('utf-8'):
+                        if "Server started" in line.decode("utf-8"):
                             self._log_debug("Detected server started message")
                             return
 
@@ -175,7 +180,7 @@ class PyLume:
                             break
                         line = line.strip()
                         self._log_debug(f"Server stderr: {line}")
-                        if "error" in line.decode('utf-8').lower():
+                        if "error" in line.decode("utf-8").lower():
                             raise RuntimeError(f"Server error: {line}")
 
                 await asyncio.sleep(0.1)  # Small delay to prevent CPU spinning
@@ -188,10 +193,10 @@ class PyLume:
         """Create a VM with the given configuration."""
         # Ensure client is initialized
         await self._init_client()
-        
+
         if isinstance(spec, VMConfig):
             spec = spec.model_dump(by_alias=True, exclude_none=True)
-        
+
         # Suppress optional attribute access errors
         self.client.print_curl("POST", "/vms", spec)  # type: ignore[attr-defined]
         await self.client.post("/vms", spec)  # type: ignore[attr-defined]
@@ -200,10 +205,10 @@ class PyLume:
     async def run_vm(self, name: str, opts: Optional[Union[VMRunOpts, dict]] = None) -> None:
         """Run a VM."""
         if opts is None:
-            opts = VMRunOpts(no_display=False) # type: ignore[attr-defined]
+            opts = VMRunOpts(no_display=False)  # type: ignore[attr-defined]
         elif isinstance(opts, dict):
             opts = VMRunOpts(**opts)
-            
+
         payload = opts.model_dump(by_alias=True, exclude_none=True)
         self.client.print_curl("POST", f"/vms/{name}/run", payload)  # type: ignore[attr-defined]
         await self.client.post(f"/vms/{name}/run", payload)  # type: ignore[attr-defined]
@@ -225,7 +230,7 @@ class PyLume:
         """Update VM settings."""
         if isinstance(params, dict):
             params = VMUpdateOpts(**params)
-            
+
         payload = params.model_dump(by_alias=True, exclude_none=True)
         self.client.print_curl("PATCH", f"/vms/{name}", payload)  # type: ignore[attr-defined]
         await self.client.patch(f"/vms/{name}", payload)  # type: ignore[attr-defined]
@@ -241,7 +246,9 @@ class PyLume:
         await self.client.delete(f"/vms/{name}")  # type: ignore[attr-defined]
 
     @ensure_server
-    async def pull_image(self, spec: Union[ImageRef, dict, str], name: Optional[str] = None) -> None:
+    async def pull_image(
+        self, spec: Union[ImageRef, dict, str], name: Optional[str] = None
+    ) -> None:
         """Pull a VM image."""
         await self._init_client()
         if isinstance(spec, str):
@@ -261,14 +268,14 @@ class PyLume:
             image_str = f"{spec.image}:{spec.tag}"
             registry = spec.registry
             organization = spec.organization
-            
+
         payload = {
             "image": image_str,
             "name": name,
             "registry": registry,
-            "organization": organization
+            "organization": organization,
         }
-        
+
         self.client.print_curl("POST", "/pull", payload)  # type: ignore[attr-defined]
         await self.client.post("/pull", payload, timeout=300.0)  # type: ignore[attr-defined]
 
@@ -305,4 +312,4 @@ class PyLume:
     async def _ensure_client(self) -> None:
         """Ensure client is initialized."""
         if self.client is None:
-            await self._init_client() 
+            await self._init_client()

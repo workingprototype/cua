@@ -10,7 +10,6 @@ from ....core.tools.collection import ToolCollection
 
 from .bash import OmniBashTool
 from .computer import OmniComputerTool
-from .edit import OmniEditTool
 
 
 class ProviderType(Enum):
@@ -35,11 +34,10 @@ class OmniToolManager(BaseToolManager):
         # Initialize tools
         self.computer_tool = OmniComputerTool(self.computer)
         self.bash_tool = OmniBashTool(self.computer)
-        self.edit_tool = OmniEditTool(self.computer)
 
     def _initialize_tools(self) -> ToolCollection:
         """Initialize all available tools."""
-        return ToolCollection(self.computer_tool, self.bash_tool, self.edit_tool)
+        return ToolCollection(self.computer_tool, self.bash_tool)
 
     async def _initialize_tools_specific(self) -> None:
         """Initialize provider-specific tool requirements."""

@@ -28,6 +28,8 @@ from computer.utils import get_image_size
 async def main():
     try:
         print("\n=== Using direct initialization ===")
+
+        # Create computer with configured host
         computer = Computer(
             display="1024x768",  # Higher resolution
             memory="8GB",  # More memory
@@ -48,10 +50,10 @@ async def main():
             print(f"Accessibility tree: {accessibility_tree}")
 
             # Screen Actions Examples
-            print("\n===  Screen Actions ===")
-            screenshot = await computer.interface.screenshot()
-            with open("screenshot_direct.png", "wb") as f:
-                f.write(screenshot)
+            # print("\n===  Screen Actions ===")
+            # screenshot = await computer.interface.screenshot()
+            # with open("screenshot_direct.png", "wb") as f:
+            #     f.write(screenshot)
 
             screen_size = await computer.interface.get_screen_size()
             print(f"Screen size: {screen_size}")

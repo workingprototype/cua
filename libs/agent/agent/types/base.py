@@ -5,17 +5,6 @@ from typing import Dict, Any
 from pydantic import BaseModel, ConfigDict
 
 
-class Provider(str, Enum):
-    """Available AI providers."""
-
-    UNKNOWN = "unknown"  # Default provider for base class
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    OLLAMA = "ollama"
-    OMNI = "omni"
-    GROQ = "groq"
-
-
 class HostConfig(BaseModel):
     """Host configuration."""
 
@@ -48,6 +37,5 @@ class AgentLoop(Enum):
     """Enumeration of available loop types."""
 
     ANTHROPIC = auto()  # Anthropic implementation
-    OPENAI = auto()  # OpenAI implementation
     OMNI = auto()  # OmniLoop implementation
     # Add more loop types as needed

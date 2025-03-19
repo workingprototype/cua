@@ -96,7 +96,7 @@ def compress_image_base64(
             # Resize image
             new_width = int(img.width * scale_factor)
             new_height = int(img.height * scale_factor)
-            current_img = img.resize((new_width, new_height), Image.LANCZOS)
+            current_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             # Try with reduced size and quality
             buffer = io.BytesIO()
@@ -130,7 +130,9 @@ def compress_image_base64(
 
         # Last resort: Use minimum quality and size
         buffer = io.BytesIO()
-        smallest_img = img.resize((int(img.width * 0.5), int(img.height * 0.5)), Image.LANCZOS)
+        smallest_img = img.resize(
+            (int(img.width * 0.5), int(img.height * 0.5)), Image.Resampling.LANCZOS
+        )
         # Convert to RGB if necessary
         if smallest_img.mode in ("RGBA", "LA") or (
             smallest_img.mode == "P" and "transparency" in smallest_img.info

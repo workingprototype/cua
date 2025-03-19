@@ -5,13 +5,13 @@ import asyncio
 import logging
 import traceback
 from pathlib import Path
-from datetime import datetime
 import signal
 
 from computer import Computer
 
 # Import the unified agent class and types
-from agent import ComputerAgent, AgentLoop, LLMProvider, LLM
+from agent import AgentLoop, LLMProvider, LLM
+from agent.core.computer_agent import ComputerAgent
 
 # Import utility functions
 from utils import load_dotenv_files, handle_sigint
@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 async def run_omni_agent_example():
     """Run example of using the ComputerAgent with OpenAI and Omni provider."""
-    print(f"\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
+    print("\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
+
     try:
         # Create Computer instance with default parameters
         computer = Computer(verbosity=logging.DEBUG)
@@ -31,10 +32,10 @@ async def run_omni_agent_example():
         # Create agent with loop and provider
         agent = ComputerAgent(
             computer=computer,
-            # loop=AgentLoop.OMNI,
-            loop=AgentLoop.ANTHROPIC,
-            # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
-            model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+            # loop=AgentLoop.ANTHROPIC,
+            loop=AgentLoop.OMNI,
+            model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
+            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
             save_trajectory=True,
             trajectory_dir=str(Path("trajectories")),
             only_n_most_recent_images=3,
@@ -69,14 +70,15 @@ async def run_omni_agent_example():
                 print(f"Task {i} completed")
 
     except Exception as e:
-        logger.error(f"Error in run_anthropic_agent_example: {e}")
+        logger.error(f"Error in run_omni_agent_example: {e}")
         traceback.print_exc()
         raise
     finally:
         # Clean up resources
         if computer and computer._initialized:
             try:
-                await computer.stop()
+                # await computer.stop()
+                pass
             except Exception as e:
                 logger.warning(f"Error stopping computer: {e}")
 
