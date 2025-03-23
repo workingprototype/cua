@@ -44,6 +44,10 @@ class AnthropicClient(BaseOmniClient):
         anthropic_messages = []
 
         for message in messages:
+            # Skip messages with empty content
+            if not message.get("content"):
+                continue
+
             if message["role"] == "user":
                 anthropic_messages.append({"role": "user", "content": message["content"]})
             elif message["role"] == "assistant":

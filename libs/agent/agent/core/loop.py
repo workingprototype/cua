@@ -2,12 +2,9 @@
 
 import logging
 import asyncio
-import json
-import os
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 from datetime import datetime
-import base64
 
 from computer import Computer
 from .experiment import ExperimentManager
@@ -17,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 class BaseLoop(ABC):
     """Base class for agent loops that handle message processing and tool execution."""
+
+    ###########################################
+    # INITIALIZATION AND CONFIGURATION
+    ###########################################
 
     def __init__(
         self,
@@ -75,6 +76,64 @@ class BaseLoop(ABC):
         # Initialize basic tracking
         self.turn_count = 0
 
+    async def initialize(self) -> None:
+        """Initialize both the API client and computer interface with retries."""
+        for attempt in range(self.max_retries):
+            try:
+                logger.info(
+                    f"Starting initialization (attempt {attempt + 1}/{self.max_retries})..."
+                )
+
+                # Initialize API client
+                await self.initialize_client()
+
+                logger.info("Initialization complete.")
+                return
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    logger.warning(
+                        f"Initialization failed (attempt {attempt + 1}/{self.max_retries}): {str(e)}. Retrying..."
+                    )
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    logger.error(
+                        f"Initialization failed after {self.max_retries} attempts: {str(e)}"
+                    )
+                    raise RuntimeError(f"Failed to initialize: {str(e)}")
+
+        ###########################################
+
+    # ABSTRACT METHODS TO BE IMPLEMENTED BY SUBCLASSES
+    ###########################################
+
+    @abstractmethod
+    async def initialize_client(self) -> None:
+        """Initialize the API client and any provider-specific components.
+
+        This method must be implemented by subclasses to set up
+        provider-specific clients and tools.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+        """Run the agent loop with provided messages.
+
+        This method handles the main agent loop including message processing,
+        API calls, response handling, and action execution.
+
+        Args:
+            messages: List of message objects
+
+        Yields:
+            Dict containing response data
+        """
+        raise NotImplementedError
+
+    ###########################################
+    # EXPERIMENT AND TRAJECTORY MANAGEMENT
+    ###########################################
+
     def _setup_experiment_dirs(self) -> None:
         """Setup the experiment directory structure."""
         if self.experiment_manager:
@@ -100,10 +159,13 @@ class BaseLoop(ABC):
     ) -> None:
         """Log API call details to file.
 
+        Preserves provider-specific formats for requests and responses to ensure
+        accurate logging for debugging and analysis purposes.
+
         Args:
             call_type: Type of API call (e.g., 'request', 'response', 'error')
-            request: The API request data
-            response: Optional API response data
+            request: The API request data in provider-specific format
+            response: Optional API response data in provider-specific format
             error: Optional error information
         """
         if self.experiment_manager:
@@ -130,119 +192,155 @@ class BaseLoop(ABC):
         if self.experiment_manager:
             self.experiment_manager.save_screenshot(img_base64, action_type)
 
-    async def initialize(self) -> None:
-        """Initialize both the API client and computer interface with retries."""
-        for attempt in range(self.max_retries):
-            try:
-                logger.info(
-                    f"Starting initialization (attempt {attempt + 1}/{self.max_retries})..."
-                )
+    def _create_openai_compatible_response(
+        self, response: Any, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Create an OpenAI computer use agent compatible response format.
 
-                # Initialize API client
-                await self.initialize_client()
-
-                logger.info("Initialization complete.")
-                return
-            except Exception as e:
-                if attempt < self.max_retries - 1:
-                    logger.warning(
-                        f"Initialization failed (attempt {attempt + 1}/{self.max_retries}): {str(e)}. Retrying..."
-                    )
-                    await asyncio.sleep(self.retry_delay)
-                else:
-                    logger.error(
-                        f"Initialization failed after {self.max_retries} attempts: {str(e)}"
-                    )
-                    raise RuntimeError(f"Failed to initialize: {str(e)}")
-
-    async def _get_parsed_screen_som(self) -> Dict[str, Any]:
-        """Get parsed screen information.
+        Args:
+            response: The original API response
+            messages: List of messages in standard OpenAI format
 
         Returns:
-            Dict containing screen information
+            A response formatted according to OpenAI's computer use agent standard
         """
-        try:
-            # Take screenshot
-            screenshot = await self.computer.interface.screenshot()
+        import json
 
-            # Initialize with default values
-            width, height = 1024, 768
-            base64_image = ""
+        # Create a unique ID for this response
+        response_id = f"resp_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(response)}"
+        reasoning_id = f"rs_{response_id}"
+        action_id = f"cu_{response_id}"
+        call_id = f"call_{response_id}"
 
-            # Handle different types of screenshot returns
-            if isinstance(screenshot, (bytes, bytearray, memoryview)):
-                # Raw bytes screenshot
-                base64_image = base64.b64encode(screenshot).decode("utf-8")
-            elif hasattr(screenshot, "base64_image"):
-                # Object-style screenshot with attributes
-                # Type checking can't infer these attributes, but they exist at runtime
-                # on certain screenshot return types
-                base64_image = getattr(screenshot, "base64_image")
-                width = (
-                    getattr(screenshot, "width", width) if hasattr(screenshot, "width") else width
-                )
-                height = (
-                    getattr(screenshot, "height", height)
-                    if hasattr(screenshot, "height")
-                    else height
-                )
+        # Extract the last assistant message
+        assistant_msg = None
+        for msg in reversed(messages):
+            if msg["role"] == "assistant":
+                assistant_msg = msg
+                break
 
-            # Create parsed screen data
-            parsed_screen = {
-                "width": width,
-                "height": height,
-                "parsed_content_list": [],
-                "timestamp": datetime.now().isoformat(),
-                "screenshot_base64": base64_image,
+        if not assistant_msg:
+            # If no assistant message found, create a default one
+            assistant_msg = {"role": "assistant", "content": "No response available"}
+
+        # Initialize output array
+        output_items = []
+
+        # Extract reasoning and action details from the response
+        content = assistant_msg["content"]
+        reasoning_text = None
+        action_details = None
+
+        # Extract reasoning and action from different content formats
+        if isinstance(content, str):
+            try:
+                # Try to parse JSON
+                parsed_content = json.loads(content)
+                reasoning_text = parsed_content.get("Explanation", "")
+
+                # Extract action details
+                action = parsed_content.get("Action", "")
+                position = parsed_content.get("Position", {})
+                text_input = parsed_content.get("Text", "")
+
+                if action.lower() == "click" and position:
+                    action_details = {
+                        "type": "click",
+                        "button": "left",
+                        "x": position.get("x", 100),
+                        "y": position.get("y", 100),
+                    }
+                elif action.lower() == "type" and text_input:
+                    action_details = {
+                        "type": "type",
+                        "text": text_input,
+                    }
+                elif action.lower() == "scroll":
+                    action_details = {
+                        "type": "scroll",
+                        "x": 100,
+                        "y": 100,
+                        "scroll_x": position.get("delta_x", 0),
+                        "scroll_y": position.get("delta_y", 0),
+                    }
+            except json.JSONDecodeError:
+                # If not valid JSON, use the content as reasoning
+                reasoning_text = content
+        elif isinstance(content, list):
+            # Handle list of content blocks (like Anthropic format)
+            for item in content:
+                if isinstance(item, dict):
+                    if item.get("type") == "text":
+                        # Collect text blocks for reasoning
+                        if reasoning_text is None:
+                            reasoning_text = ""
+                        reasoning_text += item.get("text", "")
+                    elif item.get("type") == "tool_use":
+                        # Extract action from tool_use (similar to Anthropic format)
+                        tool_input = item.get("input", {})
+                        if "click" in tool_input or "position" in tool_input:
+                            position = tool_input.get("click", tool_input.get("position", {}))
+                            if isinstance(position, dict) and "x" in position and "y" in position:
+                                action_details = {
+                                    "type": "click",
+                                    "button": "left",
+                                    "x": position.get("x", 100),
+                                    "y": position.get("y", 100),
+                                }
+                        elif "type" in tool_input or "text" in tool_input:
+                            action_details = {
+                                "type": "type",
+                                "text": tool_input.get("type", tool_input.get("text", "")),
+                            }
+                        elif "scroll" in tool_input:
+                            scroll = tool_input.get("scroll", {})
+                            action_details = {
+                                "type": "scroll",
+                                "x": 100,
+                                "y": 100,
+                                "scroll_x": scroll.get("x", 0),
+                                "scroll_y": scroll.get("y", 0),
+                            }
+
+        # Add reasoning item if we have text content
+        if reasoning_text:
+            output_items.append(
+                {
+                    "type": "reasoning",
+                    "id": reasoning_id,
+                    "summary": [
+                        {
+                            "type": "summary_text",
+                            "text": reasoning_text[:200],  # Truncate to reasonable length
+                        }
+                    ],
+                }
+            )
+
+        # If no action details extracted, use default
+        if not action_details:
+            action_details = {
+                "type": "click",
+                "button": "left",
+                "x": 100,
+                "y": 100,
             }
 
-            # Save screenshot if requested
-            if self.save_trajectory and self.experiment_manager:
-                try:
-                    img_data = base64_image
-                    if "," in img_data:
-                        img_data = img_data.split(",")[1]
-                    self._save_screenshot(img_data, action_type="state")
-                except Exception as e:
-                    logger.error(f"Error saving screenshot: {str(e)}")
+        # Add computer_call item
+        computer_call = {
+            "type": "computer_call",
+            "id": action_id,
+            "call_id": call_id,
+            "action": action_details,
+            "pending_safety_checks": [],
+            "status": "completed",
+        }
+        output_items.append(computer_call)
 
-            return parsed_screen
-        except Exception as e:
-            logger.error(f"Error taking screenshot: {str(e)}")
-            return {
-                "width": 1024,
-                "height": 768,
-                "parsed_content_list": [],
-                "timestamp": datetime.now().isoformat(),
-                "error": f"Error taking screenshot: {str(e)}",
-                "screenshot_base64": "",
-            }
-
-    @abstractmethod
-    async def initialize_client(self) -> None:
-        """Initialize the API client and any provider-specific components."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
-        """Run the agent loop with provided messages.
-
-        Args:
-            messages: List of message objects
-
-        Yields:
-            Dict containing response data
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def _process_screen(
-        self, parsed_screen: Dict[str, Any], messages: List[Dict[str, Any]]
-    ) -> None:
-        """Process screen information and add to messages.
-
-        Args:
-            parsed_screen: Dictionary containing parsed screen info
-            messages: List of messages to update
-        """
-        raise NotImplementedError
+        # Create the OpenAI-compatible response format
+        return {
+            "output": output_items,
+            "id": response_id,
+            # Include the original response for compatibility
+            "response": {"choices": [{"message": assistant_msg, "finish_reason": "stop"}]},
+        }

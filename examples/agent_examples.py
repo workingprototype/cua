@@ -6,6 +6,7 @@ import logging
 import traceback
 from pathlib import Path
 import signal
+import json
 
 from computer import Computer
 
@@ -32,42 +33,31 @@ async def run_omni_agent_example():
         # Create agent with loop and provider
         agent = ComputerAgent(
             computer=computer,
-            loop=AgentLoop.ANTHROPIC,
-            # loop=AgentLoop.OMNI,
+            # loop=AgentLoop.ANTHROPIC,
+            loop=AgentLoop.OMNI,
             # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
             model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
             save_trajectory=True,
-            trajectory_dir=str(Path("trajectories")),
             only_n_most_recent_images=3,
-            verbosity=logging.INFO,
+            verbosity=logging.DEBUG,
         )
 
         tasks = [
-            """
-1. Look for a repository named trycua/lume on GitHub.
-2. Check the open issues, open the most recent one and read it.
-3. Clone the repository in users/lume/projects if it doesn't exist yet.
-4. Open the repository with an app named Cursor (on the dock, black background and white cube icon).
-5. From Cursor, open Composer if not already open.
-6. Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.
-"""
+            "Look for a repository named trycua/cua on GitHub.",
+            "Check the open issues, open the most recent one and read it.",
+            "Clone the repository in users/lume/projects if it doesn't exist yet.",
+            "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
+            "From Cursor, open Composer if not already open.",
+            "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
         ]
 
         async with agent:
-            for i, task in enumerate(tasks, 1):
+            for i, task in enumerate(tasks):
                 print(f"\nExecuting task {i}/{len(tasks)}: {task}")
                 async for result in agent.run(task):
-                    # Check if result has the expected structure
-                    if "role" in result and "content" in result and "metadata" in result:
-                        title = result["metadata"].get("title", "Screen Analysis")
-                        content = result["content"]
-                    else:
-                        title = result.get("metadata", {}).get("title", "Screen Analysis")
-                        content = result.get("content", str(result))
+                    print(result)
 
-                    print(f"\n{title}")
-                    print(content)
-                print(f"Task {i} completed")
+                print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 
     except Exception as e:
         logger.error(f"Error in run_omni_agent_example: {e}")
