@@ -11,10 +11,6 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
 
-
-LLMProvider
-
-
 @dataclass
 class LLM:
     """Configuration for LLM model and provider."""

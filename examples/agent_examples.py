@@ -32,10 +32,10 @@ async def run_omni_agent_example():
         # Create agent with loop and provider
         agent = ComputerAgent(
             computer=computer,
-            # loop=AgentLoop.ANTHROPIC,
-            loop=AgentLoop.OMNI,
-            model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
-            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+            loop=AgentLoop.ANTHROPIC,
+            # loop=AgentLoop.OMNI,
+            # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
+            model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
             save_trajectory=True,
             trajectory_dir=str(Path("trajectories")),
             only_n_most_recent_images=3,

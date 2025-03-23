@@ -5,9 +5,7 @@ from pylume.models import (
     VMUpdateOpts,
     ImageRef,
     SharedDirectory,
-    VMStatus,
-    VMConfig,
-    CloneSpec,
+    VMStatus
 )
 import asyncio
 from .models import Computer as ComputerConfig, Display
@@ -15,7 +13,6 @@ from .interface.factory import InterfaceFactory
 import time
 from PIL import Image
 import io
-from .utils import bytes_to_image
 import re
 from .logger import Logger, LogLevel
 import json
@@ -266,7 +263,8 @@ class Computer:
                 # Log the equivalent curl command for debugging
                 payload = json.dumps({"noDisplay": False, "sharedDirectories": []})
                 curl_cmd = f"curl -X POST 'http://localhost:3000/lume/vms/{self.config.name}/run' -H 'Content-Type: application/json' -d '{payload}'"
-                print(f"\nEquivalent curl command:\n{curl_cmd}\n")
+                self.logger.info(f"Equivalent curl command:")
+                self.logger.info(f"{curl_cmd}")
 
                 try:
                     response = await self.config.pylume.run_vm(self.config.name, run_opts)  # type: ignore[attr-defined]

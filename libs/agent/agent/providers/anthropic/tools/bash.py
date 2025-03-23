@@ -74,31 +74,30 @@ class _BashSession:
             async with asyncio.timeout(self._timeout):
                 while True:
                     await asyncio.sleep(self._output_delay)
-                    # if we read directly from stdout/stderr, it will wait forever for
-                    # EOF. use the StreamReader buffer directly instead.
-                    output = (
-                        self._process.stdout._buffer.decode()
-                    )  # pyright: ignore[reportAttributeAccessIssue]
-                    if self._sentinel in output:
-                        # strip the sentinel and break
-                        output = output[: output.index(self._sentinel)]
-                        break
+                    # Read from stdout using the proper API
+                    output_bytes = await self._process.stdout.read()
+                    if output_bytes:
+                        output = output_bytes.decode()
+                        if self._sentinel in output:
+                            # strip the sentinel and break
+                            output = output[: output.index(self._sentinel)]
+                            break
         except asyncio.TimeoutError:
             self._timed_out = True
             raise ToolError(
                 f"timed out: bash has not returned in {self._timeout} seconds and must be restarted",
             ) from None
 
-        if output.endswith("\n"):
+        if output and output.endswith("\n"):
             output = output[:-1]
 
-        error = self._process.stderr._buffer.decode()  # pyright: ignore[reportAttributeAccessIssue]
-        if error.endswith("\n"):
+        # Read from stderr using the proper API
+        error_bytes = await self._process.stderr.read()
+        error = error_bytes.decode() if error_bytes else ""
+        if error and error.endswith("\n"):
             error = error[:-1]
 
-        # clear the buffers so that the next output can be read correctly
-        self._process.stdout._buffer.clear()  # pyright: ignore[reportAttributeAccessIssue]
-        self._process.stderr._buffer.clear()  # pyright: ignore[reportAttributeAccessIssue]
+        # No need to clear buffers as we're using read() which consumes the data
 
         return CLIResult(output=output, error=error)
 

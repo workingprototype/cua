@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Union
 import logging
 import signal
 from contextlib import contextmanager
@@ -137,14 +137,17 @@ class OCRProcessor:
             img_width, img_height = image.size
 
             for box, text, conf in results:
-                if conf < confidence_threshold:
+                # Ensure conf is float
+                conf_float = float(conf)
+                if conf_float < confidence_threshold:
                     continue
 
                 # Convert box format to [x1, y1, x2, y2]
-                x1 = min(point[0] for point in box) / img_width
-                y1 = min(point[1] for point in box) / img_height
-                x2 = max(point[0] for point in box) / img_width
-                y2 = max(point[1] for point in box) / img_height
+                # Ensure box points are properly typed as float
+                x1 = min(float(point[0]) for point in box) / img_width
+                y1 = min(float(point[1]) for point in box) / img_height
+                x2 = max(float(point[0]) for point in box) / img_width
+                y2 = max(float(point[1]) for point in box) / img_height
 
                 detections.append(
                     {

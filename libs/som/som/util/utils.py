@@ -3,7 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from typing import Union
+from typing import Union, List, Tuple, Any, Optional, cast, Sequence
 import time
 import signal
 from contextlib import contextmanager
@@ -56,7 +56,7 @@ def check_ocr_box(
     goal_filtering=None,
     easyocr_args=None,
     use_paddleocr=False,
-):
+) -> Tuple[Tuple[List[str], List[Tuple[float, float, float, float]]], Optional[Any]]:
     """Check OCR box using EasyOCR with optimized settings.
 
     Args:
@@ -66,6 +66,11 @@ def check_ocr_box(
         goal_filtering: Optional filtering of results
         easyocr_args: Arguments for EasyOCR
         use_paddleocr: Ignored (kept for backward compatibility)
+
+    Returns:
+        Tuple containing:
+        - Tuple of (text_list, bounding_boxes)
+        - goal_filtering value
     """
     logger.info("Starting OCR processing...")
     start_time = time.time()
@@ -104,9 +109,11 @@ def check_ocr_box(
         # Use EasyOCR with timeout
         logger.info("Starting EasyOCR detection with 5 second timeout...")
         with timeout(5):  # 5 second timeout
-            result = reader.readtext(image_np, **default_args)
-            coord = [item[0] for item in result]
-            text = [item[1] for item in result]
+            # EasyOCR's readtext returns a list of tuples, where each tuple is (bbox, text, confidence)
+            raw_result = reader.readtext(image_np, **default_args)
+            result = cast(Sequence[Tuple[List[Tuple[float, float]], str, float]], raw_result)
+            coord = [item[0] for item in result]  # item[0] is the bbox coordinates
+            text = [item[1] for item in result]  # item[1] is the text content
             logger.info(f"OCR completed successfully. Found {len(text)} text regions")
             logger.info(f"Detected text: {text}")
 
@@ -129,13 +136,25 @@ def check_ocr_box(
         for item in coord:
             x, y, a, b = get_xywh(item)
             bb.append((x, y, a, b))
-            cv2.rectangle(opencv_img, (x, y), (x + a, y + b), (0, 255, 0), 2)
+            # Convert float coordinates to integers for cv2.rectangle
+            x_val = cast(float, x)
+            y_val = cast(float, y)
+            a_val = cast(float, a)
+            b_val = cast(float, b)
+            x_int, y_int = int(x_val), int(y_val)
+            a_int, b_int = int(a_val), int(b_val)
+            cv2.rectangle(
+                opencv_img, (x_int, y_int), (x_int + a_int, y_int + b_int), (0, 255, 0), 2
+            )
         plt.imshow(cv2.cvtColor(opencv_img, cv2.COLOR_BGR2RGB))
     else:
         if output_bb_format == "xywh":
             bb = [get_xywh(item) for item in coord]
         elif output_bb_format == "xyxy":
             bb = [get_xyxy(item) for item in coord]
+
+    # Cast the bounding boxes to the expected type
+    bb = cast(List[Tuple[float, float, float, float]], bb)
 
     logger.info("OCR processing complete")
     return (text, bb), goal_filtering

@@ -51,6 +51,7 @@ def process_text_box(box, image):
     """Process a single text box with OCR."""
     try:
         import easyocr
+        from typing import List, Tuple, Any, Sequence
 
         x1 = int(min(point[0] for point in box))
         y1 = int(min(point[1] for point in box))
@@ -67,12 +68,15 @@ def process_text_box(box, image):
         region = image[y1:y2, x1:x2]
         if region.size > 0:
             reader = easyocr.Reader(["en"])
-            result = reader.readtext(region)
-            if result:
-                text = result[0][1]  # Get text
-                conf = result[0][2]  # Get confidence
-                if conf > 0.5:
-                    return text, [x1, y1, x2, y2], conf
+            results = reader.readtext(region)
+            if results and len(results) > 0:
+                # EasyOCR returns a list of tuples (bbox, text, confidence)
+                first_result = results[0]
+                if isinstance(first_result, (list, tuple)) and len(first_result) >= 3:
+                    text = str(first_result[1])
+                    confidence = float(first_result[2])
+                    if confidence > 0.5:
+                        return text, [x1, y1, x2, y2], confidence
     except Exception:
         pass
     return None
@@ -89,6 +93,10 @@ def check_ocr_box(image_path: Union[str, Path]) -> Tuple[List[str], List[List[fl
     if image_cv is None:
         logger.error(f"Failed to read image: {image_path}")
         return [], []
+
+    # Get image dimensions
+    img_height, img_width = image_cv.shape[:2]
+    confidence_threshold = 0.5
 
     # Use EasyOCR
     import ssl
@@ -120,7 +128,7 @@ def check_ocr_box(image_path: Union[str, Path]) -> Tuple[List[str], List[List[fl
         x2 = max(point[0] for point in box)
         y2 = max(point[1] for point in box)
 
-        if conf > 0.5:  # Only keep higher confidence detections
+        if float(conf) > 0.5:  # Only keep higher confidence detections
             texts.append(text)
             boxes.append([x1, y1, x2, y2])
 
