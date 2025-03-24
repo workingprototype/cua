@@ -3,8 +3,7 @@
 import asyncio
 import logging
 import os
-from typing import Any, AsyncGenerator, Dict, Optional, cast
-from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Dict, Optional, cast, List
 
 from computer import Computer
 from ..providers.anthropic.loop import AnthropicLoop
@@ -12,6 +11,8 @@ from ..providers.omni.loop import OmniLoop
 from ..providers.omni.parser import OmniParser
 from ..providers.omni.types import LLMProvider, LLM
 from .. import AgentLoop
+from .messages import StandardMessageManager, ImageRetentionConfig
+from .types import AgentResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,7 +45,6 @@ class ComputerAgent:
         save_trajectory: bool = True,
         trajectory_dir: str = "trajectories",
         only_n_most_recent_images: Optional[int] = None,
-        parser: Optional[OmniParser] = None,
         verbosity: int = logging.INFO,
     ):
         """Initialize the ComputerAgent.
@@ -61,12 +61,11 @@ class ComputerAgent:
             save_trajectory: Whether to save the trajectory.
             trajectory_dir: Directory to save the trajectory.
             only_n_most_recent_images: Maximum number of recent screenshots to include in API requests.
-            parser: Parser instance for the OmniLoop. Only used if provider is not ANTHROPIC.
             verbosity: Logging level.
         """
         # Basic agent configuration
         self.max_retries = max_retries
-        self.computer = computer or Computer()
+        self.computer = computer
         self.queue = asyncio.Queue()
         self.screenshot_dir = screenshot_dir
         self.log_dir = log_dir
@@ -100,7 +99,7 @@ class ComputerAgent:
                 )
 
         # Ensure computer is properly cast for typing purposes
-        computer_instance = cast(Computer, self.computer)
+        computer_instance = self.computer
 
         # Get API key from environment if not provided
         actual_api_key = api_key or os.environ.get(ENV_VARS[self.provider], "")
@@ -118,10 +117,6 @@ class ComputerAgent:
                 only_n_most_recent_images=only_n_most_recent_images,
             )
         else:
-            # Default to OmniLoop for other loop types
-            # Initialize parser if not provided
-            actual_parser = parser or OmniParser()
-
             self._loop = OmniLoop(
                 provider=self.provider,
                 api_key=actual_api_key,
@@ -130,8 +125,11 @@ class ComputerAgent:
                 save_trajectory=save_trajectory,
                 base_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
-                parser=actual_parser,
+                parser=OmniParser(),
             )
+
+        # Initialize the message manager from the loop
+        self.message_manager = self._loop.message_manager
 
         logger.info(
             f"ComputerAgent initialized with provider: {self.provider}, model: {actual_model_name}"
@@ -201,36 +199,30 @@ class ComputerAgent:
                 await self.computer.run()
             self._initialized = True
 
-    async def _init_if_needed(self):
-        """Initialize the computer interface if it hasn't been initialized yet."""
-        if not self.computer._initialized:
-            logger.info("Computer not initialized, initializing now...")
-            try:
-                # Call run directly
-                await self.computer.run()
-                logger.info("Computer interface initialized successfully")
-            except Exception as e:
-                logger.error(f"Error initializing computer interface: {str(e)}")
-                raise
-
-    async def run(self, task: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, task: str) -> AsyncGenerator[AgentResponse, None]:
         """Run a task using the computer agent.
 
         Args:
             task: Task description
 
         Yields:
-            Task execution updates
+            Agent response format
         """
         try:
             logger.info(f"Running task: {task}")
+            logger.info(
+                f"Message history before task has {len(self.message_manager.messages)} messages"
+            )
 
             # Initialize the computer if needed
             if not self._initialized:
                 await self.initialize()
 
-            # Format task as a message
-            messages = [{"role": "user", "content": task}]
+            # Add task as a user message using the message manager
+            self.message_manager.add_user_message([{"type": "text", "text": task}])
+            logger.info(
+                f"Added task message. Message history now has {len(self.message_manager.messages)} messages"
+            )
 
             # Pass properly formatted messages to the loop
             if self._loop is None:
@@ -239,7 +231,8 @@ class ComputerAgent:
                 return
 
             # Execute the task and yield results
-            async for result in self._loop.run(messages):
+            async for result in self._loop.run(self.message_manager.messages):
+                # Yield the result to the caller
                 yield result
 
         except Exception as e:

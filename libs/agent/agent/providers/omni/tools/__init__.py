@@ -1,11 +1,30 @@
 """Omni provider tools - compatible with multiple LLM providers."""
 
-from .bash import OmniBashTool
-from .computer import OmniComputerTool
-from .manager import OmniToolManager
+from ....core.tools import BaseTool, ToolResult, ToolError, ToolFailure, CLIResult
+from .base import BaseOmniTool
+from .computer import ComputerTool
+from .bash import BashTool
+from .manager import ToolManager
 
+# Re-export the tools with Omni-specific names for backward compatibility
+OmniToolResult = ToolResult
+OmniToolError = ToolError
+OmniToolFailure = ToolFailure
+OmniCLIResult = CLIResult
+
+# We'll export specific tools once implemented
 __all__ = [
-    "OmniBashTool",
-    "OmniComputerTool",
-    "OmniToolManager",
+    "BaseTool",
+    "BaseOmniTool",
+    "ToolResult",
+    "ToolError",
+    "ToolFailure",
+    "CLIResult",
+    "OmniToolResult",
+    "OmniToolError",
+    "OmniToolFailure",
+    "OmniCLIResult",
+    "ComputerTool",
+    "BashTool",
+    "ToolManager",
 ]

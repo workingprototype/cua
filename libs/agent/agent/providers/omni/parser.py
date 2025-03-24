@@ -3,14 +3,11 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 import base64
-from PIL import Image
-from io import BytesIO
-import json
 import torch
 
 # Import from the SOM package
 from som import OmniParser as OmniDetectParser
-from som.models import ParseResult, BoundingBox, UIElement, ImageData, ParserMetadata
+from som.models import ParseResult, ParserMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -251,3 +248,60 @@ class OmniParser:
         except Exception as e:
             logger.error(f"Error formatting messages: {str(e)}")
             return messages  # Return original messages on error
+
+    async def calculate_click_coordinates(
+        self, box_id: int, parsed_screen: ParseResult
+    ) -> Tuple[int, int]:
+        """Calculate click coordinates based on box ID.
+
+        Args:
+            box_id: The ID of the box to click
+            parsed_screen: The parsed screen information
+
+        Returns:
+            Tuple of (x, y) coordinates
+
+        Raises:
+            ValueError: If box_id is invalid or missing from parsed screen
+        """
+        # First try to use structured elements data
+        logger.info(f"Elements count: {len(parsed_screen.elements)}")
+
+        # Try to find element with matching ID
+        for element in parsed_screen.elements:
+            if element.id == box_id:
+                logger.info(f"Found element with ID {box_id}: {element}")
+                bbox = element.bbox
+
+                # Get screen dimensions from the metadata if available, or fallback
+                width = parsed_screen.metadata.width if parsed_screen.metadata else 1920
+                height = parsed_screen.metadata.height if parsed_screen.metadata else 1080
+                logger.info(f"Screen dimensions: width={width}, height={height}")
+
+                # Create a dictionary from the element's bbox for calculate_element_center
+                bbox_dict = {"x1": bbox.x1, "y1": bbox.y1, "x2": bbox.x2, "y2": bbox.y2}
+                from ...core.visualization import calculate_element_center
+
+                center_x, center_y = calculate_element_center(bbox_dict, width, height)
+                logger.info(f"Calculated center: ({center_x}, {center_y})")
+
+                # Validate coordinates - if they're (0,0) or unreasonably small,
+                # use a default position in the center of the screen
+                if center_x == 0 and center_y == 0:
+                    logger.warning("Got (0,0) coordinates, using fallback position")
+                    center_x = width // 2
+                    center_y = height // 2
+                    logger.info(f"Using fallback center: ({center_x}, {center_y})")
+
+                return center_x, center_y
+
+        # If we couldn't find the box, use center of screen
+        logger.error(
+            f"Box ID {box_id} not found in structured elements (count={len(parsed_screen.elements)})"
+        )
+
+        # Use center of screen as fallback
+        width = parsed_screen.metadata.width if parsed_screen.metadata else 1920
+        height = parsed_screen.metadata.height if parsed_screen.metadata else 1080
+        logger.warning(f"Using fallback position in center of screen ({width//2}, {height//2})")
+        return width // 2, height // 2

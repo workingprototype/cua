@@ -2,21 +2,33 @@
 
 import logging
 import asyncio
-import json
-import os
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 from datetime import datetime
-import base64
 
 from computer import Computer
 from .experiment import ExperimentManager
+from .messages import StandardMessageManager, ImageRetentionConfig
+from .types import AgentResponse
 
 logger = logging.getLogger(__name__)
 
 
+class AgentLoop(Enum):
+    """Enumeration of available loop types."""
+
+    ANTHROPIC = auto()  # Anthropic implementation
+    OMNI = auto()  # OmniLoop implementation
+    # Add more loop types as needed
+
+
 class BaseLoop(ABC):
     """Base class for agent loops that handle message processing and tool execution."""
+
+    ###########################################
+    # INITIALIZATION AND CONFIGURATION
+    ###########################################
 
     def __init__(
         self,
@@ -55,8 +67,6 @@ class BaseLoop(ABC):
         self.save_trajectory = save_trajectory
         self.only_n_most_recent_images = only_n_most_recent_images
         self._kwargs = kwargs
-        self.message_history = []
-        # self.tool_manager = BaseToolManager(computer)
 
         # Initialize experiment manager
         if self.save_trajectory and self.base_dir:
@@ -74,61 +84,6 @@ class BaseLoop(ABC):
 
         # Initialize basic tracking
         self.turn_count = 0
-
-    def _setup_experiment_dirs(self) -> None:
-        """Setup the experiment directory structure."""
-        if self.experiment_manager:
-            # Use the experiment manager to set up directories
-            self.experiment_manager.setup_experiment_dirs()
-
-            # Update local tracking variables
-            self.run_dir = self.experiment_manager.run_dir
-            self.current_turn_dir = self.experiment_manager.current_turn_dir
-
-    def _create_turn_dir(self) -> None:
-        """Create a new directory for the current turn."""
-        if self.experiment_manager:
-            # Use the experiment manager to create the turn directory
-            self.experiment_manager.create_turn_dir()
-
-            # Update local tracking variables
-            self.current_turn_dir = self.experiment_manager.current_turn_dir
-            self.turn_count = self.experiment_manager.turn_count
-
-    def _log_api_call(
-        self, call_type: str, request: Any, response: Any = None, error: Optional[Exception] = None
-    ) -> None:
-        """Log API call details to file.
-
-        Args:
-            call_type: Type of API call (e.g., 'request', 'response', 'error')
-            request: The API request data
-            response: Optional API response data
-            error: Optional error information
-        """
-        if self.experiment_manager:
-            # Use the experiment manager to log the API call
-            provider = getattr(self, "provider", "unknown")
-            provider_str = str(provider) if provider else "unknown"
-
-            self.experiment_manager.log_api_call(
-                call_type=call_type,
-                request=request,
-                provider=provider_str,
-                model=self.model,
-                response=response,
-                error=error,
-            )
-
-    def _save_screenshot(self, img_base64: str, action_type: str = "") -> None:
-        """Save a screenshot to the experiment directory.
-
-        Args:
-            img_base64: Base64 encoded screenshot
-            action_type: Type of action that triggered the screenshot
-        """
-        if self.experiment_manager:
-            self.experiment_manager.save_screenshot(img_base64, action_type)
 
     async def initialize(self) -> None:
         """Initialize both the API client and computer interface with retries."""
@@ -155,94 +110,93 @@ class BaseLoop(ABC):
                     )
                     raise RuntimeError(f"Failed to initialize: {str(e)}")
 
-    async def _get_parsed_screen_som(self) -> Dict[str, Any]:
-        """Get parsed screen information.
+        ###########################################
 
-        Returns:
-            Dict containing screen information
-        """
-        try:
-            # Take screenshot
-            screenshot = await self.computer.interface.screenshot()
-
-            # Initialize with default values
-            width, height = 1024, 768
-            base64_image = ""
-
-            # Handle different types of screenshot returns
-            if isinstance(screenshot, (bytes, bytearray, memoryview)):
-                # Raw bytes screenshot
-                base64_image = base64.b64encode(screenshot).decode("utf-8")
-            elif hasattr(screenshot, "base64_image"):
-                # Object-style screenshot with attributes
-                # Type checking can't infer these attributes, but they exist at runtime
-                # on certain screenshot return types
-                base64_image = getattr(screenshot, "base64_image")
-                width = (
-                    getattr(screenshot, "width", width) if hasattr(screenshot, "width") else width
-                )
-                height = (
-                    getattr(screenshot, "height", height)
-                    if hasattr(screenshot, "height")
-                    else height
-                )
-
-            # Create parsed screen data
-            parsed_screen = {
-                "width": width,
-                "height": height,
-                "parsed_content_list": [],
-                "timestamp": datetime.now().isoformat(),
-                "screenshot_base64": base64_image,
-            }
-
-            # Save screenshot if requested
-            if self.save_trajectory and self.experiment_manager:
-                try:
-                    img_data = base64_image
-                    if "," in img_data:
-                        img_data = img_data.split(",")[1]
-                    self._save_screenshot(img_data, action_type="state")
-                except Exception as e:
-                    logger.error(f"Error saving screenshot: {str(e)}")
-
-            return parsed_screen
-        except Exception as e:
-            logger.error(f"Error taking screenshot: {str(e)}")
-            return {
-                "width": 1024,
-                "height": 768,
-                "parsed_content_list": [],
-                "timestamp": datetime.now().isoformat(),
-                "error": f"Error taking screenshot: {str(e)}",
-                "screenshot_base64": "",
-            }
+    # ABSTRACT METHODS TO BE IMPLEMENTED BY SUBCLASSES
+    ###########################################
 
     @abstractmethod
     async def initialize_client(self) -> None:
-        """Initialize the API client and any provider-specific components."""
+        """Initialize the API client and any provider-specific components.
+
+        This method must be implemented by subclasses to set up
+        provider-specific clients and tools.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
         """Run the agent loop with provided messages.
+
+        This method handles the main agent loop including message processing,
+        API calls, response handling, and action execution.
 
         Args:
             messages: List of message objects
 
         Yields:
-            Dict containing response data
+            Agent response format
         """
         raise NotImplementedError
 
-    @abstractmethod
-    async def _process_screen(
-        self, parsed_screen: Dict[str, Any], messages: List[Dict[str, Any]]
+    ###########################################
+    # EXPERIMENT AND TRAJECTORY MANAGEMENT
+    ###########################################
+
+    def _setup_experiment_dirs(self) -> None:
+        """Setup the experiment directory structure."""
+        if self.experiment_manager:
+            # Use the experiment manager to set up directories
+            self.experiment_manager.setup_experiment_dirs()
+
+            # Update local tracking variables
+            self.run_dir = self.experiment_manager.run_dir
+            self.current_turn_dir = self.experiment_manager.current_turn_dir
+
+    def _create_turn_dir(self) -> None:
+        """Create a new directory for the current turn."""
+        if self.experiment_manager:
+            # Use the experiment manager to create the turn directory
+            self.experiment_manager.create_turn_dir()
+
+            # Update local tracking variables
+            self.current_turn_dir = self.experiment_manager.current_turn_dir
+            self.turn_count = self.experiment_manager.turn_count
+
+    def _log_api_call(
+        self, call_type: str, request: Any, response: Any = None, error: Optional[Exception] = None
     ) -> None:
-        """Process screen information and add to messages.
+        """Log API call details to file.
+
+        Preserves provider-specific formats for requests and responses to ensure
+        accurate logging for debugging and analysis purposes.
 
         Args:
-            parsed_screen: Dictionary containing parsed screen info
-            messages: List of messages to update
+            call_type: Type of API call (e.g., 'request', 'response', 'error')
+            request: The API request data in provider-specific format
+            response: Optional API response data in provider-specific format
+            error: Optional error information
         """
-        raise NotImplementedError
+        if self.experiment_manager:
+            # Use the experiment manager to log the API call
+            provider = getattr(self, "provider", "unknown")
+            provider_str = str(provider) if provider else "unknown"
+
+            self.experiment_manager.log_api_call(
+                call_type=call_type,
+                request=request,
+                provider=provider_str,
+                model=self.model,
+                response=response,
+                error=error,
+            )
+
+    def _save_screenshot(self, img_base64: str, action_type: str = "") -> None:
+        """Save a screenshot to the experiment directory.
+
+        Args:
+            img_base64: Base64 encoded screenshot
+            action_type: Type of action that triggered the screenshot
+        """
+        if self.experiment_manager:
+            self.experiment_manager.save_screenshot(img_base64, action_type)

@@ -1,157 +1,236 @@
-"""Utility functions for Omni provider."""
+"""Main entry point for computer agents."""
 
-import base64
-import io
+import asyncio
+import json
 import logging
-from typing import Tuple
-from PIL import Image
+import os
+from typing import Any, Dict, List, Optional
+from som.models import ParseResult
+from ...core.types import AgentResponse
 
 logger = logging.getLogger(__name__)
 
 
-def compress_image_base64(
-    base64_str: str, max_size_bytes: int = 5 * 1024 * 1024, quality: int = 90
-) -> tuple[str, str]:
-    """Compress a base64 encoded image to ensure it's below a certain size.
+async def to_openai_agent_response_format(
+    response: Any,
+    messages: List[Dict[str, Any]],
+    parsed_screen: Optional[ParseResult] = None,
+    parser: Optional[Any] = None,
+    model: Optional[str] = None,
+) -> AgentResponse:
+    """Create an OpenAI computer use agent compatible response format.
 
     Args:
-        base64_str: Base64 encoded image string (with or without data URL prefix)
-        max_size_bytes: Maximum size in bytes (default: 5MB)
-        quality: Initial JPEG quality (0-100)
+        response: The original API response
+        messages: List of messages in standard OpenAI format
+        parsed_screen: Optional pre-parsed screen information
+        parser: Optional parser instance for coordinate calculation
+        model: Optional model name
 
     Returns:
-        tuple[str, str]: (Compressed base64 encoded image, media_type)
+        A response formatted according to OpenAI's computer use agent standard, including:
+        - All standard OpenAI computer use agent fields
+        - Original response in response.choices[0].message
+        - Full message history in messages field
     """
-    # Handle data URL prefix if present (e.g., "data:image/png;base64,...")
-    original_prefix = ""
-    media_type = "image/png"  # Default media type
+    from datetime import datetime
+    import time
 
-    if base64_str.startswith("data:"):
-        parts = base64_str.split(",", 1)
-        if len(parts) == 2:
-            original_prefix = parts[0] + ","
-            base64_str = parts[1]
-            # Try to extract media type from the prefix
-            if "image/jpeg" in original_prefix.lower():
-                media_type = "image/jpeg"
-            elif "image/png" in original_prefix.lower():
-                media_type = "image/png"
+    # Create a unique ID for this response
+    response_id = f"resp_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(response)}"
+    reasoning_id = f"rs_{response_id}"
+    action_id = f"cu_{response_id}"
+    call_id = f"call_{response_id}"
 
-    # Check if the base64 string is small enough already
-    if len(base64_str) <= max_size_bytes:
-        logger.info(f"Image already within size limit: {len(base64_str)} bytes")
-        return original_prefix + base64_str, media_type
+    # Extract the last assistant message
+    assistant_msg = None
+    for msg in reversed(messages):
+        if msg["role"] == "assistant":
+            assistant_msg = msg
+            break
 
-    try:
-        # Decode base64
-        img_data = base64.b64decode(base64_str)
-        img_size = len(img_data)
-        logger.info(f"Original image size: {img_size} bytes")
+    if not assistant_msg:
+        # If no assistant message found, create a default one
+        assistant_msg = {"role": "assistant", "content": "No response available"}
 
-        # Open image
-        img = Image.open(io.BytesIO(img_data))
+    # Initialize output array
+    output_items = []
 
-        # First, try to compress as PNG (maintains transparency if present)
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG", optimize=True)
-        buffer.seek(0)
-        compressed_data = buffer.getvalue()
-        compressed_b64 = base64.b64encode(compressed_data).decode("utf-8")
+    # Extract reasoning and action details from the response
+    content = assistant_msg["content"]
+    reasoning_text = None
+    action_details = None
 
-        if len(compressed_b64) <= max_size_bytes:
-            logger.info(f"Compressed to {len(compressed_data)} bytes as PNG")
-            return compressed_b64, "image/png"
+    for item in content:
+        if isinstance(item, dict) and item.get("type") == "text":
+            try:
+                # Try to parse JSON from text block
+                text_content = item.get("text", "")
+                parsed_json = json.loads(text_content)
 
-        # Strategy 1: Try reducing quality with JPEG format
-        current_quality = quality
-        while current_quality > 20:
-            buffer = io.BytesIO()
-            # Convert to RGB if image has alpha channel (JPEG doesn't support transparency)
-            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-                logger.info("Converting transparent image to RGB for JPEG compression")
-                rgb_img = Image.new("RGB", img.size, (255, 255, 255))
-                rgb_img.paste(img, mask=img.split()[3] if img.mode == "RGBA" else None)
-                rgb_img.save(buffer, format="JPEG", quality=current_quality, optimize=True)
-            else:
-                img.save(buffer, format="JPEG", quality=current_quality, optimize=True)
+                # Get reasoning text
+                if reasoning_text is None:
+                    reasoning_text = parsed_json.get("Explanation", "")
 
-            buffer.seek(0)
-            compressed_data = buffer.getvalue()
-            compressed_b64 = base64.b64encode(compressed_data).decode("utf-8")
+                # Extract action details
+                action = parsed_json.get("Action", "").lower()
+                text_input = parsed_json.get("Text", "")
+                value = parsed_json.get("Value", "")  # Also handle Value field
+                box_id = parsed_json.get("Box ID")  # Extract Box ID
 
-            if len(compressed_b64) <= max_size_bytes:
-                logger.info(
-                    f"Compressed to {len(compressed_data)} bytes with JPEG quality {current_quality}"
-                )
-                return compressed_b64, "image/jpeg"
+                if action in ["click", "left_click"]:
+                    # Always calculate coordinates from Box ID for click actions
+                    x, y = 100, 100  # Default fallback values
 
-            # Reduce quality and try again
-            current_quality -= 10
+                    if parsed_screen and box_id is not None and parser is not None:
+                        try:
+                            box_id_int = (
+                                box_id
+                                if isinstance(box_id, int)
+                                else int(str(box_id)) if str(box_id).isdigit() else None
+                            )
+                            if box_id_int is not None:
+                                # Use the parser's method to calculate coordinates
+                                x, y = await parser.calculate_click_coordinates(
+                                    box_id_int, parsed_screen
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"Error extracting coordinates for Box ID {box_id}: {str(e)}"
+                            )
 
-        # Strategy 2: If quality reduction isn't enough, reduce dimensions
-        scale_factor = 0.8
-        current_img = img
+                    action_details = {
+                        "type": "click",
+                        "button": "left",
+                        "box_id": (
+                            (
+                                box_id
+                                if isinstance(box_id, int)
+                                else int(box_id) if str(box_id).isdigit() else None
+                            )
+                            if box_id is not None
+                            else None
+                        ),
+                        "x": x,
+                        "y": y,
+                    }
+                elif action in ["type", "type_text"] and (text_input or value):
+                    action_details = {
+                        "type": "type",
+                        "text": text_input or value,
+                    }
+                elif action == "hotkey" and value:
+                    action_details = {
+                        "type": "hotkey",
+                        "keys": value,
+                    }
+                elif action == "scroll":
+                    # Use default coordinates for scrolling
+                    delta_x = 0
+                    delta_y = 0
+                    # Try to extract scroll delta values from content if available
+                    scroll_data = parsed_json.get("Scroll", {})
+                    if scroll_data:
+                        delta_x = scroll_data.get("delta_x", 0)
+                        delta_y = scroll_data.get("delta_y", 0)
+                    action_details = {
+                        "type": "scroll",
+                        "x": 100,
+                        "y": 100,
+                        "scroll_x": delta_x,
+                        "scroll_y": delta_y,
+                    }
+                elif action == "none":
+                    # Handle case when action is None (task completion)
+                    action_details = {"type": "none", "description": "Task completed"}
+            except json.JSONDecodeError:
+                # If not JSON, just use as reasoning text
+                if reasoning_text is None:
+                    reasoning_text = ""
+                reasoning_text += item.get("text", "")
 
-        while scale_factor > 0.3:
-            # Resize image
-            new_width = int(img.width * scale_factor)
-            new_height = int(img.height * scale_factor)
-            current_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-            # Try with reduced size and quality
-            buffer = io.BytesIO()
-            # Convert to RGB if necessary for JPEG
-            if current_img.mode in ("RGBA", "LA") or (
-                current_img.mode == "P" and "transparency" in current_img.info
-            ):
-                rgb_img = Image.new("RGB", current_img.size, (255, 255, 255))
-                rgb_img.paste(
-                    current_img, mask=current_img.split()[3] if current_img.mode == "RGBA" else None
-                )
-                rgb_img.save(buffer, format="JPEG", quality=70, optimize=True)
-            else:
-                current_img.save(buffer, format="JPEG", quality=70, optimize=True)
-
-            buffer.seek(0)
-            compressed_data = buffer.getvalue()
-            compressed_b64 = base64.b64encode(compressed_data).decode("utf-8")
-
-            if len(compressed_b64) <= max_size_bytes:
-                logger.info(
-                    f"Compressed to {len(compressed_data)} bytes with scale {scale_factor} and JPEG quality 70"
-                )
-                return compressed_b64, "image/jpeg"
-
-            # Reduce scale factor and try again
-            scale_factor -= 0.1
-
-        # If we get here, we couldn't compress enough
-        logger.warning("Could not compress image below required size with quality preservation")
-
-        # Last resort: Use minimum quality and size
-        buffer = io.BytesIO()
-        smallest_img = img.resize(
-            (int(img.width * 0.5), int(img.height * 0.5)), Image.Resampling.LANCZOS
+    # Add reasoning item if we have text content
+    if reasoning_text:
+        output_items.append(
+            {
+                "type": "reasoning",
+                "id": reasoning_id,
+                "summary": [
+                    {
+                        "type": "summary_text",
+                        "text": reasoning_text[:200],  # Truncate to reasonable length
+                    }
+                ],
+            }
         )
-        # Convert to RGB if necessary
-        if smallest_img.mode in ("RGBA", "LA") or (
-            smallest_img.mode == "P" and "transparency" in smallest_img.info
-        ):
-            rgb_img = Image.new("RGB", smallest_img.size, (255, 255, 255))
-            rgb_img.paste(
-                smallest_img, mask=smallest_img.split()[3] if smallest_img.mode == "RGBA" else None
-            )
-            rgb_img.save(buffer, format="JPEG", quality=20, optimize=True)
-        else:
-            smallest_img.save(buffer, format="JPEG", quality=20, optimize=True)
 
-        buffer.seek(0)
-        final_data = buffer.getvalue()
-        final_b64 = base64.b64encode(final_data).decode("utf-8")
+    # If no action details extracted, use default
+    if not action_details:
+        action_details = {
+            "type": "click",
+            "button": "left",
+            "x": 100,
+            "y": 100,
+        }
 
-        logger.warning(f"Final compressed size: {len(final_b64)} bytes (may still exceed limit)")
-        return final_b64, "image/jpeg"
+    # Add computer_call item
+    computer_call = {
+        "type": "computer_call",
+        "id": action_id,
+        "call_id": call_id,
+        "action": action_details,
+        "pending_safety_checks": [],
+        "status": "completed",
+    }
+    output_items.append(computer_call)
 
-    except Exception as e:
-        logger.error(f"Error compressing image: {str(e)}")
-        raise
+    # Extract user and assistant messages from the history
+    user_messages = []
+    assistant_messages = []
+    for msg in messages:
+        if msg["role"] == "user":
+            user_messages.append(msg)
+        elif msg["role"] == "assistant":
+            assistant_messages.append(msg)
+
+    # Create the OpenAI-compatible response format with all expected fields
+    return {
+        "id": response_id,
+        "object": "response",
+        "created_at": int(time.time()),
+        "status": "completed",
+        "error": None,
+        "incomplete_details": None,
+        "instructions": None,
+        "max_output_tokens": None,
+        "model": model or "unknown",
+        "output": output_items,
+        "parallel_tool_calls": True,
+        "previous_response_id": None,
+        "reasoning": {"effort": "medium", "generate_summary": "concise"},
+        "store": True,
+        "temperature": 1.0,
+        "text": {"format": {"type": "text"}},
+        "tool_choice": "auto",
+        "tools": [
+            {
+                "type": "computer_use_preview",
+                "display_height": 768,
+                "display_width": 1024,
+                "environment": "mac",
+            }
+        ],
+        "top_p": 1.0,
+        "truncation": "auto",
+        "usage": {
+            "input_tokens": 0,  # Placeholder values
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens": 0,  # Placeholder values
+            "output_tokens_details": {"reasoning_tokens": 0},
+            "total_tokens": 0,  # Placeholder values
+        },
+        "user": None,
+        "metadata": {},
+        # Include the original response for backward compatibility
+        "response": {"choices": [{"message": assistant_msg, "finish_reason": "stop"}]},
+    }
