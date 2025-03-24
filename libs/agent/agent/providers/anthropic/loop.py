@@ -275,8 +275,14 @@ class AnthropicLoop(BaseLoop):
                 for msg in reversed(self.message_history):
                     if msg["role"] == "assistant":
                         # Create OpenAI-compatible response and add to queue
-                        openai_compatible_response = self._create_openai_compatible_response(
-                            msg, response
+                        openai_compatible_response = (
+                            await self.message_manager.create_openai_compatible_response(
+                                response=response,
+                                messages=self.message_history,
+                                parsed_screen=None,
+                                parser=None,
+                                model=self.model,
+                            )
                         )
                         await queue.put(openai_compatible_response)
                         break
@@ -294,108 +300,6 @@ class AnthropicLoop(BaseLoop):
                 }
             )
             await queue.put(None)
-
-    def _create_openai_compatible_response(
-        self, assistant_msg: Dict[str, Any], original_response: Any
-    ) -> Dict[str, Any]:
-        """Create an OpenAI computer use agent compatible response format.
-
-        Args:
-            assistant_msg: The assistant message in standard OpenAI format
-            original_response: The original API response object for ID generation
-
-        Returns:
-            A response formatted according to OpenAI's computer use agent standard
-        """
-        # Create a unique ID for this response
-        response_id = f"resp_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(original_response)}"
-        reasoning_id = f"rs_{response_id}"
-        action_id = f"cu_{response_id}"
-        call_id = f"call_{response_id}"
-
-        # Extract reasoning and action details from the response
-        content = assistant_msg["content"]
-
-        # Initialize output array
-        output_items = []
-
-        # Add reasoning item if we have text content
-        reasoning_text = None
-        action_details = None
-
-        # AnthropicLoop expects a list of content blocks with type "text" or "tool_use"
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "text":
-                    reasoning_text = item.get("text", "")
-                elif isinstance(item, dict) and item.get("type") == "tool_use":
-                    action_details = item
-        else:
-            # Fallback for string content
-            reasoning_text = content if isinstance(content, str) else None
-
-        # If we have reasoning text, add reasoning item
-        if reasoning_text:
-            output_items.append(
-                {
-                    "type": "reasoning",
-                    "id": reasoning_id,
-                    "summary": [
-                        {
-                            "type": "summary_text",
-                            "text": reasoning_text[:200],  # Truncate to reasonable length
-                        }
-                    ],
-                }
-            )
-
-        # Add computer_call item with action details if available
-        computer_call = {
-            "type": "computer_call",
-            "id": action_id,
-            "call_id": call_id,
-            "action": {"type": "click", "button": "left", "x": 100, "y": 100},  # Default action
-            "pending_safety_checks": [],
-            "status": "completed",
-        }
-
-        # If we have action details from a tool_use, update the computer_call
-        if action_details:
-            # Try to map tool_use to computer_call action
-            tool_input = action_details.get("input", {})
-            if "click" in tool_input or "position" in tool_input:
-                position = tool_input.get("click", tool_input.get("position", {}))
-                if isinstance(position, dict) and "x" in position and "y" in position:
-                    computer_call["action"] = {
-                        "type": "click",
-                        "button": "left",
-                        "x": position.get("x", 100),
-                        "y": position.get("y", 100),
-                    }
-            elif "type" in tool_input or "text" in tool_input:
-                computer_call["action"] = {
-                    "type": "type",
-                    "text": tool_input.get("type", tool_input.get("text", "")),
-                }
-            elif "scroll" in tool_input:
-                scroll = tool_input.get("scroll", {})
-                computer_call["action"] = {
-                    "type": "scroll",
-                    "x": 100,
-                    "y": 100,
-                    "scroll_x": scroll.get("x", 0),
-                    "scroll_y": scroll.get("y", 0),
-                }
-
-        output_items.append(computer_call)
-
-        # Create the OpenAI-compatible response format
-        return {
-            "output": output_items,
-            "id": response_id,
-            # Include the original format for backward compatibility
-            "response": {"choices": [{"message": assistant_msg, "finish_reason": "stop"}]},
-        }
 
     ###########################################
     # RESPONSE AND CALLBACK HANDLING

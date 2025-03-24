@@ -1,18 +1,15 @@
 """Example demonstrating the ComputerAgent capabilities with the Omni provider."""
 
-import os
 import asyncio
 import logging
 import traceback
 from pathlib import Path
 import signal
-import json
 
 from computer import Computer
 
 # Import the unified agent class and types
-from agent import AgentLoop, LLMProvider, LLM
-from agent.core.computer_agent import ComputerAgent
+from agent import ComputerAgent, LLMProvider, LLM, AgentLoop
 
 # Import utility functions
 from utils import load_dotenv_files, handle_sigint
@@ -22,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def run_omni_agent_example():
+async def run_agent_example():
     """Run example of using the ComputerAgent with OpenAI and Omni provider."""
     print("\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
 
@@ -35,8 +32,8 @@ async def run_omni_agent_example():
             computer=computer,
             # loop=AgentLoop.ANTHROPIC,
             loop=AgentLoop.OMNI,
-            # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
-            model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+            model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
+            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
             save_trajectory=True,
             only_n_most_recent_images=3,
             verbosity=logging.DEBUG,
@@ -51,13 +48,12 @@ async def run_omni_agent_example():
             "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
         ]
 
-        async with agent:
-            for i, task in enumerate(tasks):
-                print(f"\nExecuting task {i}/{len(tasks)}: {task}")
-                async for result in agent.run(task):
-                    print(result)
+        for i, task in enumerate(tasks):
+            print(f"\nExecuting task {i}/{len(tasks)}: {task}")
+            async for result in agent.run(task):
+                print(result)
 
-                print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
+            print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 
     except Exception as e:
         logger.error(f"Error in run_omni_agent_example: {e}")
@@ -81,7 +77,7 @@ def main():
         # Register signal handler for graceful exit
         signal.signal(signal.SIGINT, handle_sigint)
 
-        asyncio.run(run_omni_agent_example())
+        asyncio.run(run_agent_example())
     except Exception as e:
         print(f"Error running example: {e}")
         traceback.print_exc()

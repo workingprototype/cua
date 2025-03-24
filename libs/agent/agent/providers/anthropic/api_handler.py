@@ -2,8 +2,7 @@
 
 import logging
 import asyncio
-from typing import Any, Dict, List, Optional
-from httpx import ConnectError, ReadTimeout
+from typing import List
 
 from anthropic.types.beta import (
     BetaMessage,

@@ -1,17 +1,15 @@
 """Omni-specific agent loop implementation."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator, Union
-from PIL import Image
+from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator
 import json
 import re
 import os
-from datetime import datetime
 import asyncio
 from httpx import ConnectError, ReadTimeout
 from typing import cast
 
-from .parser import OmniParser, ParseResult, ParserMetadata, UIElement
+from .parser import OmniParser, ParseResult
 from ...core.loop import BaseLoop
 from ...core.visualization import VisualizationHelper
 from ...core.messages import StandardMessageManager, ImageRetentionConfig
@@ -20,8 +18,6 @@ from .types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
 from .prompts import SYSTEM_PROMPT
-from .utils import compress_image_base64
-from .image_utils import decode_base64_image, clean_base64_data
 from .api_handler import OmniAPIHandler
 from .action_executor import ActionExecutor
 
@@ -644,9 +640,15 @@ class OmniLoop(BaseLoop):
                 # Update whether an action screenshot was saved this turn
                 action_screenshot_saved = action_screenshot_saved or new_screenshot_saved
 
-                # Create OpenAI-compatible response format
-                openai_compatible_response = await self._create_openai_compatible_response(
-                    response, self.message_manager.messages, parsed_screen
+                # Create OpenAI-compatible response format - directly use StandardMessageManager method
+                openai_compatible_response = (
+                    await self.message_manager.create_openai_compatible_response(
+                        response=response,
+                        messages=self.message_manager.messages,
+                        parsed_screen=parsed_screen,
+                        parser=self.parser,
+                        model=self.model,
+                    )
                 )
 
                 # Yield the response to the caller
@@ -678,215 +680,3 @@ class OmniLoop(BaseLoop):
 
                 # Create a brief delay before retrying
                 await asyncio.sleep(1)
-
-    async def _create_openai_compatible_response(
-        self,
-        response: Any,
-        messages: List[Dict[str, Any]],
-        parsed_screen: Optional[ParseResult] = None,
-    ) -> Dict[str, Any]:
-        """Create an OpenAI computer use agent compatible response format.
-
-        Args:
-            response: The original API response
-            messages: List of messages in standard OpenAI format
-            parsed_screen: Optional pre-parsed screen information
-
-        Returns:
-            A response formatted according to OpenAI's computer use agent standard
-        """
-        from datetime import datetime
-        import time
-
-        # Create a unique ID for this response
-        response_id = f"resp_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(response)}"
-        reasoning_id = f"rs_{response_id}"
-        action_id = f"cu_{response_id}"
-        call_id = f"call_{response_id}"
-
-        # Extract the last assistant message
-        assistant_msg = None
-        for msg in reversed(messages):
-            if msg["role"] == "assistant":
-                assistant_msg = msg
-                break
-
-        if not assistant_msg:
-            # If no assistant message found, create a default one
-            assistant_msg = {"role": "assistant", "content": "No response available"}
-
-        # Initialize output array
-        output_items = []
-
-        # Extract reasoning and action details from the response
-        content = assistant_msg["content"]
-        reasoning_text = None
-        action_details = None
-
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text":
-                try:
-                    # Try to parse JSON from text block
-                    text_content = item.get("text", "")
-                    parsed_json = json.loads(text_content)
-
-                    # Get reasoning text
-                    if reasoning_text is None:
-                        reasoning_text = parsed_json.get("Explanation", "")
-
-                    # Extract action details
-                    action = parsed_json.get("Action", "").lower()
-                    text_input = parsed_json.get("Text", "")
-                    value = parsed_json.get("Value", "")  # Also handle Value field
-                    box_id = parsed_json.get("Box ID")  # Extract Box ID
-
-                    if action in ["click", "left_click"]:
-                        # Always calculate coordinates from Box ID for click actions
-                        x, y = 100, 100  # Default fallback values
-
-                        if parsed_screen and box_id is not None:
-                            try:
-                                box_id_int = (
-                                    box_id
-                                    if isinstance(box_id, int)
-                                    else int(str(box_id)) if str(box_id).isdigit() else None
-                                )
-                                if box_id_int is not None:
-                                    # Use the ActionExecutor's method to calculate coordinates with await
-                                    x, y = await self.action_executor.calculate_click_coordinates(
-                                        box_id_int, parsed_screen
-                                    )
-                                    logger.info(
-                                        f"Extracted coordinates for Box ID {box_id_int}: ({x}, {y})"
-                                    )
-                            except Exception as e:
-                                logger.error(
-                                    f"Error extracting coordinates for Box ID {box_id}: {str(e)}"
-                                )
-
-                        action_details = {
-                            "type": "click",
-                            "button": "left",
-                            "box_id": (
-                                (
-                                    box_id
-                                    if isinstance(box_id, int)
-                                    else int(box_id) if str(box_id).isdigit() else None
-                                )
-                                if box_id is not None
-                                else None
-                            ),
-                            "x": x,
-                            "y": y,
-                        }
-                    elif action in ["type", "type_text"] and (text_input or value):
-                        action_details = {
-                            "type": "type",
-                            "text": text_input or value,
-                        }
-                    elif action == "hotkey" and value:
-                        action_details = {
-                            "type": "hotkey",
-                            "keys": value,
-                        }
-                    elif action == "scroll":
-                        # Use default coordinates for scrolling
-                        delta_x = 0
-                        delta_y = 0
-                        # Try to extract scroll delta values from content if available
-                        scroll_data = parsed_json.get("Scroll", {})
-                        if scroll_data:
-                            delta_x = scroll_data.get("delta_x", 0)
-                            delta_y = scroll_data.get("delta_y", 0)
-                        action_details = {
-                            "type": "scroll",
-                            "x": 100,
-                            "y": 100,
-                            "scroll_x": delta_x,
-                            "scroll_y": delta_y,
-                        }
-                    elif action == "none":
-                        # Handle case when action is None (task completion)
-                        action_details = {"type": "none", "description": "Task completed"}
-                except json.JSONDecodeError:
-                    # If not JSON, just use as reasoning text
-                    if reasoning_text is None:
-                        reasoning_text = ""
-                    reasoning_text += item.get("text", "")
-
-        # Add reasoning item if we have text content
-        if reasoning_text:
-            output_items.append(
-                {
-                    "type": "reasoning",
-                    "id": reasoning_id,
-                    "summary": [
-                        {
-                            "type": "summary_text",
-                            "text": reasoning_text[:200],  # Truncate to reasonable length
-                        }
-                    ],
-                }
-            )
-
-        # If no action details extracted, use default
-        if not action_details:
-            action_details = {
-                "type": "click",
-                "button": "left",
-                "x": 100,
-                "y": 100,
-            }
-
-        # Add computer_call item
-        computer_call = {
-            "type": "computer_call",
-            "id": action_id,
-            "call_id": call_id,
-            "action": action_details,
-            "pending_safety_checks": [],
-            "status": "completed",
-        }
-        output_items.append(computer_call)
-
-        # Create the OpenAI-compatible response format with all expected fields
-        return {
-            "id": response_id,
-            "object": "response",
-            "created_at": int(time.time()),
-            "status": "completed",
-            "error": None,
-            "incomplete_details": None,
-            "instructions": None,
-            "max_output_tokens": None,
-            "model": self.model,
-            "output": output_items,
-            "parallel_tool_calls": True,
-            "previous_response_id": None,
-            "reasoning": {"effort": "medium", "generate_summary": "concise"},
-            "store": True,
-            "temperature": 1.0,
-            "text": {"format": {"type": "text"}},
-            "tool_choice": "auto",
-            "tools": [
-                {
-                    "type": "computer_use_preview",
-                    "display_height": 768,
-                    "display_width": 1024,
-                    "environment": "mac",
-                }
-            ],
-            "top_p": 1.0,
-            "truncation": "auto",
-            "usage": {
-                "input_tokens": 0,  # Placeholder values
-                "input_tokens_details": {"cached_tokens": 0},
-                "output_tokens": 0,  # Placeholder values
-                "output_tokens_details": {"reasoning_tokens": 0},
-                "total_tokens": 0,  # Placeholder values
-            },
-            "user": None,
-            "metadata": {},
-            # Include the original response for backward compatibility
-            "response": {"choices": [{"message": assistant_msg, "finish_reason": "stop"}]},
-        }
