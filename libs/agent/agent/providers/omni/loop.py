@@ -13,13 +13,16 @@ from .parser import OmniParser, ParseResult
 from ...core.loop import BaseLoop
 from ...core.visualization import VisualizationHelper
 from ...core.messages import StandardMessageManager, ImageRetentionConfig
+from .utils import to_openai_agent_response_format
+from ...core.types import AgentResponse
 from computer import Computer
 from .types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
 from .prompts import SYSTEM_PROMPT
 from .api_handler import OmniAPIHandler
-from .action_executor import ActionExecutor
+from .tools.manager import ToolManager
+from .tools import ToolResult
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -99,11 +102,41 @@ class OmniLoop(BaseLoop):
         self.retry_count = 0
 
         # Initialize handlers
-        self.api_handler = OmniAPIHandler(self)
-        self.action_executor = ActionExecutor(self)
-        self.viz_helper = VisualizationHelper(self)
+        self.api_handler = OmniAPIHandler(loop=self)
+        self.viz_helper = VisualizationHelper(agent=self)
+
+        # Initialize tool manager
+        self.tool_manager = ToolManager(computer=computer, provider=provider)
 
         logger.info("OmniLoop initialized with StandardMessageManager")
+
+    async def initialize(self) -> None:
+        """Initialize the loop by setting up tools and clients."""
+        # Initialize base class
+        await super().initialize()
+
+        # Initialize tool manager with error handling
+        try:
+            logger.info("Initializing tool manager...")
+            await self.tool_manager.initialize()
+            logger.info("Tool manager initialized successfully.")
+        except Exception as e:
+            logger.error(f"Error initializing tool manager: {str(e)}")
+            logger.warning("Will attempt to initialize tools on first use.")
+
+        # Initialize API clients based on provider
+        if self.provider == LLMProvider.ANTHROPIC:
+            self.client = AnthropicClient(
+                api_key=self.api_key,
+                model=self.model,
+            )
+        elif self.provider == LLMProvider.OPENAI:
+            self.client = OpenAIClient(
+                api_key=self.api_key,
+                model=self.model,
+            )
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
 
     ###########################################
     # CLIENT INITIALIZATION - IMPLEMENTING ABSTRACT METHOD
@@ -310,16 +343,23 @@ class OmniLoop(BaseLoop):
                 logger.info("Added converted assistant message")
 
         try:
-            # Handle Anthropic response format
+            # Step 1: Normalize response to standard format based on provider
+            standard_content = []
+            raw_text = None
+
+            # Convert response to standardized content based on provider
             if self.provider == LLMProvider.ANTHROPIC:
                 if hasattr(response, "content") and isinstance(response.content, list):
-                    # First convert Anthropic response to standard format
-                    standard_content = []
+                    # Convert Anthropic response to standard format
                     for block in response.content:
                         if hasattr(block, "type"):
                             if block.type == "text":
                                 standard_content.append({"type": "text", "text": block.text})
-                                content = block.text
+                                # Store raw text for JSON parsing
+                                if raw_text is None:
+                                    raw_text = block.text
+                                else:
+                                    raw_text += "\n" + block.text
                             else:
                                 # Add other block types
                                 block_dict = {}
@@ -327,164 +367,89 @@ class OmniLoop(BaseLoop):
                                     if not key.startswith("_"):
                                         block_dict[key] = value
                                 standard_content.append(block_dict)
-                                continue
-
-                    # Add standard format response to messages using the message manager
-                    add_assistant_message(standard_content)
-
-                    # Now extract JSON from the content for action execution
-                    # Try to find JSON in the text blocks
-                    json_content = None
-                    parsed_content = None
-
-                    for block in response.content:
-                        if hasattr(block, "type") and block.type == "text":
-                            content = block.text
-                            try:
-                                # First look for JSON block
-                                json_content = extract_data(content, "json")
-                                parsed_content = json.loads(json_content)
-                                logger.info("Successfully parsed JSON from code block")
-                                break
-                            except (json.JSONDecodeError, IndexError):
-                                # If no JSON block, try to find JSON object in the text
-                                try:
-                                    # Look for JSON object pattern
-                                    json_pattern = r"\{[^}]+\}"
-                                    json_match = re.search(json_pattern, content)
-                                    if json_match:
-                                        json_str = json_match.group(0)
-                                        parsed_content = json.loads(json_str)
-                                        logger.info("Successfully parsed JSON from text")
-                                        break
-                                except json.JSONDecodeError:
-                                    continue
-
-                    if parsed_content:
-                        # Clean up Box ID format
-                        if "Box ID" in parsed_content and isinstance(parsed_content["Box ID"], str):
-                            parsed_content["Box ID"] = parsed_content["Box ID"].replace("Box #", "")
-
-                        # Add any explanatory text as reasoning if not present
-                        if "Explanation" not in parsed_content:
-                            # Extract any text before the JSON as reasoning
-                            if content:
-                                text_before_json = content.split("{")[0].strip()
-                                if text_before_json:
-                                    parsed_content["Explanation"] = text_before_json
-
-                        # Log the parsed content for debugging
-                        logger.info(f"Parsed content: {json.dumps(parsed_content, indent=2)}")
-
-                        try:
-                            # Execute action with current parsed screen info using the ActionExecutor
-                            action_screenshot_saved = await self.action_executor.execute_action(
-                                parsed_content, cast(ParseResult, parsed_screen)
-                            )
-                        except Exception as e:
-                            logger.error(f"Error executing action: {str(e)}")
-                            # Update the last assistant message with error
-                            error_message = [
-                                {"type": "text", "text": f"Error executing action: {str(e)}"}
-                            ]
-                            # Replace the last assistant message with the error
-                            self.message_manager.add_assistant_message(error_message)
-                            return False, action_screenshot_saved
-
-                        # Check if task is complete
-                        if parsed_content.get("Action") == "None":
-                            return False, action_screenshot_saved
-                        return True, action_screenshot_saved
-                    else:
-                        logger.warning("No JSON found in response content")
-                        return True, action_screenshot_saved
-
-                logger.warning("No text block found in Anthropic response")
-                return True, action_screenshot_saved
-
-            # Handle other providers' response formats
-            if isinstance(response, dict) and "choices" in response:
-                content = response["choices"][0]["message"]["content"]
+                else:
+                    logger.warning("Invalid Anthropic response format")
+                    return True, action_screenshot_saved
             else:
-                content = response
+                # Assume OpenAI or compatible format
+                try:
+                    raw_text = response["choices"][0]["message"]["content"]
+                    standard_content = [{"type": "text", "text": raw_text}]
+                except (KeyError, TypeError, IndexError) as e:
+                    logger.error(f"Invalid response format: {str(e)}")
+                    return True, action_screenshot_saved
 
-            # Parse JSON content
-            if isinstance(content, str):
+            # Step 2: Add the normalized response to message history
+            add_assistant_message(standard_content)
+
+            # Step 3: Extract JSON from the content for action execution
+            parsed_content = None
+
+            # If we have raw text, try to extract JSON from it
+            if raw_text:
+                # Try different approaches to extract JSON
                 try:
                     # First try to parse the whole content as JSON
-                    parsed_content = json.loads(content)
+                    parsed_content = json.loads(raw_text)
+                    logger.info("Successfully parsed whole content as JSON")
                 except json.JSONDecodeError:
                     try:
                         # Try to find JSON block
-                        json_content = extract_data(content, "json")
+                        json_content = extract_data(raw_text, "json")
                         parsed_content = json.loads(json_content)
+                        logger.info("Successfully parsed JSON from code block")
                     except (json.JSONDecodeError, IndexError):
                         try:
                             # Look for JSON object pattern
                             json_pattern = r"\{[^}]+\}"
-                            json_match = re.search(json_pattern, content)
+                            json_match = re.search(json_pattern, raw_text)
                             if json_match:
                                 json_str = json_match.group(0)
                                 parsed_content = json.loads(json_str)
+                                logger.info("Successfully parsed JSON from text")
                             else:
-                                logger.error(f"No JSON found in content: {content}")
+                                logger.error(f"No JSON found in content")
                                 return True, action_screenshot_saved
                         except json.JSONDecodeError as e:
                             logger.error(f"Failed to parse JSON from text: {str(e)}")
                             return True, action_screenshot_saved
 
+            # Step 4: Process the parsed content if available
+            if parsed_content:
                 # Clean up Box ID format
                 if "Box ID" in parsed_content and isinstance(parsed_content["Box ID"], str):
                     parsed_content["Box ID"] = parsed_content["Box ID"].replace("Box #", "")
 
                 # Add any explanatory text as reasoning if not present
-                if "Explanation" not in parsed_content:
+                if "Explanation" not in parsed_content and raw_text:
                     # Extract any text before the JSON as reasoning
-                    text_before_json = content.split("{")[0].strip()
+                    text_before_json = raw_text.split("{")[0].strip()
                     if text_before_json:
                         parsed_content["Explanation"] = text_before_json
 
-                # Add response to messages with stringified content using our helper
-                add_assistant_message([{"type": "text", "text": json.dumps(parsed_content)}])
+                # Log the parsed content for debugging
+                logger.info(f"Parsed content: {json.dumps(parsed_content, indent=2)}")
 
+                # Step 5: Execute the action
                 try:
-                    # Execute action with current parsed screen info using the ActionExecutor
-                    action_screenshot_saved = await self.action_executor.execute_action(
-                        parsed_content, cast(ParseResult, parsed_screen)
+                    # Execute action using the common helper method
+                    should_continue, action_screenshot_saved = (
+                        await self._execute_action_with_tools(
+                            parsed_content, cast(ParseResult, parsed_screen)
+                        )
                     )
+
+                    # Check if task is complete
+                    if parsed_content.get("Action") == "None":
+                        return False, action_screenshot_saved
+                    return should_continue, action_screenshot_saved
                 except Exception as e:
                     logger.error(f"Error executing action: {str(e)}")
-                    # Add error message using the message manager
+                    # Update the last assistant message with error
                     error_message = [{"type": "text", "text": f"Error executing action: {str(e)}"}]
+                    # Replace the last assistant message with the error
                     self.message_manager.add_assistant_message(error_message)
                     return False, action_screenshot_saved
-
-                # Check if task is complete
-                if parsed_content.get("Action") == "None":
-                    return False, action_screenshot_saved
-
-                return True, action_screenshot_saved
-            elif isinstance(content, dict):
-                # Handle case where content is already a dictionary
-                add_assistant_message([{"type": "text", "text": json.dumps(content)}])
-
-                try:
-                    # Execute action with current parsed screen info using the ActionExecutor
-                    action_screenshot_saved = await self.action_executor.execute_action(
-                        content, cast(ParseResult, parsed_screen)
-                    )
-                except Exception as e:
-                    logger.error(f"Error executing action: {str(e)}")
-                    # Add error message using the message manager
-                    error_message = [{"type": "text", "text": f"Error executing action: {str(e)}"}]
-                    self.message_manager.add_assistant_message(error_message)
-                    return False, action_screenshot_saved
-
-                # Check if task is complete
-                if content.get("Action") == "None":
-                    return False, action_screenshot_saved
-
-                return True, action_screenshot_saved
 
             return True, action_screenshot_saved
 
@@ -546,17 +511,14 @@ class OmniLoop(BaseLoop):
     # MAIN LOOP - IMPLEMENTING ABSTRACT METHOD
     ###########################################
 
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
         """Run the agent loop with provided messages.
 
-        Implements abstract method from BaseLoop to handle the main agent loop
-        for the OmniLoop implementation.
-
         Args:
-            messages: List of message objects in standard OpenAI format
+            messages: List of messages in standard OpenAI format
 
         Yields:
-            Dict containing response data
+            Agent response format
         """
         # Initialize the message manager with the provided messages
         self.message_manager.messages = messages.copy()
@@ -640,15 +602,11 @@ class OmniLoop(BaseLoop):
                 # Update whether an action screenshot was saved this turn
                 action_screenshot_saved = action_screenshot_saved or new_screenshot_saved
 
-                # Create OpenAI-compatible response format - directly use StandardMessageManager method
-                openai_compatible_response = (
-                    await self.message_manager.create_openai_compatible_response(
-                        response=response,
-                        messages=self.message_manager.messages,
-                        parsed_screen=parsed_screen,
-                        parser=self.parser,
-                        model=self.model,
-                    )
+                # Create OpenAI-compatible response format using utility function
+                openai_compatible_response = await to_openai_agent_response_format(
+                    response=response,
+                    messages=self.message_manager.messages,
+                    model=self.model,
                 )
 
                 # Yield the response to the caller
@@ -680,3 +638,218 @@ class OmniLoop(BaseLoop):
 
                 # Create a brief delay before retrying
                 await asyncio.sleep(1)
+
+    async def process_model_response(self, response_text: str) -> Optional[Dict[str, Any]]:
+        """Process model response to extract tool calls.
+
+        Args:
+            response_text: Model response text
+
+        Returns:
+            Extracted tool information, or None if no tool call was found
+        """
+        try:
+            # Ensure tools are initialized before use
+            await self._ensure_tools_initialized()
+
+            # Look for tool use in the response
+            if "function_call" in response_text or "tool_use" in response_text:
+                # The extract_tool_call method should be implemented in the OmniAPIHandler
+                # For now, we'll just use a simple approach
+                # This will be replaced with the proper implementation
+                tool_info = None
+                if "function_call" in response_text:
+                    # Extract function call params
+                    try:
+                        # Simple extraction - in real code this would be more robust
+                        import json
+                        import re
+
+                        match = re.search(r'"function_call"\s*:\s*{([^}]+)}', response_text)
+                        if match:
+                            function_text = "{" + match.group(1) + "}"
+                            tool_info = json.loads(function_text)
+                    except Exception as e:
+                        logger.error(f"Error extracting function call: {str(e)}")
+
+                if tool_info:
+                    try:
+                        # Execute the tool
+                        result = await self.tool_manager.execute_tool(
+                            name=tool_info.get("name"), tool_input=tool_info.get("arguments", {})
+                        )
+                        # Handle the result
+                        return {"tool_result": result}
+                    except Exception as e:
+                        error_msg = (
+                            f"Error executing tool '{tool_info.get('name', 'unknown')}': {str(e)}"
+                        )
+                        logger.error(error_msg)
+                        return {"tool_result": ToolResult(error=error_msg)}
+        except Exception as e:
+            logger.error(f"Error processing tool call: {str(e)}")
+
+        return None
+
+    async def process_response_with_tools(
+        self, response_text: str, parsed_screen: Optional[ParseResult] = None
+    ) -> Tuple[bool, str]:
+        """Process model response and execute tools.
+
+        Args:
+            response_text: Model response text
+            parsed_screen: Current parsed screen information (optional)
+
+        Returns:
+            Tuple of (action_taken, observation)
+        """
+        logger.info("Processing response with tools")
+
+        # Process the response to extract tool calls
+        tool_result = await self.process_model_response(response_text)
+
+        if tool_result and "tool_result" in tool_result:
+            # A tool was executed
+            result = tool_result["tool_result"]
+            if result.error:
+                return False, f"ERROR: {result.error}"
+            else:
+                return True, result.output or "Tool executed successfully"
+
+        # No action or tool call found
+        return False, "No action taken - no tool call detected in response"
+
+    ###########################################
+    # UTILITY METHODS
+    ###########################################
+
+    async def _ensure_tools_initialized(self) -> None:
+        """Ensure the tool manager and tools are initialized before use."""
+        if not hasattr(self.tool_manager, "tools") or self.tool_manager.tools is None:
+            logger.info("Tools not initialized. Initializing now...")
+            await self.tool_manager.initialize()
+            logger.info("Tools initialized successfully.")
+
+    async def _execute_action_with_tools(
+        self, action_data: Dict[str, Any], parsed_screen: ParseResult
+    ) -> Tuple[bool, bool]:
+        """Execute an action using the tools-based approach.
+
+        Args:
+            action_data: Dictionary containing action details
+            parsed_screen: Current parsed screen information
+
+        Returns:
+            Tuple of (should_continue, action_screenshot_saved)
+        """
+        action_screenshot_saved = False
+        action_type = None  # Initialize for possible use in post-action screenshot
+
+        try:
+            # Extract the action
+            parsed_action = action_data.get("Action", "").lower()
+
+            # Only process if we have a valid action
+            if not parsed_action or parsed_action == "none":
+                return False, action_screenshot_saved
+
+            # Convert the parsed content to a format suitable for the tools system
+            tool_name = "computer"  # Default to computer tool
+            tool_args = {"action": parsed_action}
+
+            # Add specific arguments based on action type
+            if parsed_action in ["left_click", "right_click", "double_click", "move_cursor"]:
+                # Calculate coordinates from Box ID using parser
+                try:
+                    box_id = int(action_data["Box ID"])
+                    x, y = await self.parser.calculate_click_coordinates(
+                        box_id, cast(ParseResult, parsed_screen)
+                    )
+                    tool_args["x"] = x
+                    tool_args["y"] = y
+
+                    # Visualize action if screenshot is available
+                    if parsed_screen and parsed_screen.annotated_image_base64:
+                        img_data = parsed_screen.annotated_image_base64
+                        # Remove data URL prefix if present
+                        if img_data.startswith("data:image"):
+                            img_data = img_data.split(",")[1]
+                        # Save visualization for coordinate-based actions
+                        self.viz_helper.visualize_action(x, y, img_data)
+                        action_screenshot_saved = True
+
+                except (ValueError, KeyError) as e:
+                    logger.error(f"Error processing Box ID: {str(e)}")
+                    return False, action_screenshot_saved
+
+            elif parsed_action == "type_text":
+                tool_args["text"] = action_data.get("Value", "")
+                # For type_text, store the value in the action type for screenshot naming
+                action_type = f"type_{tool_args['text'][:20]}"  # Truncate if too long
+
+            elif parsed_action == "press_key":
+                tool_args["key"] = action_data.get("Value", "")
+                action_type = f"press_{tool_args['key']}"
+
+            elif parsed_action == "hotkey":
+                value = action_data.get("Value", "")
+                if isinstance(value, list):
+                    tool_args["keys"] = value
+                    action_type = f"hotkey_{'_'.join(value)}"
+                else:
+                    # Split string format like "command+space" into a list
+                    keys = [k.strip() for k in value.lower().split("+")]
+                    tool_args["keys"] = keys
+                    action_type = f"hotkey_{value.replace('+', '_')}"
+
+            elif parsed_action in ["scroll_down", "scroll_up"]:
+                clicks = int(action_data.get("amount", 1))
+                tool_args["amount"] = clicks
+                action_type = f"scroll_{parsed_action.split('_')[1]}_{clicks}"
+
+                # Visualize scrolling if screenshot is available
+                if parsed_screen and parsed_screen.annotated_image_base64:
+                    img_data = parsed_screen.annotated_image_base64
+                    # Remove data URL prefix if present
+                    if img_data.startswith("data:image"):
+                        img_data = img_data.split(",")[1]
+                    direction = "down" if parsed_action == "scroll_down" else "up"
+                    # For scrolling, we save the visualization
+                    self.viz_helper.visualize_scroll(direction, clicks, img_data)
+                    action_screenshot_saved = True
+
+            # Ensure tools are initialized before use
+            await self._ensure_tools_initialized()
+
+            # Execute tool with prepared arguments
+            result = await self.tool_manager.execute_tool(name=tool_name, tool_input=tool_args)
+
+            # Take a new screenshot after the action if we haven't already saved one
+            if not action_screenshot_saved:
+                try:
+                    # Get a new screenshot after the action
+                    new_parsed_screen = await self._get_parsed_screen_som(save_screenshot=False)
+                    if new_parsed_screen and new_parsed_screen.annotated_image_base64:
+                        img_data = new_parsed_screen.annotated_image_base64
+                        # Remove data URL prefix if present
+                        if img_data.startswith("data:image"):
+                            img_data = img_data.split(",")[1]
+                        # Save with action type if defined, otherwise use the action name
+                        if action_type:
+                            self._save_screenshot(img_data, action_type=action_type)
+                        else:
+                            self._save_screenshot(img_data, action_type=parsed_action)
+                        action_screenshot_saved = True
+                except Exception as screenshot_error:
+                    logger.error(f"Error taking post-action screenshot: {str(screenshot_error)}")
+
+            # Continue the loop if the action is not "None"
+            return True, action_screenshot_saved
+
+        except Exception as e:
+            logger.error(f"Error executing action: {str(e)}")
+            # Update the last assistant message with error
+            error_message = [{"type": "text", "text": f"Error executing action: {str(e)}"}]
+            # Replace the last assistant message with the error
+            self.message_manager.add_assistant_message(error_message)
+            return False, action_screenshot_saved

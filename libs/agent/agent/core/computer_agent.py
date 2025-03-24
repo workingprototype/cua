@@ -12,6 +12,7 @@ from ..providers.omni.parser import OmniParser
 from ..providers.omni.types import LLMProvider, LLM
 from .. import AgentLoop
 from .messages import StandardMessageManager, ImageRetentionConfig
+from .types import AgentResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,18 +65,13 @@ class ComputerAgent:
         """
         # Basic agent configuration
         self.max_retries = max_retries
-        self.computer = computer or Computer()
+        self.computer = computer
         self.queue = asyncio.Queue()
         self.screenshot_dir = screenshot_dir
         self.log_dir = log_dir
         self._retry_count = 0
         self._initialized = False
         self._in_context = False
-
-        # Initialize the message manager for standardized message handling
-        self.message_manager = StandardMessageManager(
-            config=ImageRetentionConfig(num_images_to_keep=only_n_most_recent_images)
-        )
 
         # Set logging level
         logger.setLevel(verbosity)
@@ -103,7 +99,7 @@ class ComputerAgent:
                 )
 
         # Ensure computer is properly cast for typing purposes
-        computer_instance = cast(Computer, self.computer)
+        computer_instance = self.computer
 
         # Get API key from environment if not provided
         actual_api_key = api_key or os.environ.get(ENV_VARS[self.provider], "")
@@ -131,6 +127,9 @@ class ComputerAgent:
                 only_n_most_recent_images=only_n_most_recent_images,
                 parser=OmniParser(),
             )
+
+        # Initialize the message manager from the loop
+        self.message_manager = self._loop.message_manager
 
         logger.info(
             f"ComputerAgent initialized with provider: {self.provider}, model: {actual_model_name}"
@@ -200,26 +199,14 @@ class ComputerAgent:
                 await self.computer.run()
             self._initialized = True
 
-    async def _init_if_needed(self):
-        """Initialize the computer interface if it hasn't been initialized yet."""
-        if not self.computer._initialized:
-            logger.info("Computer not initialized, initializing now...")
-            try:
-                # Call run directly
-                await self.computer.run()
-                logger.info("Computer interface initialized successfully")
-            except Exception as e:
-                logger.error(f"Error initializing computer interface: {str(e)}")
-                raise
-
-    async def run(self, task: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, task: str) -> AsyncGenerator[AgentResponse, None]:
         """Run a task using the computer agent.
 
         Args:
             task: Task description
 
         Yields:
-            Task execution updates
+            Agent response format
         """
         try:
             logger.info(f"Running task: {task}")
@@ -237,12 +224,6 @@ class ComputerAgent:
                 f"Added task message. Message history now has {len(self.message_manager.messages)} messages"
             )
 
-            # Log message history types to help with debugging
-            message_types = [
-                f"{i}: {msg['role']}" for i, msg in enumerate(self.message_manager.messages)
-            ]
-            logger.info(f"Message history roles: {', '.join(message_types)}")
-
             # Pass properly formatted messages to the loop
             if self._loop is None:
                 logger.error("Loop not initialized properly")
@@ -251,26 +232,8 @@ class ComputerAgent:
 
             # Execute the task and yield results
             async for result in self._loop.run(self.message_manager.messages):
-                # Extract the assistant message from the result and add it to our history
-                assistant_response = result["response"]["choices"][0].get("message", None)
-                if assistant_response and assistant_response.get("role") == "assistant":
-                    # Extract the content from the assistant response
-                    content = assistant_response.get("content")
-                    self.message_manager.add_assistant_message(content)
-
-                    logger.info("Added assistant response to message history")
-
                 # Yield the result to the caller
                 yield result
-
-                # Logging the message history for debugging
-                logger.info(
-                    f"Updated message history now has {len(self.message_manager.messages)} messages"
-                )
-                message_types = [
-                    f"{i}: {msg['role']}" for i, msg in enumerate(self.message_manager.messages)
-                ]
-                logger.info(f"Updated message history roles: {', '.join(message_types)}")
 
         except Exception as e:
             logger.error(f"Error in agent run method: {str(e)}")

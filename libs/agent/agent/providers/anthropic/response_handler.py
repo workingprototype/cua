@@ -28,17 +28,23 @@ class AnthropicResponseHandler:
         """
         self.loop = loop
 
-    async def handle_response(self, response: BetaMessage, messages: List[Dict[str, Any]]) -> bool:
+    async def handle_response(
+        self, response: BetaMessage, messages: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], bool]:
         """Handle the Anthropic API response.
 
         Args:
             response: API response
-            messages: List of messages to update
+            messages: List of messages for context
 
         Returns:
-            True if the loop should continue, False otherwise
+            Tuple containing:
+            - List of new messages to be added
+            - Boolean indicating if the loop should continue
         """
         try:
+            new_messages = []
+
             # Convert response to parameter format
             response_params = self.response_to_params(response)
 
@@ -64,8 +70,8 @@ class AnthropicResponseHandler:
             logger.info(f"Existing tool_use IDs in conversation: {existing_tool_use_ids}")
             logger.info(f"New tool_use IDs in current response: {current_tool_use_ids}")
 
-            # Add response to messages
-            messages.append(
+            # Create assistant message
+            new_messages.append(
                 {
                     "role": "assistant",
                     "content": response_params,
@@ -116,21 +122,21 @@ class AnthropicResponseHandler:
             if not tool_result_content:
                 # Signal completion
                 self.loop.callback_manager.on_content({"type": "text", "text": "<DONE>"})
-                return False
+                return new_messages, False
 
-            # Add tool results to message history
-            messages.append({"content": tool_result_content, "role": "user"})
-            return True
+            # Add tool results as user message
+            new_messages.append({"content": tool_result_content, "role": "user"})
+            return new_messages, True
 
         except Exception as e:
             logger.error(f"Error handling response: {str(e)}")
-            messages.append(
+            new_messages.append(
                 {
                     "role": "assistant",
                     "content": f"Error: {str(e)}",
                 }
             )
-            return False
+            return new_messages, False
 
     def response_to_params(
         self,

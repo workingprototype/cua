@@ -9,6 +9,8 @@ from datetime import datetime
 
 from computer import Computer
 from .experiment import ExperimentManager
+from .messages import StandardMessageManager, ImageRetentionConfig
+from .types import AgentResponse
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +67,6 @@ class BaseLoop(ABC):
         self.save_trajectory = save_trajectory
         self.only_n_most_recent_images = only_n_most_recent_images
         self._kwargs = kwargs
-        self.message_history = []
-        # self.tool_manager = BaseToolManager(computer)
 
         # Initialize experiment manager
         if self.save_trajectory and self.base_dir:
@@ -125,7 +125,7 @@ class BaseLoop(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
         """Run the agent loop with provided messages.
 
         This method handles the main agent loop including message processing,
@@ -135,7 +135,7 @@ class BaseLoop(ABC):
             messages: List of message objects
 
         Yields:
-            Dict containing response data
+            Agent response format
         """
         raise NotImplementedError
 

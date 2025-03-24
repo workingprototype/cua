@@ -18,6 +18,7 @@ from computer import Computer
 # Base imports
 from ...core.loop import BaseLoop
 from ...core.messages import StandardMessageManager, ImageRetentionConfig
+from ...core.types import AgentResponse
 
 # Anthropic provider-specific imports
 from .api.client import AnthropicClientFactory, BaseAnthropicClient
@@ -25,6 +26,7 @@ from .tools.manager import ToolManager
 from .prompts import SYSTEM_PROMPT
 from .types import LLMProvider
 from .tools import ToolResult
+from .utils import to_anthropic_format, to_agent_response_format
 
 # Import the new modules we created
 from .api_handler import AnthropicAPIHandler
@@ -87,22 +89,18 @@ class AnthropicLoop(BaseLoop):
             **kwargs,
         )
 
+        # Initialize message manager
+        self.message_manager = StandardMessageManager(
+            config=ImageRetentionConfig(num_images_to_keep=only_n_most_recent_images)
+        )
+
         # Anthropic-specific attributes
         self.provider = LLMProvider.ANTHROPIC
         self.client = None
         self.retry_count = 0
         self.tool_manager = None
         self.callback_manager = None
-
-        # Initialize standard message manager with image retention config
-        self.message_manager = StandardMessageManager(
-            config=ImageRetentionConfig(
-                num_images_to_keep=only_n_most_recent_images, enable_caching=True
-            )
-        )
-
-        # Message history (standard OpenAI format)
-        self.message_history = []
+        self.queue = asyncio.Queue()  # Initialize queue
 
         # Initialize handlers
         self.api_handler = AnthropicAPIHandler(self)
@@ -147,24 +145,17 @@ class AnthropicLoop(BaseLoop):
     # MAIN LOOP - IMPLEMENTING ABSTRACT METHOD
     ###########################################
 
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
         """Run the agent loop with provided messages.
-
-        Implements abstract method from BaseLoop to handle the main agent loop
-        for the AnthropicLoop implementation, using async queues and callbacks.
 
         Args:
             messages: List of message objects in standard OpenAI format
 
         Yields:
-            Dict containing response data
+            Agent response format
         """
         try:
             logger.info("Starting Anthropic loop run")
-
-            # Reset message history and add new messages in standard format
-            self.message_history = []
-            self.message_history.extend(messages)
 
             # Create queue for response streaming
             queue = asyncio.Queue()
@@ -178,7 +169,7 @@ class AnthropicLoop(BaseLoop):
                 logger.info("Client initialized successfully")
 
             # Start loop in background task
-            loop_task = asyncio.create_task(self._run_loop(queue))
+            loop_task = asyncio.create_task(self._run_loop(queue, messages))
 
             # Process and yield messages as they arrive
             while True:
@@ -214,11 +205,12 @@ class AnthropicLoop(BaseLoop):
     # AGENT LOOP IMPLEMENTATION
     ###########################################
 
-    async def _run_loop(self, queue: asyncio.Queue) -> None:
-        """Run the agent loop with current message history.
+    async def _run_loop(self, queue: asyncio.Queue, messages: List[Dict[str, Any]]) -> None:
+        """Run the agent loop with provided messages.
 
         Args:
             queue: Queue for response streaming
+            messages: List of messages in standard OpenAI format
         """
         try:
             while True:
@@ -226,28 +218,38 @@ class AnthropicLoop(BaseLoop):
                 try:
                     # Take screenshot - always returns raw PNG bytes
                     screenshot = await self.computer.interface.screenshot()
+                    logger.info("Screenshot captured successfully")
 
                     # Convert PNG bytes to base64
                     base64_image = base64.b64encode(screenshot).decode("utf-8")
+                    logger.info(f"Screenshot converted to base64 (size: {len(base64_image)} bytes)")
 
                     # Save screenshot if requested
                     if self.save_trajectory and self.experiment_manager:
                         try:
                             self._save_screenshot(base64_image, action_type="state")
+                            logger.info("Screenshot saved to trajectory")
                         except Exception as e:
                             logger.error(f"Error saving screenshot: {str(e)}")
 
-                    # Add screenshot to message history in OpenAI format
+                    # Create screenshot message
                     screen_info_msg = {
                         "role": "user",
                         "content": [
                             {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:image/png;base64,{base64_image}"},
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": base64_image,
+                                },
                             }
                         ],
                     }
-                    self.message_history.append(screen_info_msg)
+                    # Add screenshot to messages
+                    messages.append(screen_info_msg)
+                    logger.info("Screenshot message added to conversation")
+
                 except Exception as e:
                     logger.error(f"Error capturing or processing screenshot: {str(e)}")
                     raise
@@ -255,10 +257,8 @@ class AnthropicLoop(BaseLoop):
                 # Create new turn directory for this API call
                 self._create_turn_dir()
 
-                # Convert standard messages to Anthropic format
-                anthropic_messages, system_content = self.message_manager.to_anthropic_format(
-                    self.message_history.copy()
-                )
+                # Convert standard messages to Anthropic format using utility function
+                anthropic_messages, system_content = to_anthropic_format(messages.copy())
 
                 # Use API handler to make API call with Anthropic format
                 response = await self.api_handler.make_api_call(
@@ -266,26 +266,23 @@ class AnthropicLoop(BaseLoop):
                     system_prompt=system_content or SYSTEM_PROMPT,
                 )
 
-                # Use response handler to handle the response and convert to standard format
-                # This adds the response to message_history
-                if not await self.response_handler.handle_response(response, self.message_history):
-                    break
+                # Use response handler to handle the response and get new messages
+                new_messages, should_continue = await self.response_handler.handle_response(
+                    response, messages
+                )
 
-                # Get the last assistant message and convert it to OpenAI computer use format
-                for msg in reversed(self.message_history):
-                    if msg["role"] == "assistant":
-                        # Create OpenAI-compatible response and add to queue
-                        openai_compatible_response = (
-                            await self.message_manager.create_openai_compatible_response(
-                                response=response,
-                                messages=self.message_history,
-                                parsed_screen=None,
-                                parser=None,
-                                model=self.model,
-                            )
-                        )
-                        await queue.put(openai_compatible_response)
-                        break
+                # Add new messages to the parent's message history
+                messages.extend(new_messages)
+
+                openai_compatible_response = await to_agent_response_format(
+                    response,
+                    messages,
+                    model=self.model,
+                )
+                await queue.put(openai_compatible_response)
+
+                if not should_continue:
+                    break
 
             # Signal completion
             await queue.put(None)
@@ -306,35 +303,42 @@ class AnthropicLoop(BaseLoop):
     ###########################################
 
     async def _handle_response(self, response: BetaMessage, messages: List[Dict[str, Any]]) -> bool:
-        """Handle the Anthropic API response.
+        """Handle a response from the Anthropic API.
 
         Args:
-            response: API response
-            messages: List of messages to update in standard OpenAI format
+            response: The response from the Anthropic API
+            messages: The message history
 
         Returns:
-            True if the loop should continue, False otherwise
+            bool: Whether to continue the conversation
         """
         try:
-            # Convert Anthropic response to standard OpenAI format
-            response_blocks = self._response_to_blocks(response)
+            # Convert response to standard format
+            openai_compatible_response = await to_agent_response_format(
+                response,
+                messages,
+                model=self.model,
+            )
 
-            # Add response to standard message history
-            messages.append({"role": "assistant", "content": response_blocks})
+            # Put the response on the queue
+            await self.queue.put(openai_compatible_response)
 
             if self.callback_manager is None:
                 raise RuntimeError(
                     "Callback manager not initialized. Call initialize_client() first."
                 )
 
-            # Handle tool use blocks and collect results
+            # Handle tool use blocks and collect ALL results before adding to messages
             tool_result_content = []
+            has_tool_use = False
+
             for content_block in response.content:
                 # Notify callback of content
                 self.callback_manager.on_content(cast(BetaContentBlockParam, content_block))
 
                 # Handle tool use - carefully check and access attributes
                 if hasattr(content_block, "type") and content_block.type == "tool_use":
+                    has_tool_use = True
                     if self.tool_manager is None:
                         raise RuntimeError(
                             "Tool manager not initialized. Call initialize_client() first."
@@ -357,15 +361,37 @@ class AnthropicLoop(BaseLoop):
                     # Notify callback of tool result
                     self.callback_manager.on_tool_result(cast(ToolResult, result), tool_id)
 
-            # If no tool results, we're done
-            if not tool_result_content:
-                # Signal completion
+            # If we had any tool_use blocks, we MUST add the tool_result message
+            # even if there were errors or no actual results
+            if has_tool_use:
+                # If somehow we have no tool results but had tool uses, add synthetic error results
+                if not tool_result_content:
+                    logger.warning(
+                        "Had tool uses but no tool results, adding synthetic error results"
+                    )
+                    for content_block in response.content:
+                        if hasattr(content_block, "type") and content_block.type == "tool_use":
+                            tool_id = getattr(content_block, "id", "")
+                            if tool_id:
+                                tool_result_content.append(
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_id,
+                                        "content": {
+                                            "type": "error",
+                                            "text": "Tool execution was skipped or failed",
+                                        },
+                                        "is_error": True,
+                                    }
+                                )
+
+                # Add ALL tool results as a SINGLE user message
+                messages.append({"role": "user", "content": tool_result_content})
+                return True
+            else:
+                # No tool uses, we're done
                 self.callback_manager.on_content({"type": "text", "text": "<DONE>"})
                 return False
-
-            # Add tool results to message history in standard format
-            messages.append({"role": "user", "content": tool_result_content})
-            return True
 
         except Exception as e:
             logger.error(f"Error handling response: {str(e)}")

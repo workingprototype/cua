@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import traceback
-from pathlib import Path
 import signal
 
 from computer import Computer
@@ -51,7 +50,8 @@ async def run_agent_example():
         for i, task in enumerate(tasks):
             print(f"\nExecuting task {i}/{len(tasks)}: {task}")
             async for result in agent.run(task):
-                print(result)
+                # print(result)
+                pass
 
             print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 

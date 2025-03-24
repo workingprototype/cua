@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List, Dict, cast
 import httpx
 import asyncio
 from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex
@@ -79,6 +79,147 @@ class BaseAnthropicClient:
         raise APIConnectionError(
             f"Failed after {self.MAX_RETRIES} retries. " f"Last error: {str(last_error)}"
         )
+
+    async def run_interleaved(
+        self, messages: List[Dict[str, Any]], system: str, max_tokens: int = 4096
+    ) -> Any:
+        """Run the Anthropic API with the Claude model, supports interleaved tool calling.
+
+        Args:
+            messages: List of message objects
+            system: System prompt
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            API response
+        """
+        # Add the tool_result check/fix logic here
+        fixed_messages = self._fix_missing_tool_results(messages)
+
+        # Get model name from concrete implementation if available
+        model_name = getattr(self, "model", "unknown model")
+        logger.info(f"Running Anthropic API call with model {model_name}")
+
+        retry_count = 0
+
+        while retry_count < self.MAX_RETRIES:
+            try:
+                # Call the Anthropic API through create_message which is implemented by subclasses
+                # Convert system str to the list format expected by create_message
+                system_list = [system]
+
+                # Convert message format if needed - concrete implementations may do further conversion
+                response = await self.create_message(
+                    messages=cast(list[BetaMessageParam], fixed_messages),
+                    system=system_list,
+                    tools=[],  # Tools are included in the messages
+                    max_tokens=max_tokens,
+                    betas=["tools-2023-12-13"],
+                )
+                logger.info(f"Anthropic API call successful")
+                return response
+            except Exception as e:
+                retry_count += 1
+                wait_time = self.INITIAL_RETRY_DELAY * (
+                    2 ** (retry_count - 1)
+                )  # Exponential backoff
+                logger.info(
+                    f"Retrying request (attempt {retry_count}/{self.MAX_RETRIES}) in {wait_time:.2f} seconds after error: {str(e)}"
+                )
+                await asyncio.sleep(wait_time)
+
+        # If we get here, all retries failed
+        raise RuntimeError(f"Failed to call Anthropic API after {self.MAX_RETRIES} attempts")
+
+    def _fix_missing_tool_results(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Check for and fix any missing tool_result blocks after tool_use blocks.
+
+        Args:
+            messages: List of message objects
+
+        Returns:
+            Fixed messages with proper tool_result blocks
+        """
+        fixed_messages = []
+        pending_tool_uses = {}  # Map of tool_use IDs to their details
+
+        for i, message in enumerate(messages):
+            # Track any tool_use blocks in this message
+            if message.get("role") == "assistant" and "content" in message:
+                content = message.get("content", [])
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        tool_id = block.get("id")
+                        if tool_id:
+                            pending_tool_uses[tool_id] = {
+                                "name": block.get("name", ""),
+                                "input": block.get("input", {}),
+                            }
+
+            # Check if this message handles any pending tool_use blocks
+            if message.get("role") == "user" and "content" in message:
+                # Check for tool_result blocks in this message
+                content = message.get("content", [])
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        tool_id = block.get("tool_use_id")
+                        if tool_id in pending_tool_uses:
+                            # This tool_result handles a pending tool_use
+                            pending_tool_uses.pop(tool_id)
+
+            # Add the message to our fixed list
+            fixed_messages.append(message)
+
+            # If this is an assistant message with tool_use blocks and there are
+            # pending tool uses that need to be resolved before the next assistant message
+            if (
+                i + 1 < len(messages)
+                and message.get("role") == "assistant"
+                and messages[i + 1].get("role") == "assistant"
+                and pending_tool_uses
+            ):
+
+                # We need to insert a user message with tool_results for all pending tool_uses
+                tool_results = []
+                for tool_id, tool_info in pending_tool_uses.items():
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_id,
+                            "content": {
+                                "type": "error",
+                                "message": "Tool execution was skipped or failed",
+                            },
+                        }
+                    )
+
+                # Insert a synthetic user message with the tool results
+                if tool_results:
+                    fixed_messages.append({"role": "user", "content": tool_results})
+
+                # Clear pending tools since we've added results for them
+                pending_tool_uses = {}
+
+        # Check if there are any remaining pending tool_uses at the end of the conversation
+        if pending_tool_uses and fixed_messages and fixed_messages[-1].get("role") == "assistant":
+            # Add a final user message with tool results for any pending tool_uses
+            tool_results = []
+            for tool_id, tool_info in pending_tool_uses.items():
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": {
+                            "type": "error",
+                            "message": "Tool execution was skipped or failed",
+                        },
+                    }
+                )
+
+            if tool_results:
+                fixed_messages.append({"role": "user", "content": tool_results})
+
+        return fixed_messages
 
 
 class AnthropicDirectClient(BaseAnthropicClient):
