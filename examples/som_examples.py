@@ -318,7 +318,6 @@ def run_experiments(input_path: str, output_dir: Path, use_ocr: bool = False):
                             # Update totals
                             total_icons += result.metadata.num_icons
                             total_text += result.metadata.num_text
-                            total_time += t.elapsed_time
 
                             # Log detailed results
                             detail_file = combo_dir / f"{Path(image_path).stem}_details.txt"
@@ -360,6 +359,9 @@ def run_experiments(input_path: str, output_dir: Path, use_ocr: bool = False):
                                             )
                                             text_count += 1
 
+                        # Update timing totals
+                        total_time += t.elapsed_time
+                        
                     # Write summary for this combination
                     avg_time = total_time / len(image_files)
                     f.write(
