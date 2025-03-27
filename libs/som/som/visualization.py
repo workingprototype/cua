@@ -112,10 +112,18 @@ class BoxAnnotator:
         # Keep track of used label areas to check for collisions
         used_areas = []
 
-        # Store label information for second pass
+        # Store label information for third pass
         labels_to_draw = []
 
-        # First pass: Draw all bounding boxes
+        # First pass: Initialize used_areas with all bounding boxes
+        for detection in detections:
+            box = detection["bbox"]
+            x1, y1, x2, y2 = [
+                int(coord * dim) for coord, dim in zip(box, [image.width, image.height] * 2)
+            ]
+            used_areas.append((x1, y1, x2, y2))
+
+        # Second pass: Draw all bounding boxes
         for idx, detection in enumerate(detections, 1):
             # Get box coordinates
             box = detection["bbox"]
@@ -233,7 +241,7 @@ class BoxAnnotator:
                 }
             )
 
-        # Second pass: Draw all labels on top
+        # Third pass: Draw all labels on top
         for label_info in labels_to_draw:
             # Draw background box with white outline
             draw.rectangle(
