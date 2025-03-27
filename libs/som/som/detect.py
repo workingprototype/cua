@@ -213,26 +213,40 @@ class OmniParser:
                     text_detections = []
                 logger.info(f"Found {len(text_detections)} text regions")
 
-                # Convert text detections to typed objects and extend the list
-                elements.extend(
-                    cast(
-                        List[UIElement],
-                        [
-                            TextElement(
-                                id=len(elements) + i + 1,
-                                bbox=BoundingBox(
-                                    x1=det["bbox"][0],
-                                    y1=det["bbox"][1],
-                                    x2=det["bbox"][2],
-                                    y2=det["bbox"][3],
-                                ),
-                                content=det["content"],
-                                confidence=det["confidence"],
-                            )
-                            for i, det in enumerate(text_detections)
-                        ],
-                    )
+                # Convert text detections to typed objects
+                text_elements = cast(
+                    List[UIElement],
+                    [
+                        TextElement(
+                            id=len(elements) + i + 1,
+                            bbox=BoundingBox(
+                                x1=det["bbox"][0],
+                                y1=det["bbox"][1],
+                                x2=det["bbox"][2],
+                                y2=det["bbox"][3],
+                            ),
+                            content=det["content"],
+                            confidence=det["confidence"],
+                        )
+                        for i, det in enumerate(text_detections)
+                    ],
                 )
+                
+                # Merge detections using NMS
+                if elements and text_elements:
+                    # Get all bounding boxes and scores
+                    all_elements = elements + text_elements
+                    boxes = torch.tensor([elem.bbox.coordinates for elem in all_elements])
+                    scores = torch.tensor([elem.confidence for elem in all_elements])
+                    
+                    # Apply NMS with iou_threshold
+                    keep_indices = torchvision.ops.nms(boxes, scores, iou_threshold)
+                    
+                    # Keep only the elements that passed NMS
+                    elements = [all_elements[i] for i in keep_indices]
+                else:
+                    # Just add text elements to the list if IOU doesn't need to be applied
+                    elements.extend(text_elements)
 
             # Calculate drawing parameters based on image size
             box_overlay_ratio = max(image.size) / 3200
