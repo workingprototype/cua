@@ -232,17 +232,31 @@ class OmniParser:
                     ],
                 )
                 
-                # Merge detections using NMS
                 if elements and text_elements:
-                    # Get all bounding boxes and scores
+                    # Filter out non-OCR elements that have OCR elements with center points colliding with them
+                    filtered_elements = []
+                    for elem in elements:  # elements at this point contains only non-OCR elements
+                        should_keep = True
+                        for text_elem in text_elements:
+                            # Calculate center point of the text element
+                            center_x = (text_elem.bbox.x1 + text_elem.bbox.x2) / 2
+                            center_y = (text_elem.bbox.y1 + text_elem.bbox.y2) / 2
+                            
+                            # Check if this center point is inside the non-OCR element
+                            if (center_x >= elem.bbox.x1 and center_x <= elem.bbox.x2 and 
+                                center_y >= elem.bbox.y1 and center_y <= elem.bbox.y2):
+                                should_keep = False
+                                break
+                        
+                        if should_keep:
+                            filtered_elements.append(elem)
+                    elements = filtered_elements
+                    
+                    # Merge detections using NMS
                     all_elements = elements + text_elements
                     boxes = torch.tensor([elem.bbox.coordinates for elem in all_elements])
                     scores = torch.tensor([elem.confidence for elem in all_elements])
-                    
-                    # Apply NMS with iou_threshold
                     keep_indices = torchvision.ops.nms(boxes, scores, iou_threshold)
-                    
-                    # Keep only the elements that passed NMS
                     elements = [all_elements[i] for i in keep_indices]
                 else:
                     # Just add text elements to the list if IOU doesn't need to be applied

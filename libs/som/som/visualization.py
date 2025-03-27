@@ -174,22 +174,31 @@ class BoxAnnotator:
                 lambda: (x1 - box_width - spacing, y2 + spacing),
             ]
 
-            def check_collision(x, y):
-                """Check if a label box collides with any existing ones or is inside bbox."""
+            def check_occlusion(x, y):
+                """Check if a label box occludes any existing ones or is inside bbox."""
                 # First check if it's inside the bounding box
                 if is_inside_bbox(x, y):
                     return True
 
                 # Then check collision with other labels
                 new_box = (x, y, x + box_width, y + box_height)
+                label_width = new_box[2] - new_box[0]
+                label_height = new_box[3] - new_box[1]
+                
                 for used_box in used_areas:
                     if not (
                         new_box[2] < used_box[0]  # new box is left of used box
                         or new_box[0] > used_box[2]  # new box is right of used box
                         or new_box[3] < used_box[1]  # new box is above used box
-                        or new_box[1] > used_box[3]
-                    ):  # new box is below used box
-                        return True
+                        or new_box[1] > used_box[3]  # new box is below used box
+                    ):
+                        # Calculate dimensions of the used box
+                        used_box_width = used_box[2] - used_box[0]
+                        used_box_height = used_box[3] - used_box[1]
+                        
+                        # Only consider as collision if used box is NOT more than 5x bigger in both dimensions
+                        if not (used_box_width > 5 * label_width and used_box_height > 5 * label_height):
+                            return True
                 return False
 
             # Try each position until we find one without collision
@@ -201,7 +210,7 @@ class BoxAnnotator:
                 # Ensure position is within image bounds
                 if x < 0 or y < 0 or x + box_width > image.width or y + box_height > image.height:
                     continue
-                if not check_collision(x, y):
+                if not check_occlusion(x, y):
                     label_x = x
                     label_y = y
                     break
