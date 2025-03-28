@@ -352,7 +352,7 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
         """Get all visible windows in the system."""
         try:
             windows = []
-            running_apps = NSWorkspace.sharedWorkspace().runningApplications()
+            running_apps = self.get_running_apps()
 
             for app in running_apps:
                 try:
@@ -381,6 +381,13 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
             return windows
         except:
             return []
+
+    def get_running_apps(self):
+        # From NSWorkspace.runningApplications docs: https://developer.apple.com/documentation/appkit/nsworkspace/runningapplications
+        # "Similar to the NSRunningApplication class’s properties, this property will only change when the main run loop runs in a common mode"
+        # So we need to run the main run loop to get the latest running applications
+        Foundation.CFRunLoopRunInMode(Foundation.kCFRunLoopDefaultMode, 0.1, False)
+        return NSWorkspace.sharedWorkspace().runningApplications()
 
     def get_ax_attribute(self, element, attribute):
         return element_attribute(element, attribute)
