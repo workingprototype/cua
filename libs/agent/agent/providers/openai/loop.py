@@ -15,7 +15,6 @@ from .api_handler import OpenAIAPIHandler
 from .response_handler import OpenAIResponseHandler
 from .tools.manager import ToolManager
 from .types import LLMProvider, ResponseItemType
-from .prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 

@@ -23,52 +23,43 @@ async def run_agent_example():
     print("\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
 
     try:
-        # Create Computer instance with default parameters
-        computer = Computer(verbosity=logging.DEBUG)
+        # Create Computer instance with async context manager
+        async with Computer(verbosity=logging.DEBUG) as macos_computer:
+            # Create agent with loop and provider
+            agent = ComputerAgent(
+                computer=macos_computer,
+                loop=AgentLoop.OPENAI,
+                # loop=AgentLoop.ANTHROPIC,
+                # loop=AgentLoop.OMNI,
+                model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
+                # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
+                # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+                save_trajectory=True,
+                only_n_most_recent_images=3,
+                verbosity=logging.DEBUG,
+            )
 
-        # Create agent with loop and provider
-        agent = ComputerAgent(
-            computer=computer,
-            loop=AgentLoop.OPENAI,
-            # loop=AgentLoop.ANTHROPIC,
-            # loop=AgentLoop.OMNI,
-            model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
-            # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
-            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
-            save_trajectory=True,
-            only_n_most_recent_images=3,
-            verbosity=logging.DEBUG,
-        )
+            tasks = [
+                "Look for a repository named trycua/cua on GitHub.",
+                "Check the open issues, open the most recent one and read it.",
+                "Clone the repository in users/lume/projects if it doesn't exist yet.",
+                "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
+                "From Cursor, open Composer if not already open.",
+                "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
+            ]
 
-        tasks = [
-            "Look for a repository named trycua/cua on GitHub.",
-            "Check the open issues, open the most recent one and read it.",
-            "Clone the repository in users/lume/projects if it doesn't exist yet.",
-            "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
-            "From Cursor, open Composer if not already open.",
-            "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
-        ]
+            for i, task in enumerate(tasks):
+                print(f"\nExecuting task {i}/{len(tasks)}: {task}")
+                async for result in agent.run(task):
+                    # print(result)
+                    pass
 
-        for i, task in enumerate(tasks):
-            print(f"\nExecuting task {i}/{len(tasks)}: {task}")
-            async for result in agent.run(task):
-                # print(result)
-                pass
-
-            print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
+                print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 
     except Exception as e:
-        logger.error(f"Error in run_omni_agent_example: {e}")
+        logger.error(f"Error in run_agent_example: {e}")
         traceback.print_exc()
         raise
-    finally:
-        # Clean up resources
-        if computer and computer._initialized:
-            try:
-                # await computer.stop()
-                pass
-            except Exception as e:
-                logger.warning(f"Error stopping computer: {e}")
 
 
 def main():
