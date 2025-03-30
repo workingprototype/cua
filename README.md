@@ -13,25 +13,64 @@
   [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.com/invite/mVnXXpdE85)
 </div>
 
-# Cua
+Cua (pronounced "koo-ah", short for Computer-Use Agent) is an open-source framework that combines high-performance virtualization with AI agent capabilities to enable secure, isolated environments for AI systems to interact with desktop applications.
 
-Create and run high-performance macOS and Linux VMs on Apple Silicon, with built-in support for AI agents.
+## What is Cua?
 
-## Libraries
+Cua offers two primary capabilities in a single integrated framework:
+
+1. **High-Performance Virtualization** - Create and run macOS/Linux virtual machines on Apple Silicon with near-native performance (up to 90% of native speed) using `Apple's Virtualization.Framework`.
+
+2. **Computer-Use Interface & Agent** - A framework that allows AI systems to observe and control these virtual environments - interacting with applications, browsing the web, writing code, and performing complex workflows.
+
+## Why Use Cua?
+
+- **Security & Isolation**: Run AI agents in fully isolated virtual environments instead of giving them access to your main system
+- **Performance**: [Near-native performance](https://browser.geekbench.com/v6/cpu/compare/11283746?baseline=11102709) on Apple Silicon
+- **Flexibility**: Run macOS or Linux environments with the same framework
+- **Reproducibility**: Create consistent, deterministic environments for AI agent workflows
+- **LLM Integration**: Built-in support for connecting to various LLM providers
+
+## System Requirements
+
+- Mac with Apple Silicon (M1/M2/M3/M4 series)
+- macOS 14 (Sonoma) or newer
+- Python 3.10+ (for Computer and Agent libraries)
+- Disk space for VM images (40GB+ recommended)
+
+## Quick Start
+
+### Option 1: Lume CLI Only (VM Management)
+If you only need the virtualization capabilities:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+```
+
+For Lume usage instructions, refer to the [Lume documentation](./libs/lume/README.md).
+
+### Option 2: Full Computer-Use Agent Capabilities
+If you want to use AI agents with virtualized environments:
+
+1. Install the Lume CLI:
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+   ```
+
+2. Install the Python libraries:
+   ```bash
+   pip install cua-computer cua-agent
+   ```
+
+Check out our [Getting Started Guide](./docs/Getting-Started.md) or explore the [Notebooks](./notebooks/) for interactive examples.
+
+## Monorepo Libraries
 
 | Library | Description | Installation | Version |
 |---------|-------------|--------------|---------|
 | [**Lume**](./libs/lume/README.md) | CLI for running macOS/Linux VMs with near-native performance using Apple's `Virtualization.Framework`. | [![Download](https://img.shields.io/badge/Download-333333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/trycua/cua/releases/latest/download/lume.pkg.tar.gz) | [![GitHub release](https://img.shields.io/github/v/release/trycua/cua?color=333333)](https://github.com/trycua/cua/releases) |
 | [**Computer**](./libs/computer/README.md) | Computer-Use Interface (CUI) framework for interacting with macOS/Linux sandboxes | `pip install cua-computer` | [![PyPI](https://img.shields.io/pypi/v/cua-computer?color=333333)](https://pypi.org/project/cua-computer/) |
 | [**Agent**](./libs/agent/README.md) | Computer-Use Agent (CUA) framework for running agentic workflows in macOS/Linux dedicated sandboxes | `pip install cua-agent` | [![PyPI](https://img.shields.io/pypi/v/cua-agent?color=333333)](https://pypi.org/project/cua-agent/) |
-
-## Lume
-
-**Originally looking for Lume?** If you're here for the original Lume project, it's now part of this monorepo. Simply install with our one-line installer script and refer to its [documentation](./libs/lume/README.md):
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-```
 
 ## Docs
 

@@ -1,4 +1,4 @@
-## Developer Guide
+## Getting Started
 
 ### Project Structure
 
