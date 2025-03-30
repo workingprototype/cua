@@ -35,8 +35,9 @@ Create and run high-performance macOS and Linux VMs on Apple Silicon, with built
 
 ## Docs
 
-For optimal onboarding, we recommend starting with the [Computer](./libs/computer/README.md) documentation to cover the core functionality of the Computer sandbox, then exploring the [Agent](./libs/agent/README.md) documentation to understand Cua's AI agent capabilities, and finally working through the Notebook examples to try out the Computer-Use interface and agent.
+For the best onboarding experience with the packages in this monorepo, we recommend starting with the [Computer](./libs/computer/README.md) documentation to cover the core functionality of the Computer sandbox, then exploring the [Agent](./libs/agent/README.md) documentation to understand Cua's AI agent capabilities, and finally working through the Notebook examples.
 
+- [Lume](./libs/lume/README.md)
 - [Computer](./libs/computer/README.md)
 - [Agent](./libs/agent/README.md)
 - [Notebooks](./notebooks/)
@@ -54,7 +55,7 @@ Demos of the Computer-Use Agent in action. Share your most impressive demos in C
 
 </details>
 
-<details>
+<details open>
 <summary><b>Notebook: Fix GitHub issue in Cursor</b></summary>
 <br>
 <div align="center">
