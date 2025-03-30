@@ -23,50 +23,73 @@ async def run_agent_example():
     print("\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
 
     try:
-        # Create Computer instance with default parameters
-        computer = Computer(verbosity=logging.DEBUG)
+        # Create Computer instance with async context manager
+        async with Computer(verbosity=logging.DEBUG) as macos_computer:
+            # Create agent with loop and provider
+            agent = ComputerAgent(
+                computer=macos_computer,
+                loop=AgentLoop.OPENAI,
+                # loop=AgentLoop.ANTHROPIC,
+                # loop=AgentLoop.OMNI,
+                model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
+                # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
+                # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+                save_trajectory=True,
+                only_n_most_recent_images=3,
+                verbosity=logging.DEBUG,
+            )
 
-        # Create agent with loop and provider
-        agent = ComputerAgent(
-            computer=computer,
-            # loop=AgentLoop.ANTHROPIC,
-            loop=AgentLoop.OMNI,
-            model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
-            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
-            save_trajectory=True,
-            only_n_most_recent_images=3,
-            verbosity=logging.DEBUG,
-        )
+            tasks = [
+                "Look for a repository named trycua/cua on GitHub.",
+                "Check the open issues, open the most recent one and read it.",
+                "Clone the repository in users/lume/projects if it doesn't exist yet.",
+                "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
+                "From Cursor, open Composer if not already open.",
+                "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
+            ]
 
-        tasks = [
-            "Look for a repository named trycua/cua on GitHub.",
-            "Check the open issues, open the most recent one and read it.",
-            "Clone the repository in users/lume/projects if it doesn't exist yet.",
-            "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
-            "From Cursor, open Composer if not already open.",
-            "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
-        ]
+            for i, task in enumerate(tasks):
+                print(f"\nExecuting task {i}/{len(tasks)}: {task}")
+                async for result in agent.run(task):
+                    print("Response ID: ", result.get("id"))
 
-        for i, task in enumerate(tasks):
-            print(f"\nExecuting task {i}/{len(tasks)}: {task}")
-            async for result in agent.run(task):
-                # print(result)
-                pass
+                    # Print detailed usage information
+                    usage = result.get("usage")
+                    if usage:
+                        print("\nUsage Details:")
+                        print(f"  Input Tokens: {usage.get('input_tokens')}")
+                        if "input_tokens_details" in usage:
+                            print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
+                        print(f"  Output Tokens: {usage.get('output_tokens')}")
+                        if "output_tokens_details" in usage:
+                            print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
+                        print(f"  Total Tokens: {usage.get('total_tokens')}")
 
-            print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
+                    print("Response Text: ", result.get("text"))
+
+                    # Print tools information
+                    tools = result.get("tools")
+                    if tools:
+                        print("\nTools:")
+                        print(tools)
+
+                    # Print reasoning and tool call outputs
+                    outputs = result.get("output", [])
+                    for output in outputs:
+                        output_type = output.get("type")
+                        if output_type == "reasoning":
+                            print("\nReasoning Output:")
+                            print(output)
+                        elif output_type == "computer_call":
+                            print("\nTool Call Output:")
+                            print(output)
+
+                print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 
     except Exception as e:
-        logger.error(f"Error in run_omni_agent_example: {e}")
+        logger.error(f"Error in run_agent_example: {e}")
         traceback.print_exc()
         raise
-    finally:
-        # Clean up resources
-        if computer and computer._initialized:
-            try:
-                # await computer.stop()
-                pass
-            except Exception as e:
-                logger.warning(f"Error stopping computer: {e}")
 
 
 def main():

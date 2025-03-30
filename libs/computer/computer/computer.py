@@ -1,12 +1,6 @@
 from typing import Optional, List, Literal, Dict, Any, Union, TYPE_CHECKING, cast
 from pylume import PyLume
-from pylume.models import (
-    VMRunOpts,
-    VMUpdateOpts,
-    ImageRef,
-    SharedDirectory,
-    VMStatus
-)
+from pylume.models import VMRunOpts, VMUpdateOpts, ImageRef, SharedDirectory, VMStatus
 import asyncio
 from .models import Computer as ComputerConfig, Display
 from .interface.factory import InterfaceFactory
@@ -66,8 +60,6 @@ class Computer:
             port: Optional port to use for the PyLume server
             host: Host to use for PyLume connections (e.g. "localhost", "host.docker.internal")
         """
-        if TYPE_CHECKING:
-            from .interface.base import BaseComputerInterface
 
         self.logger = Logger("cua.computer", verbosity)
         self.logger.info("Initializing Computer...")
@@ -157,6 +149,18 @@ class Computer:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Exit async context manager."""
+        pass
+
+    def __enter__(self):
+        """Enter synchronous context manager."""
+        # Run the event loop to call the async run method
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.run())
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit synchronous context manager."""
+        # We could add cleanup here if needed in the future
         pass
 
     async def run(self) -> None:
