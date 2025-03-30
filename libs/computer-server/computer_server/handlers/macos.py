@@ -386,7 +386,7 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
         # From NSWorkspace.runningApplications docs: https://developer.apple.com/documentation/appkit/nsworkspace/runningapplications
         # "Similar to the NSRunningApplication class’s properties, this property will only change when the main run loop runs in a common mode"
         # So we need to run the main run loop to get the latest running applications
-        Foundation.CFRunLoopRunInMode(Foundation.kCFRunLoopDefaultMode, 0.1, False)
+        Foundation.CFRunLoopRunInMode(Foundation.kCFRunLoopDefaultMode, 0.1, False)  # type: ignore
         return NSWorkspace.sharedWorkspace().runningApplications()
 
     def get_ax_attribute(self, element, attribute):
