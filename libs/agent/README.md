@@ -15,9 +15,7 @@
 </h1>
 </div>
 
-**Agent** is a Computer Use (CUA) framework for running multi-app agentic workflows targeting macOS and Linux sandbox, supporting local (Ollama) and cloud model providers (OpenAI, Anthropic, Groq, DeepSeek, Qwen). The framework integrates with Microsoft's OmniParser for enhanced UI understanding and interaction.
-
-> While our north star is to create a 1-click experience, this preview of Agent might be still a bit rough around the edges. We appreciate your patience as we work to improve the experience.
+**cua-agent** is a general Computer-Use framework for running multi-app agentic workflows targeting macOS and Linux sandbox created with Cua, supporting local (Ollama) and cloud model providers (OpenAI, Anthropic, Groq, DeepSeek, Qwen).
 
 ### Get started with Agent
 
@@ -27,18 +25,92 @@
 
 ## Install
 
-### cua-agent
-
 ```bash
 pip install "cua-agent[all]"
 
 # or install specific loop providers
-pip install "cua-agent[anthropic]"
-pip install "cua-agent[omni]"
+pip install "cua-agent[openai]" # OpenAI Cua Loop
+pip install "cua-agent[anthropic]" # Anthropic Cua Loop
+pip install "cua-agent[omni]" # Cua Loop based on OmniParser
 ```
 
 ## Run
 
+```bash
+async with Computer() as macos_computer:
+  # Create agent with loop and provider
+  agent = ComputerAgent(
+      computer=macos_computer,
+      loop=AgentLoop.OPENAI,
+      model=LLM(provider=LLMProvider.OPENAI)
+  )
+
+  tasks = [
+      "Look for a repository named trycua/cua on GitHub.",
+      "Check the open issues, open the most recent one and read it.",
+      "Clone the repository in users/lume/projects if it doesn't exist yet.",
+      "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
+      "From Cursor, open Composer if not already open.",
+      "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
+  ]
+
+  for i, task in enumerate(tasks):
+      print(f"\nExecuting task {i}/{len(tasks)}: {task}")
+      async for result in agent.run(task):
+          print(result)
+
+      print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
+```
+
 Refer to these notebooks for step-by-step guides on how to use the Computer-Use Agent (CUA):
 
 - [Agent Notebook](../../notebooks/agent_nb.ipynb) - Complete examples and workflows
+
+## Agent Loops
+
+The `cua-agent` package provides three agent loops variations, based on different CUA models providers and techniques:
+
+| Agent Loop | Supported Models | Description | Set-Of-Marks |
+|:-----------|:-----------------|:------------|:-------------|
+| `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
+| `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
+| `AgentLoop.OMNI` <br>(preview) | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `gpt-3.5-turbo` | Use OmniParser for element pixel-detection (SoM) and any VLMs | OmniParser |
+
+## AgentResponse
+The `AgentResponse` class represents the structured output returned after each agent turn. It contains the agent's response, reasoning, tool usage, and other metadata. The response format aligns with the new [OpenAI Agent SDK specification](https://platform.openai.com/docs/api-reference/responses) for better consistency across different agent loops.
+
+```python
+async for result in agent.run(task):
+  print("Response ID: ", result.get("id"))
+
+  # Print detailed usage information
+  usage = result.get("usage")
+  if usage:
+      print("\nUsage Details:")
+      print(f"  Input Tokens: {usage.get('input_tokens')}")
+      if "input_tokens_details" in usage:
+          print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
+      print(f"  Output Tokens: {usage.get('output_tokens')}")
+      if "output_tokens_details" in usage:
+          print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
+      print(f"  Total Tokens: {usage.get('total_tokens')}")
+
+  print("Response Text: ", result.get("text"))
+
+  # Print tools information
+  tools = result.get("tools")
+  if tools:
+      print("\nTools:")
+      print(tools)
+
+  # Print reasoning and tool call outputs
+  outputs = result.get("output", [])
+  for output in outputs:
+      output_type = output.get("type")
+      if output_type == "reasoning":
+          print("\nReasoning Output:")
+          print(output)
+      elif output_type == "computer_call":
+          print("\nTool Call Output:")
+          print(output)
+```

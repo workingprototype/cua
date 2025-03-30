@@ -10,7 +10,6 @@ from ...core.base import BaseLoop
 from ...core.types import AgentResponse
 from ...core.messages import StandardMessageManager, ImageRetentionConfig
 
-from .api.client import OpenAIClient
 from .api_handler import OpenAIAPIHandler
 from .response_handler import OpenAIResponseHandler
 from .tools.manager import ToolManager
@@ -109,15 +108,8 @@ class OpenAILoop(BaseLoop):
         client, tool manager, and message manager.
         """
         try:
-            logger.info(f"Initializing OpenAI client with model {self.model}...")
-
-            # Initialize client
-            self.client = OpenAIClient(api_key=self.api_key, model=self.model)
-
             # Initialize tool manager
             await self.tool_manager.initialize()
-
-            logger.info(f"Initialized OpenAI client with model {self.model}")
         except Exception as e:
             logger.error(f"Error initializing OpenAI client: {str(e)}")
             self.client = None
@@ -142,13 +134,8 @@ class OpenAILoop(BaseLoop):
             # Create queue for response streaming
             queue = asyncio.Queue()
 
-            # Ensure client is initialized
-            if self.client is None:
-                logger.info("Initializing client...")
-                await self.initialize_client()
-                if self.client is None:
-                    raise RuntimeError("Failed to initialize client")
-                logger.info("Client initialized successfully")
+            # Ensure tool manager is initialized
+            await self.tool_manager.initialize()
 
             # Start loop in background task
             loop_task = asyncio.create_task(self._run_loop(queue, messages))

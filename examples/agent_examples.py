@@ -51,8 +51,38 @@ async def run_agent_example():
             for i, task in enumerate(tasks):
                 print(f"\nExecuting task {i}/{len(tasks)}: {task}")
                 async for result in agent.run(task):
-                    # print(result)
-                    pass
+                    print("Response ID: ", result.get("id"))
+
+                    # Print detailed usage information
+                    usage = result.get("usage")
+                    if usage:
+                        print("\nUsage Details:")
+                        print(f"  Input Tokens: {usage.get('input_tokens')}")
+                        if "input_tokens_details" in usage:
+                            print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
+                        print(f"  Output Tokens: {usage.get('output_tokens')}")
+                        if "output_tokens_details" in usage:
+                            print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
+                        print(f"  Total Tokens: {usage.get('total_tokens')}")
+
+                    print("Response Text: ", result.get("text"))
+
+                    # Print tools information
+                    tools = result.get("tools")
+                    if tools:
+                        print("\nTools:")
+                        print(tools)
+
+                    # Print reasoning and tool call outputs
+                    outputs = result.get("output", [])
+                    for output in outputs:
+                        output_type = output.get("type")
+                        if output_type == "reasoning":
+                            print("\nReasoning Output:")
+                            print(output)
+                        elif output_type == "computer_call":
+                            print("\nTool Call Output:")
+                            print(output)
 
                 print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
 
