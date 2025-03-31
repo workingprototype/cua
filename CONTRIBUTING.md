@@ -26,6 +26,23 @@ We're always looking for suggestions to make lume better. If you have an idea:
    - Any potential implementation details
    - Why this enhancement would benefit lume users
 
+## Code Formatting
+
+We follow strict code formatting guidelines to ensure consistency across the codebase. Before submitting any code:
+
+1. **Review Our Format Guide**: Please review our [Code Formatting Standards](docs/Getting-Started.md#code-formatting-standards) section in the Getting Started guide.
+2. **Configure Your IDE**: We recommend using the workspace settings provided in `.vscode/` for automatic formatting.
+3. **Run Formatting Tools**: Always run the formatting tools before submitting a PR:
+   ```bash
+   # For Python code
+   pdm run black .
+   pdm run ruff check --fix .
+   ```
+4. **Validate Your Code**: Ensure your code passes all checks:
+   ```bash
+   pdm run mypy .
+   ```
+
 ## Documentation
 
 Documentation improvements are always welcome. You can:
@@ -34,6 +51,6 @@ Documentation improvements are always welcome. You can:
 - Improve API documentation
 - Add tutorials or guides
 
-For detailed instructions on setting up your development environment and submitting code contributions, please see our [Developer-Guide.md](docs/Developer-Guide.md) guide.
+For detailed instructions on setting up your development environment and submitting code contributions, please see our [Developer-Guide](./docs/Developer-Guide.md) guide.
 
 Feel free to join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas or get help with your contributions. 
