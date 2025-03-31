@@ -59,10 +59,46 @@ If you want to use AI agents with virtualized environments:
 
 2. Install the Python libraries:
    ```bash
-   pip install cua-computer cua-agent
+   pip install cua-computer cua-agent[all]
    ```
 
-Check out our [Getting Started Guide](./docs/Getting-Started.md) or explore the [Notebooks](./notebooks/) for interactive examples.
+3. Use the libraries in your Python code:
+   ```python
+   from cua.computer import Computer
+   from cua.agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+
+   async with Computer(verbosity=logging.DEBUG) as macos_computer:
+     agent = ComputerAgent(
+         computer=macos_computer,
+         loop=AgentLoop.OPENAI, # or AgentLoop.ANTHROPIC, or AgentLoop.OMNI
+         model=LLM(provider=LLMProvider.OPENAI) # or LLM(provider=LLMProvider.ANTHROPIC)
+     )
+
+     tasks = [
+         "Look for a repository named trycua/cua on GitHub.",
+     ]
+
+     for task in tasks:
+       async for result in agent.run(task):
+         print(result)
+   ```
+   
+   Explore the [Notebooks](./notebooks/) for ready-to-run examples.
+
+4. For Developers (contribute and use latest features):
+   ```bash
+   # Clone the repository
+   git clone https://github.com/trycua/cua.git
+   cd cua
+   
+   # Open the project in VSCode
+   code ./vscode/py.code-workspace
+
+   # Build the project
+   ./scripts/build.sh
+   ```
+   
+   See our [Developer-Guide](./docs/Developer-Guide.md) for more information.
 
 ## Monorepo Libraries
 
