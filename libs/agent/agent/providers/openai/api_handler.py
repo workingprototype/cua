@@ -132,6 +132,9 @@ class OpenAIAPIHandler:
                 }
             ],
             "input": input_array,
+            "reasoning": {
+                "generate_summary": "concise",
+            },
             "truncation": "auto",
         }
 
