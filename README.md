@@ -85,7 +85,26 @@ If you want to use AI agents with virtualized environments:
    
    Explore the [Notebooks](./notebooks/) for ready-to-run examples.
 
-4. For Developers (contribute and use latest features):
+4. Optionally, you can also use the Computer-Use Agent with a Gradio frontend:
+
+   ```bash
+   python -m pip install ai-gradio
+   ```
+
+  ```python
+  import gradio as gr
+  import ai_gradio
+
+  gr.load(
+      name='cua:gpt-4', # currently ignored
+      src=ai_gradio.registry,
+      title="Cua - AI Agent"
+  ).launch()
+  ```
+
+  Refer to this [notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
+
+5. For Developers only (contribute and use latest features):
    ```bash
    # Clone the repository
    git clone https://github.com/trycua/cua.git
