@@ -85,7 +85,7 @@ If you want to use AI agents with virtualized environments:
    
    Explore the [Notebooks](./notebooks/) for ready-to-run examples.
 
-4. Optionally, you can also use the Computer-Use Agent with a Gradio frontend:
+4. Optionally, you can use the Agent with a Gradio UI:
 
    ```bash
    python -m pip install ai-gradio
@@ -102,7 +102,7 @@ If you want to use AI agents with virtualized environments:
   ).launch()
   ```
 
-  Refer to this [notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
+  Refer to this [Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
 
 5. For Developers only (contribute and use latest features):
    ```bash
