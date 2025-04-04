@@ -4,11 +4,7 @@ import os
 import logging
 from typing import Dict, List, Optional, Any
 import aiohttp
-import base64
 import re
-import json
-import ssl
-import certifi
 from datetime import datetime
 from .base import BaseOmniClient
 

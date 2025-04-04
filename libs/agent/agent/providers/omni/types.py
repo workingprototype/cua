@@ -36,7 +36,7 @@ Model = LLM
 PROVIDER_TO_DEFAULT_MODEL: Dict[LLMProvider, str] = {
     LLMProvider.ANTHROPIC: "claude-3-7-sonnet-20250219",
     LLMProvider.OPENAI: "gpt-4o",
-    LLMProvider.OLLAMA: "gemma3:4b-it-q4_K_M",
+    LLMProvider.OLLAMA: "qwen2.5:7b",
 }
 
 # Environment variable names for each provider

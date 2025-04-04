@@ -86,7 +86,8 @@ class ComputerAgent:
 
         # Get API key from environment if not provided
         actual_api_key = api_key or os.environ.get(ENV_VARS[self.provider], "")
-        if not actual_api_key:
+        # Ollama is local and doesn't require an API key
+        if not actual_api_key and str(self.provider) != "ollama":
             raise ValueError(f"No API key provided for {self.provider}")
 
         # Create the appropriate loop using the factory
