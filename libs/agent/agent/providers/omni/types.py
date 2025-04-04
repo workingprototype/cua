@@ -11,6 +11,7 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OMNI = "omni"
     OPENAI = "openai"
+    OLLAMA = "ollama"
 
 
 @dataclass
@@ -35,10 +36,12 @@ Model = LLM
 PROVIDER_TO_DEFAULT_MODEL: Dict[LLMProvider, str] = {
     LLMProvider.ANTHROPIC: "claude-3-7-sonnet-20250219",
     LLMProvider.OPENAI: "gpt-4o",
+    LLMProvider.OLLAMA: "gemma3:4b-it-q4_K_M",
 }
 
 # Environment variable names for each provider
 PROVIDER_TO_ENV_VAR: Dict[LLMProvider, str] = {
     LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
     LLMProvider.OPENAI: "OPENAI_API_KEY",
+    LLMProvider.OLLAMA: "none",
 }

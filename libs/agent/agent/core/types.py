@@ -10,6 +10,7 @@ class AgentLoop(Enum):
     ANTHROPIC = auto()  # Anthropic implementation
     OMNI = auto()  # OmniLoop implementation
     OPENAI = auto()  # OpenAI implementation
+    OLLAMA = auto()  # OLLAMA implementation
     # Add more loop types as needed
 
 

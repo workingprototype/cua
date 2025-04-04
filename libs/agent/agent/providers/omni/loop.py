@@ -19,6 +19,7 @@ from computer import Computer
 from .types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
+from .clients.ollama import OllamaClient
 from .prompts import SYSTEM_PROMPT
 from .api_handler import OmniAPIHandler
 from .tools.manager import ToolManager
@@ -135,6 +136,11 @@ class OmniLoop(BaseLoop):
                 api_key=self.api_key,
                 model=self.model,
             )
+        elif self.provider == LLMProvider.OLLAMA:
+            self.client = OllamaClient(
+                api_key=self.api_key,
+                model=self.model,
+            )
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -159,6 +165,11 @@ class OmniLoop(BaseLoop):
                     model=self.model,
                     max_retries=self.max_retries,
                     retry_delay=self.retry_delay,
+                )
+            elif self.provider == LLMProvider.OLLAMA:
+                self.client = OllamaClient(
+                    api_key=self.api_key,
+                    model=self.model,
                 )
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
@@ -369,6 +380,13 @@ class OmniLoop(BaseLoop):
                                 standard_content.append(block_dict)
                 else:
                     logger.warning("Invalid Anthropic response format")
+                    return True, action_screenshot_saved
+            elif self.provider == LLMProvider.OLLAMA:
+                try:
+                    raw_text = response["message"]["content"]
+                    standard_content = [{"type": "text", "text": raw_text}]
+                except (KeyError, TypeError, IndexError) as e:
+                    logger.error(f"Invalid response format: {str(e)}")
                     return True, action_screenshot_saved
             else:
                 # Assume OpenAI or compatible format
