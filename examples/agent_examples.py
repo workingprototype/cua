@@ -34,7 +34,7 @@ async def run_agent_example():
                 # model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
                 # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
                 # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
-                model=LLM(provider=LLMProvider.OLLAMA, name="qwen2.5:7b"),
+                model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:4b-it-q4_K_M"),
                 save_trajectory=True,
                 only_n_most_recent_images=3,
                 verbosity=logging.DEBUG,

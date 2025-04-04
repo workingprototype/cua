@@ -20,7 +20,7 @@ class OllamaClient(BaseOmniClient):
 
         Args:
             api_key: Not used
-            model: Ollama model name (e.g. "qwen2.5:7b")
+            model: Ollama model name (e.g. "gemma3:4b-it-q4_K_M")
             max_retries: Maximum number of retries for API calls
             retry_delay: Base delay between retries in seconds
         """
