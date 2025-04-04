@@ -67,17 +67,9 @@ class OCRProcessor:
                 import easyocr
 
                 # Use GPU if available
-                use_gpu = self.device in ["cuda"]  # MPS not directly supported by EasyOCR
-
-                # If using MPS, add warnings to explain why CPU is used
-                if self.device == "mps":
-                    logger.warning("EasyOCR doesn't support MPS directly. Using CPU instead.")
-                    logger.warning(
-                        "To silence this warning, set environment variable: PYTORCH_ENABLE_MPS_FALLBACK=1"
-                    )
-
+                use_gpu = self.device in ["cuda", "mps"]
                 self.reader = easyocr.Reader(["en"], gpu=use_gpu)
-
+                
                 # Verify reader initialization
                 if self.reader is None:
                     raise ValueError("Failed to initialize EasyOCR reader")
