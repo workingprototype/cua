@@ -43,10 +43,10 @@ class OllamaClient(BaseOmniClient):
         Returns:
             Messages in Ollama format
         """
-        Ollama_messages = []
+        ollama_messages = []
 
         # Add system message
-        Ollama_messages.append(
+        ollama_messages.append(
             {
                 "role": "system",
                 "content": system,
@@ -62,17 +62,17 @@ class OllamaClient(BaseOmniClient):
             isText = content.get("type", "") == "text"
             if isText:
                 data = content.get("text", "")
-                Ollama_messages.append({"role": message["role"], "content": data})
+                ollama_messages.append({"role": message["role"], "content": data})
             if isImage:
                 data = content.get("image_url", {}).get("url", "")
                 # remove header
                 data = data.removeprefix("data:image/png;base64,")
-                Ollama_messages.append(
+                ollama_messages.append(
                     {"role": message["role"], "content": "Use this image", "images": [data]}
                 )
 
         # Cast the list to the correct type expected by Ollama
-        return cast(List[Any], Ollama_messages)
+        return cast(List[Any], ollama_messages)
 
     async def run_interleaved(
         self, messages: List[Dict[str, Any]], system: str, max_tokens: int
@@ -92,14 +92,14 @@ class OllamaClient(BaseOmniClient):
         for attempt in range(self.max_retries):
             try:
                 # Convert messages to Ollama format
-                Ollama_messages = self._convert_message_format(system, messages)
+                ollama_messages = self._convert_message_format(system, messages)
 
                 response = await self.client.chat(
                     model=self.model,
                     options=Options(
                         temperature=0,
                     ),
-                    messages=Ollama_messages,
+                    messages=ollama_messages,
                     format="json",
                 )
 

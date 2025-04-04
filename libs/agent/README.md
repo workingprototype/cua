@@ -31,7 +31,7 @@ pip install "cua-agent[all]"
 # or install specific loop providers
 pip install "cua-agent[openai]" # OpenAI Cua Loop
 pip install "cua-agent[anthropic]" # Anthropic Cua Loop
-pip install "cua-agent[omni]" # Cua Loop based on OmniParser
+pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
 ```
 
 ## Run

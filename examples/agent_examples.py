@@ -28,12 +28,13 @@ async def run_agent_example():
             # Create agent with loop and provider
             agent = ComputerAgent(
                 computer=macos_computer,
-                loop=AgentLoop.OPENAI,
+                # loop=AgentLoop.OPENAI,
                 # loop=AgentLoop.ANTHROPIC,
-                # loop=AgentLoop.OMNI,
-                model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
+                loop=AgentLoop.OMNI,
+                # model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
                 # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4.5-preview"),
                 # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
+                model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:4b-it-q4_K_M"),
                 save_trajectory=True,
                 only_n_most_recent_images=3,
                 verbosity=logging.DEBUG,
