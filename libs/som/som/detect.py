@@ -213,26 +213,54 @@ class OmniParser:
                     text_detections = []
                 logger.info(f"Found {len(text_detections)} text regions")
 
-                # Convert text detections to typed objects and extend the list
-                elements.extend(
-                    cast(
-                        List[UIElement],
-                        [
-                            TextElement(
-                                id=len(elements) + i + 1,
-                                bbox=BoundingBox(
-                                    x1=det["bbox"][0],
-                                    y1=det["bbox"][1],
-                                    x2=det["bbox"][2],
-                                    y2=det["bbox"][3],
-                                ),
-                                content=det["content"],
-                                confidence=det["confidence"],
-                            )
-                            for i, det in enumerate(text_detections)
-                        ],
-                    )
+                # Convert text detections to typed objects
+                text_elements = cast(
+                    List[UIElement],
+                    [
+                        TextElement(
+                            id=len(elements) + i + 1,
+                            bbox=BoundingBox(
+                                x1=det["bbox"][0],
+                                y1=det["bbox"][1],
+                                x2=det["bbox"][2],
+                                y2=det["bbox"][3],
+                            ),
+                            content=det["content"],
+                            confidence=det["confidence"],
+                        )
+                        for i, det in enumerate(text_detections)
+                    ],
                 )
+                
+                if elements and text_elements:
+                    # Filter out non-OCR elements that have OCR elements with center points colliding with them
+                    filtered_elements = []
+                    for elem in elements:  # elements at this point contains only non-OCR elements
+                        should_keep = True
+                        for text_elem in text_elements:
+                            # Calculate center point of the text element
+                            center_x = (text_elem.bbox.x1 + text_elem.bbox.x2) / 2
+                            center_y = (text_elem.bbox.y1 + text_elem.bbox.y2) / 2
+                            
+                            # Check if this center point is inside the non-OCR element
+                            if (center_x >= elem.bbox.x1 and center_x <= elem.bbox.x2 and 
+                                center_y >= elem.bbox.y1 and center_y <= elem.bbox.y2):
+                                should_keep = False
+                                break
+                        
+                        if should_keep:
+                            filtered_elements.append(elem)
+                    elements = filtered_elements
+                    
+                    # Merge detections using NMS
+                    all_elements = elements + text_elements
+                    boxes = torch.tensor([elem.bbox.coordinates for elem in all_elements])
+                    scores = torch.tensor([elem.confidence for elem in all_elements])
+                    keep_indices = torchvision.ops.nms(boxes, scores, iou_threshold)
+                    elements = [all_elements[i] for i in keep_indices]
+                else:
+                    # Just add text elements to the list if IOU doesn't need to be applied
+                    elements.extend(text_elements)
 
             # Calculate drawing parameters based on image size
             box_overlay_ratio = max(image.size) / 3200
