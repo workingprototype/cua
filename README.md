@@ -102,7 +102,7 @@ If you want to use AI agents with virtualized environments:
    ).launch()
    ```
 
-  Refer to the [Gradio Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
+   Refer to the [Gradio Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
 
 5. For Developers only (contribute and use latest features):
    ```bash
