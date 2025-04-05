@@ -83,7 +83,7 @@ If you want to use AI agents with virtualized environments:
          print(result)
    ```
    
-   Explore the [Notebooks](./notebooks/) for ready-to-run examples.
+   Explore the [Agent Notebook](./notebooks/) for a ready-to-run example.
 
 4. Optionally, you can use the Agent with a Gradio UI:
 
@@ -91,18 +91,18 @@ If you want to use AI agents with virtualized environments:
    python -m pip install ai-gradio
    ```
 
-  ```python
-  import gradio as gr
-  import ai_gradio
+   ```python
+   import gradio as gr
+   import ai_gradio
 
-  gr.load(
+   gr.load(
       name='cua:gpt-4', # currently ignored
       src=ai_gradio.registry,
       title="Cua - AI Agent"
-  ).launch()
-  ```
+   ).launch()
+   ```
 
-  Refer to this [Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
+  Refer to the [Gradio Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
 
 5. For Developers only (contribute and use latest features):
    ```bash
