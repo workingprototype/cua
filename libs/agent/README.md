@@ -109,6 +109,33 @@ export ANTHROPIC_API_KEY=your_anthropic_key_here
 OPENAI_API_KEY=your_key ANTHROPIC_API_KEY=your_key python launch_ui.py
 ```
 
+### Using Local Models
+
+You can use local models with the OMNI loop provider by selecting "Custom model..." from the dropdown. The default provider URL is set to `http://localhost:1234/v1` which works with LM Studio. 
+
+If you're using a different local model server:
+- vLLM: `http://localhost:8000/v1`
+- LocalAI: `http://localhost:8080/v1`
+- Ollama with OpenAI compat API: `http://localhost:11434/v1`
+
+To change the URL, modify the `provider_base_url` in your launcher script:
+
+```python
+# In your launcher script
+from agent.ui.gradio.app import create_gradio_ui
+from agent import LLM, LLMProvider
+
+# Create a custom model with a specific URL
+custom_model = LLM(
+    provider=LLMProvider.OAICOMPAT,
+    name="your-model-name",
+    provider_base_url="http://localhost:8000/v1"  # Change to your server URL
+)
+
+app = create_gradio_ui(custom_model=custom_model)
+app.launch()
+```
+
 Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
 
 The Gradio UI provides:
@@ -123,14 +150,8 @@ You can also embed the Gradio UI in your own application:
 # Import directly in your application
 from agent.ui.gradio.app import create_gradio_ui
 
-# Create the UI with advanced features
-demo = create_gradio_ui()
-demo.launch()
-
-# Or for a simpler interface
-from agent.ui.gradio import registry
-demo = registry(name='cua:gpt-4o')
-demo.launch()
+app = create_gradio_ui()
+app.launch()
 ```
 
 ## Agent Loops
@@ -141,7 +162,7 @@ The `cua-agent` package provides three agent loops variations, based on differen
 |:-----------|:-----------------|:------------|:-------------|
 | `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
 | `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
-| `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
+| `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
 
 ## AgentResponse
 The `AgentResponse` class represents the structured output returned after each agent turn. It contains the agent's response, reasoning, tool usage, and other metadata. The response format aligns with the new [OpenAI Agent SDK specification](https://platform.openai.com/docs/api-reference/responses) for better consistency across different agent loops.

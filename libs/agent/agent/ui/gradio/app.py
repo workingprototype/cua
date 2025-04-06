@@ -271,16 +271,19 @@ def create_agent(
             api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
     # Create LLM model object with appropriate parameters
-    provider_base_url = "http://localhost:8000/v1" if use_oaicompat else None
+    provider_base_url = "http://localhost:1234/v1" if use_oaicompat else None
 
     if use_oaicompat:
-        # Special handling for OAICOMPAT - use OPENAI provider with custom base URL
-        print(f"DEBUG - Creating OAICOMPAT agent with model: {model_name}")
+        # Special handling for OAICOMPAT - use OAICOMPAT provider with custom base URL
+        print(
+            f"DEBUG - Creating OAICOMPAT agent with model: {model_name}, URL: {provider_base_url}"
+        )
         llm = LLM(
-            provider=provider,  # Already set to OPENAI
+            provider=LLMProvider.OAICOMPAT,  # Set to OAICOMPAT instead of using original provider
             name=model_name,
             provider_base_url=provider_base_url,
         )
+        print(f"DEBUG - LLM provider is now: {llm.provider}, base URL: {llm.provider_base_url}")
         # Note: Don't pass use_oaicompat to the agent, as it doesn't accept this parameter
     elif provider == LLMProvider.OAICOMPAT:
         # This path is unlikely to be taken with our current approach
@@ -461,8 +464,10 @@ def respond(
         # Special handling for OAICOMPAT to bypass provider-specific errors
         # Creates the agent with OPENAI provider but using custom model name and provider base URL
         is_oaicompat = str(provider) == "oaicompat"
-        if is_oaicompat:
-            provider = LLMProvider.OPENAI
+
+        # Don't override the provider for OAICOMPAT - instead pass it through
+        # if is_oaicompat:
+        #    provider = LLMProvider.OPENAI
 
         # Get API key based on provider
         if provider == LLMProvider.OPENAI:
