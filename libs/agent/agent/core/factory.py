@@ -8,10 +8,6 @@ from computer import Computer
 from .types import AgentLoop
 from .base import BaseLoop
 
-# For type checking only
-if TYPE_CHECKING:
-    from ..providers.omni.types import LLMProvider
-
 logger = logging.getLogger(__name__)
 
 
@@ -78,7 +74,7 @@ class LoopFactory:
             try:
                 from ..providers.omni.loop import OmniLoop
                 from ..providers.omni.parser import OmniParser
-                from ..providers.omni.types import LLMProvider
+                from .types import LLMProvider
             except ImportError:
                 raise ImportError(
                     "The 'omni' provider is not installed. "
@@ -90,9 +86,6 @@ class LoopFactory:
 
             # We know provider is the correct type at this point, so cast it
             provider_instance = cast(LLMProvider, provider)
-
-            # Get provider_base_url from the LLM object if it exists
-            provider_base_url = getattr(provider, "provider_base_url", None)
 
             return OmniLoop(
                 provider=provider_instance,

@@ -6,8 +6,7 @@ import os
 from typing import AsyncGenerator, Optional
 
 from computer import Computer
-from ..providers.omni.types import LLM
-from ..core.types import AgentLoop
+from .types import LLM, AgentLoop
 from .types import AgentResponse
 from .factory import LoopFactory
 from .provider_config import DEFAULT_MODELS, ENV_VARS

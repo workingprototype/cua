@@ -1,6 +1,6 @@
 """Provider-specific configurations and constants."""
 
-from ..providers.omni.types import LLMProvider
+from .types import LLMProvider
 
 # Default models for different providers
 DEFAULT_MODELS = {

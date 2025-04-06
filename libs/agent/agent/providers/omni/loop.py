@@ -16,7 +16,7 @@ from ...core.messages import StandardMessageManager, ImageRetentionConfig
 from .utils import to_openai_agent_response_format
 from ...core.types import AgentResponse
 from computer import Computer
-from .types import LLMProvider
+from ...core.types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
 from .clients.ollama import OllamaClient

@@ -7,7 +7,7 @@ from ....core.tools import BaseToolManager, ToolResult
 from ....core.tools.collection import ToolCollection
 from .computer import ComputerTool
 from .bash import BashTool
-from ..types import LLMProvider
+from ....core.types import LLMProvider
 
 
 class ToolManager(BaseToolManager):
