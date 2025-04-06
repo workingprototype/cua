@@ -83,11 +83,33 @@ pip install "cua-agent[ui]"
 
 # Create a simple launcher script
 ```python
+# launch_ui.py
 from agent.ui.gradio.app import create_gradio_ui
 
 app = create_gradio_ui()
 app.launch(share=False)
 ```
+
+# Run the launcher
+python launch_ui.py
+```
+
+### Setting up API Keys
+
+For the Gradio UI to show available models, you need to set API keys as environment variables:
+
+```bash
+# For OpenAI models
+export OPENAI_API_KEY=your_openai_key_here
+
+# For Anthropic models
+export ANTHROPIC_API_KEY=your_anthropic_key_here
+
+# Launch with both keys set
+OPENAI_API_KEY=your_key ANTHROPIC_API_KEY=your_key python launch_ui.py
+```
+
+Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
 
 The Gradio UI provides:
 - Selection of different agent loops (OpenAI, Anthropic, OMNI)
