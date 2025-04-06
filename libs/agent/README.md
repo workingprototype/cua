@@ -81,8 +81,12 @@ The agent includes a Gradio-based user interface for easy interaction. To use it
 # Install with Gradio support
 pip install "cua-agent[ui]"
 
-# Launch the UI
-python -m agent.ui.gradio.test_cua
+# Create a simple launcher script
+```python
+from agent.ui.gradio.app import create_gradio_ui
+
+app = create_gradio_ui()
+app.launch(share=False)
 ```
 
 The Gradio UI provides:
@@ -94,15 +98,16 @@ The Gradio UI provides:
 You can also embed the Gradio UI in your own application:
 
 ```python
-import gradio as gr
-from agent.ui.gradio import registry
+# Import directly in your application
+from agent.ui.gradio.app import create_gradio_ui
 
-# Create a simple interface
-demo = registry(name='cua:gpt-4o')
+# Create the UI with advanced features
+demo = create_gradio_ui()
 demo.launch()
 
-# Or create an advanced interface with model selection
-demo = registry(name='cua:gpt-4o', advanced=True)
+# Or for a simpler interface
+from agent.ui.gradio import registry
+demo = registry(name='cua:gpt-4o')
 demo.launch()
 ```
 
