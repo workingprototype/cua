@@ -6,8 +6,7 @@ import os
 from typing import AsyncGenerator, Optional
 
 from computer import Computer
-from ..providers.omni.types import LLM
-from .. import AgentLoop
+from .types import LLM, AgentLoop
 from .types import AgentResponse
 from .factory import LoopFactory
 from .provider_config import DEFAULT_MODELS, ENV_VARS
@@ -75,6 +74,7 @@ class ComputerAgent:
         # Use the provided LLM object
         self.provider = model.provider
         actual_model_name = model.name or DEFAULT_MODELS.get(self.provider, "")
+        self.provider_base_url = getattr(model, "provider_base_url", None)
 
         # Ensure we have a valid model name
         if not actual_model_name:
@@ -86,8 +86,12 @@ class ComputerAgent:
 
         # Get API key from environment if not provided
         actual_api_key = api_key or os.environ.get(ENV_VARS[self.provider], "")
-        # Ollama is local and doesn't require an API key
-        if not actual_api_key and str(self.provider) != "ollama":
+        # Ollama and OpenAI-compatible APIs typically don't require an API key
+        if (
+            not actual_api_key
+            and str(self.provider) not in ["ollama", "oaicompat"]
+            and ENV_VARS[self.provider] != "none"
+        ):
             raise ValueError(f"No API key provided for {self.provider}")
 
         # Create the appropriate loop using the factory
@@ -102,6 +106,7 @@ class ComputerAgent:
                 save_trajectory=save_trajectory,
                 trajectory_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
+                provider_base_url=self.provider_base_url,
             )
         except ValueError as e:
             logger.error(f"Failed to create loop: {str(e)}")

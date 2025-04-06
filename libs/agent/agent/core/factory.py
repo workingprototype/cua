@@ -8,10 +8,6 @@ from computer import Computer
 from .types import AgentLoop
 from .base import BaseLoop
 
-# For type checking only
-if TYPE_CHECKING:
-    from ..providers.omni.types import LLMProvider
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +29,7 @@ class LoopFactory:
         trajectory_dir: str = "trajectories",
         only_n_most_recent_images: Optional[int] = None,
         acknowledge_safety_check_callback: Optional[Callable[[str], Awaitable[bool]]] = None,
+        provider_base_url: Optional[str] = None,
     ) -> BaseLoop:
         """Create and return an appropriate loop instance based on type."""
         if loop_type == AgentLoop.ANTHROPIC:
@@ -77,7 +74,7 @@ class LoopFactory:
             try:
                 from ..providers.omni.loop import OmniLoop
                 from ..providers.omni.parser import OmniParser
-                from ..providers.omni.types import LLMProvider
+                from .types import LLMProvider
             except ImportError:
                 raise ImportError(
                     "The 'omni' provider is not installed. "
@@ -99,6 +96,7 @@ class LoopFactory:
                 base_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
                 parser=OmniParser(),
+                provider_base_url=provider_base_url,
             )
         else:
             raise ValueError(f"Unsupported loop type: {loop_type}")
