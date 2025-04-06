@@ -443,6 +443,8 @@ class OmniLoop(BaseLoop):
                     except (json.JSONDecodeError, IndexError):
                         try:
                             # Look for JSON object pattern
+                            import re  # Local import to ensure availability
+
                             json_pattern = r"\{[^}]+\}"
                             json_match = re.search(json_pattern, raw_text)
                             if json_match:
@@ -453,8 +455,20 @@ class OmniLoop(BaseLoop):
                                 logger.error(f"No JSON found in content")
                                 return True, action_screenshot_saved
                         except json.JSONDecodeError as e:
-                            logger.error(f"Failed to parse JSON from text: {str(e)}")
-                            return True, action_screenshot_saved
+                            # Try to sanitize the JSON string and retry
+                            try:
+                                # Remove or replace invalid control characters
+                                import re  # Local import to ensure availability
+
+                                sanitized_text = re.sub(r"[\x00-\x1F\x7F]", "", raw_text)
+                                # Try parsing again with sanitized text
+                                parsed_content = json.loads(sanitized_text)
+                                logger.info(
+                                    "Successfully parsed JSON after sanitizing control characters"
+                                )
+                            except json.JSONDecodeError:
+                                logger.error(f"Failed to parse JSON from text: {str(e)}")
+                                return True, action_screenshot_saved
 
             # Step 4: Process the parsed content if available
             if parsed_content:
