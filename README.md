@@ -87,22 +87,15 @@ If you want to use AI agents with virtualized environments:
 
 4. Optionally, you can use the Agent with a Gradio UI:
 
-   ```bash
-   python -m pip install ai-gradio
-   ```
-
    ```python
-   import gradio as gr
-   import ai_gradio
-
-   gr.load(
-      name='cua:gpt-4', # currently ignored
-      src=ai_gradio.registry,
-      title="Cua - AI Agent"
-   ).launch()
+   from utils import load_dotenv_files
+   load_dotenv_files()
+    
+   from agent.ui.gradio.app import create_gradio_ui
+   
+   app = create_gradio_ui()
+   app.launch(share=False)
    ```
-
-   Refer to the [Gradio Notebook](./notebooks/gradio_agent_nb.ipynb) for a complete example.
 
 5. For Developers only (contribute and use latest features):
    ```bash
