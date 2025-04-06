@@ -1,7 +1,8 @@
 """Core type definitions."""
 
 from typing import Any, Dict, List, Optional, TypedDict, Union
-from enum import Enum, auto
+from enum import Enum, StrEnum, auto
+from dataclasses import dataclass
 
 
 class AgentLoop(Enum):
@@ -12,6 +13,60 @@ class AgentLoop(Enum):
     OPENAI = auto()  # OpenAI implementation
     OLLAMA = auto()  # OLLAMA implementation
     # Add more loop types as needed
+
+
+class LLMProvider(StrEnum):
+    """Supported LLM providers."""
+
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    OLLAMA = "ollama"
+    OAICOMPAT = "oaicompat"
+
+
+@dataclass
+class LLM:
+    """Configuration for LLM model and provider."""
+
+    provider: LLMProvider
+    name: Optional[str] = None
+    provider_base_url: Optional[str] = None
+
+    def __post_init__(self):
+        """Set default model name if not provided."""
+        if self.name is None:
+            self.name = PROVIDER_TO_DEFAULT_MODEL.get(self.provider)
+
+        # Set default provider URL if none provided
+        if self.provider_base_url is None and self.provider == LLMProvider.OAICOMPAT:
+            # Default for vLLM
+            self.provider_base_url = "http://localhost:8000/v1"
+            # Common alternatives:
+            # - LM Studio: "http://localhost:1234/v1"
+            # - LocalAI: "http://localhost:8080/v1"
+            # - Ollama with OpenAI compatible API: "http://localhost:11434/v1"
+
+
+# For backward compatibility
+LLMModel = LLM
+Model = LLM
+
+
+# Default models for each provider
+PROVIDER_TO_DEFAULT_MODEL: Dict[LLMProvider, str] = {
+    LLMProvider.ANTHROPIC: "claude-3-7-sonnet-20250219",
+    LLMProvider.OPENAI: "gpt-4o",
+    LLMProvider.OLLAMA: "gemma3:4b-it-q4_K_M",
+    LLMProvider.OAICOMPAT: "Qwen2.5-VL-7B-Instruct",
+}
+
+# Environment variable names for each provider
+PROVIDER_TO_ENV_VAR: Dict[LLMProvider, str] = {
+    LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+    LLMProvider.OPENAI: "OPENAI_API_KEY",
+    LLMProvider.OLLAMA: "none",
+    LLMProvider.OAICOMPAT: "none",
+}
 
 
 class AgentResponse(TypedDict, total=False):

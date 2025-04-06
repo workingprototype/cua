@@ -48,7 +48,7 @@ except Exception as e:
     # Other issues with telemetry
     logger.warning(f"Error initializing telemetry: {e}")
 
-from .providers.omni.types import LLMProvider, LLM
+from .core.types import LLMProvider, LLM
 from .core.factory import AgentLoop
 from .core.agent import ComputerAgent
 

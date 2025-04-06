@@ -20,6 +20,7 @@ from .types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
 from .clients.ollama import OllamaClient
+from .clients.oaicompat import OAICompatClient
 from .prompts import SYSTEM_PROMPT
 from .api_handler import OmniAPIHandler
 from .tools.manager import ToolManager
@@ -60,6 +61,7 @@ class OmniLoop(BaseLoop):
         max_retries: int = 3,
         retry_delay: float = 1.0,
         save_trajectory: bool = True,
+        provider_base_url: Optional[str] = None,
         **kwargs,
     ):
         """Initialize the loop.
@@ -75,10 +77,12 @@ class OmniLoop(BaseLoop):
             max_retries: Maximum number of retries for API calls
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
+            provider_base_url: Base URL for the API provider (used for OAICOMPAT)
         """
         # Set parser and provider before initializing base class
         self.parser = parser
         self.provider = provider
+        self.provider_base_url = provider_base_url
 
         # Initialize message manager with image retention config
         self.message_manager = StandardMessageManager(
@@ -141,6 +145,12 @@ class OmniLoop(BaseLoop):
                 api_key=self.api_key,
                 model=self.model,
             )
+        elif self.provider == LLMProvider.OAICOMPAT:
+            self.client = OAICompatClient(
+                api_key="EMPTY",  # Local endpoints typically don't require an API key
+                model=self.model,
+                provider_base_url=self.provider_base_url,
+            )
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -170,6 +180,12 @@ class OmniLoop(BaseLoop):
                 self.client = OllamaClient(
                     api_key=self.api_key,
                     model=self.model,
+                )
+            elif self.provider == LLMProvider.OAICOMPAT:
+                self.client = OAICompatClient(
+                    api_key="EMPTY",  # Local endpoints typically don't require an API key
+                    model=self.model,
+                    provider_base_url=self.provider_base_url,
                 )
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
@@ -384,6 +400,14 @@ class OmniLoop(BaseLoop):
             elif self.provider == LLMProvider.OLLAMA:
                 try:
                     raw_text = response["message"]["content"]
+                    standard_content = [{"type": "text", "text": raw_text}]
+                except (KeyError, TypeError, IndexError) as e:
+                    logger.error(f"Invalid response format: {str(e)}")
+                    return True, action_screenshot_saved
+            elif self.provider == LLMProvider.OAICOMPAT:
+                try:
+                    # OpenAI-compatible response format
+                    raw_text = response["choices"][0]["message"]["content"]
                     standard_content = [{"type": "text", "text": raw_text}]
                 except (KeyError, TypeError, IndexError) as e:
                     logger.error(f"Invalid response format: {str(e)}")

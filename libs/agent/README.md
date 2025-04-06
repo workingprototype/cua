@@ -32,6 +32,7 @@ pip install "cua-agent[all]"
 pip install "cua-agent[openai]" # OpenAI Cua Loop
 pip install "cua-agent[anthropic]" # Anthropic Cua Loop
 pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
+pip install "cua-agent[ui]" # Gradio UI for the agent
 ```
 
 ## Run
@@ -71,6 +72,39 @@ async with Computer() as macos_computer:
 Refer to these notebooks for step-by-step guides on how to use the Computer-Use Agent (CUA):
 
 - [Agent Notebook](../../notebooks/agent_nb.ipynb) - Complete examples and workflows
+
+## Using the Gradio UI
+
+The agent includes a Gradio-based user interface for easy interaction. To use it:
+
+```bash
+# Install with Gradio support
+pip install "cua-agent[ui]"
+
+# Launch the UI
+python -m agent.ui.gradio.test_cua
+```
+
+The Gradio UI provides:
+- Selection of different agent loops (OpenAI, Anthropic, OMNI)
+- Model selection for each provider
+- Configuration of agent parameters
+- Chat interface for interacting with the agent
+
+You can also embed the Gradio UI in your own application:
+
+```python
+import gradio as gr
+from agent.ui.gradio import registry
+
+# Create a simple interface
+demo = registry(name='cua:gpt-4o')
+demo.launch()
+
+# Or create an advanced interface with model selection
+demo = registry(name='cua:gpt-4o', advanced=True)
+demo.launch()
+```
 
 ## Agent Loops
 

@@ -33,6 +33,7 @@ class LoopFactory:
         trajectory_dir: str = "trajectories",
         only_n_most_recent_images: Optional[int] = None,
         acknowledge_safety_check_callback: Optional[Callable[[str], Awaitable[bool]]] = None,
+        provider_base_url: Optional[str] = None,
     ) -> BaseLoop:
         """Create and return an appropriate loop instance based on type."""
         if loop_type == AgentLoop.ANTHROPIC:
@@ -90,6 +91,9 @@ class LoopFactory:
             # We know provider is the correct type at this point, so cast it
             provider_instance = cast(LLMProvider, provider)
 
+            # Get provider_base_url from the LLM object if it exists
+            provider_base_url = getattr(provider, "provider_base_url", None)
+
             return OmniLoop(
                 provider=provider_instance,
                 api_key=api_key,
@@ -99,6 +103,7 @@ class LoopFactory:
                 base_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
                 parser=OmniParser(),
+                provider_base_url=provider_base_url,
             )
         else:
             raise ValueError(f"Unsupported loop type: {loop_type}")
