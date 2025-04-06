@@ -14,6 +14,6 @@ DEFAULT_MODELS = {
 ENV_VARS = {
     LLMProvider.OPENAI: "OPENAI_API_KEY",
     LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-    LLMProvider.OLLAMA: "OLLAMA_API_KEY",
-    LLMProvider.OAICOMPAT: "OAICOMPAT_API_KEY",  # OpenAI-compatible API typically doesn't require an API key
+    LLMProvider.OLLAMA: "none",
+    LLMProvider.OAICOMPAT: "none",  # OpenAI-compatible API typically doesn't require an API key
 }

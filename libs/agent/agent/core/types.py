@@ -35,7 +35,9 @@ class LLM:
     def __post_init__(self):
         """Set default model name if not provided."""
         if self.name is None:
-            self.name = PROVIDER_TO_DEFAULT_MODEL.get(self.provider)
+            from .provider_config import DEFAULT_MODELS
+
+            self.name = DEFAULT_MODELS.get(self.provider)
 
         # Set default provider URL if none provided
         if self.provider_base_url is None and self.provider == LLMProvider.OAICOMPAT:
