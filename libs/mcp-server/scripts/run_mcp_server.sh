@@ -14,19 +14,22 @@ package_installed() {
 
 # Check if Python is installed
 if ! command_exists python3; then
+    echo "Error: Python 3 is not installed."
     exit 1
 fi
 
 # Check if pip is installed
 if ! command_exists pip3; then
+    echo "Error: pip3 is not installed."
     exit 1
 fi
 
-# Check if mcp_server package is installed
-if ! package_installed mcp_server; then
-    pip3 install cua-mcp-server >/dev/null 2>&1
+# Check if cua-mcp-server command is available
+if ! command_exists cua-mcp-server; then
+    echo "Installing cua-mcp-server..."
+    pip3 install cua-mcp-server
 fi
 
-# Run the server module directly - this is the only thing that should produce output
-exec python3 -c "from mcp_server.server import main; main()"
+# Run the installed command directly
+exec cua-mcp-server
 
