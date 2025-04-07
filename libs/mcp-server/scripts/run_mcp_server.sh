@@ -2,13 +2,31 @@
 
 set -e
 
-# Directory for virtual environment
-VENV_DIR="$HOME/.cua-mcp-venv"
+# Function to check if a directory is writable
+is_writable() {
+    [ -w "$1" ]
+}
 
 # Function to check if a command exists (silent)
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
+
+# Find a writable directory for the virtual environment
+if is_writable "$HOME"; then
+    VENV_DIR="$HOME/.cua-mcp-venv"
+elif is_writable "/tmp"; then
+    VENV_DIR="/tmp/.cua-mcp-venv"
+else
+    # Try to create a directory in the current working directory
+    TEMP_DIR="$(pwd)/.cua-mcp-venv"
+    if is_writable "$(pwd)"; then
+        VENV_DIR="$TEMP_DIR"
+    else
+        echo "Error: Cannot find a writable directory for the virtual environment." >&2
+        exit 1
+    fi
+fi
 
 # Check if Python is installed
 if ! command_exists python3; then
