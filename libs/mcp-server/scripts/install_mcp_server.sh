@@ -2,6 +2,15 @@
 
 set -e
 
+# Create the ~/.cua directory if it doesn't exist
+mkdir -p "$HOME/.cua"
+
+# Create start_mcp_server.sh script in ~/.cua directory
+cat > "$HOME/.cua/start_mcp_server.sh" << 'EOF'
+#!/bin/bash
+
+set -e
+
 # Function to check if a directory is writable
 is_writable() {
     [ -w "$1" ]
@@ -30,11 +39,13 @@ fi
 
 # Check if Python is installed
 if ! command_exists python3; then
+    echo "Error: Python 3 is not installed." >&2
     exit 1
 fi
 
 # Check if pip is installed
 if ! command_exists pip3; then
+    echo "Error: pip3 is not installed." >&2
     exit 1
 fi
 
@@ -54,3 +65,9 @@ pip install --upgrade "cua-mcp-server" >/dev/null 2>&1
 cd "$VENV_DIR"  # Change to venv directory to avoid current directory in path
 
 python3 -c "from mcp_server.server import main; main()"
+EOF
+
+# Make the script executable
+chmod +x "$HOME/.cua/start_mcp_server.sh"
+
+echo "MCP server startup script created at $HOME/.cua/start_mcp_server.sh"

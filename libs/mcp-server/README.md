@@ -33,20 +33,26 @@ This will install:
 
 ## Easy Setup Script
 
-If you want to simplify installation, you can use this one-liner to download and run a setup script:
+If you want to simplify installation, you can use this one-liner to download and run the installation script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash
+curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/install_mcp_server.sh | bash
 ```
 
-Or use the script directly in your MCP configuration like this:
+This script will:
+- Create the ~/.cua directory if it doesn't exist
+- Generate a startup script at ~/.cua/start_mcp_server.sh
+- Make the script executable
+- The startup script automatically manages Python virtual environments and installs/updates the cua-mcp-server package
+
+You can then use the script in your MCP configuration like this:
 
 ```json
 { 
   "mcpServers": {
     "cua-agent": {
       "command": "/bin/bash",
-      "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
+      "args": ["~/.cua/start_mcp_server.sh"],
       "env": {
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
@@ -57,8 +63,6 @@ Or use the script directly in your MCP configuration like this:
   }
 }
 ```
-
-This script will automatically check if cua-mcp-server is installed, install it if needed, and run it.
 
 ## Claude Desktop Integration
 
