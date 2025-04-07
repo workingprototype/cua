@@ -220,6 +220,38 @@ jobs:
           echo "# Run the server" >> release_notes.md
           echo "cua-computer-server" >> release_notes.md
           echo '```' >> release_notes.md
+        elif [ "${{ inputs.package_name }}" = "mcp-server" ]; then
+          echo "## MCP Server for the Computer-Use Agent (CUA)" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "This package provides MCP (Model Context Protocol) integration for CUA agents, allowing them to be used with Claude Desktop, Cursor, and other MCP clients." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Dependencies" >> release_notes.md
+          echo "* cua-computer: ${COMPUTER_VERSION:-latest}" >> release_notes.md
+          echo "* cua-agent: ${AGENT_VERSION:-latest}" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Usage" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "# Run the MCP server directly" >> release_notes.md
+          echo "cua-mcp-server" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Claude Desktop Integration" >> release_notes.md
+          echo "Add to your Claude Desktop configuration (~/.config/claude-desktop/claude_desktop_config.json or OS-specific location):" >> release_notes.md
+          echo '```json' >> release_notes.md
+          echo '"mcpServers": {' >> release_notes.md
+          echo '  "cua-agent": {' >> release_notes.md
+          echo '    "command": "cua-mcp-server",' >> release_notes.md
+          echo '    "args": [],' >> release_notes.md
+          echo '    "env": {' >> release_notes.md
+          echo '      "CUA_AGENT_LOOP": "OMNI",' >> release_notes.md
+          echo '      "CUA_MODEL_PROVIDER": "ANTHROPIC",' >> release_notes.md
+          echo '      "CUA_MODEL_NAME": "claude-3-opus-20240229",' >> release_notes.md
+          echo '      "ANTHROPIC_API_KEY": "your-api-key",' >> release_notes.md
+          echo '      "PYTHONIOENCODING": "utf-8"' >> release_notes.md
+          echo '    }' >> release_notes.md
+          echo '  }' >> release_notes.md
+          echo '}' >> release_notes.md
+          echo '```' >> release_notes.md
         fi
         
         # Add installation section if not agent (which has its own installation section)
