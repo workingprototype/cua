@@ -42,15 +42,17 @@ curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scr
 Or use the script directly in your MCP configuration like this:
 
 ```json
-"mcpServers": {
-  "cua-agent": {
-    "command": "/bin/bash",
-    "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
-    "env": {
-      "CUA_AGENT_LOOP": "OMNI",
-      "CUA_MODEL_PROVIDER": "ANTHROPIC",
-      "CUA_MODEL_NAME": "claude-3-opus-20240229",
-      "ANTHROPIC_API_KEY": "your-api-key"
+{ 
+  "mcpServers": {
+    "cua-agent": {
+      "command": "/bin/bash",
+      "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
+      "env": {
+        "CUA_AGENT_LOOP": "OMNI",
+        "CUA_MODEL_PROVIDER": "ANTHROPIC",
+        "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
+        "ANTHROPIC_API_KEY": "your-api-key"
+      }
     }
   }
 }
@@ -62,22 +64,6 @@ This script will automatically check if cua-mcp-server is installed, install it 
 
 To use with Claude Desktop, add an entry to your Claude Desktop configuration (`claude_desktop_config.json`, typically found in `~/.config/claude-desktop/`):
 
-```json
-"mcpServers": {
-  "cua-agent": {
-    "command": "/bin/bash",
-    "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
-    "env": {
-      "CUA_AGENT_LOOP": "OMNI",
-      "CUA_MODEL_PROVIDER": "ANTHROPIC",
-      "CUA_MODEL_NAME": "claude-3-opus-20240229",
-      "ANTHROPIC_API_KEY": "your-api-key",
-      "PYTHONIOENCODING": "utf-8"
-    }
-  }
-}
-```
-
 For more information on MCP with Claude Desktop, see the [official MCP User Guide](https://modelcontextprotocol.io/quickstart/user).
 
 ## Cursor Integration
@@ -86,26 +72,6 @@ To use with Cursor, add an MCP configuration file in one of these locations:
 
 - **Project-specific**: Create `.cursor/mcp.json` in your project directory
 - **Global**: Create `~/.cursor/mcp.json` in your home directory
-
-The configuration format is similar to Claude Desktop's:
-
-```json
-{
-  "mcpServers": {
-    "cua-agent": {
-      "command": "/bin/bash",
-      "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
-      "env": {
-        "CUA_AGENT_LOOP": "OMNI",
-        "CUA_MODEL_PROVIDER": "ANTHROPIC",
-        "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
-        "ANTHROPIC_API_KEY": "your-api-key",
-        "PYTHONPATH": "/path/to/your/cua/installation"
-      }
-    }
-  }
-}
-```
 
 After configuration, you can simply tell Cursor's Agent to perform computer tasks by explicitly mentioning the CUA agent, such as "Use the computer control tools to open Safari."
 

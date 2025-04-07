@@ -22,23 +22,11 @@ if ! command_exists pip3; then
     exit 1
 fi
 
-# Get the directory of this script
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
-# Add the necessary paths to PYTHONPATH
-export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
-
-# Change to project directory
-cd "$PROJECT_ROOT" 2>/dev/null
-
 # Check if mcp_server package is installed
 if ! package_installed mcp_server; then
-    # Check if setup.py or pyproject.toml exists
-    if [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
-        pip3 install --quiet --user -e . >/dev/null 2>&1
-    fi
+    pip3 install cua-mcp-server >/dev/null 2>&1
 fi
 
 # Run the server module directly - this is the only thing that should produce output
-exec python3 -m mcp_server.server 
+exec python3 -c "from mcp_server.server import main; main()"
+
