@@ -31,7 +31,7 @@ if [ ! -d "$VENV_DIR" ]; then
     pip install --upgrade pip
     
     # Install the required packages
-    pip install "cua-mcp-server" torch
+    pip install "cua-mcp-server"
 else
     # Activate existing virtual environment
     source "$VENV_DIR/bin/activate"
