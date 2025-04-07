@@ -31,26 +31,30 @@ fi
 
 echo "✅ pip3 is installed"
 
-# Check if cua-mcp-server is installed
-if ! package_installed mcp_server || ! command_exists cua-mcp-server; then
-    echo "🔄 cua-mcp-server is not installed. Installing now..."
-    pip3 install --user cua-mcp-server
+# Check if mcp_server package is installed
+if ! package_installed mcp_server; then
+    echo "🔄 mcp_server package is not installed. Installing now..."
+    pip3 install --user -e .
     
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install cua-mcp-server. Please check the error messages above."
+        echo "❌ Failed to install mcp_server. Please check the error messages above."
         exit 1
     fi
     
-    echo "✅ cua-mcp-server installed successfully"
+    echo "✅ mcp_server installed successfully"
 else
-    echo "✅ cua-mcp-server is already installed"
+    echo "✅ mcp_server is already installed"
 fi
 
-# Create scripts directory if it doesn't exist
-mkdir -p ~/.cua/scripts
+# Run the Python module directly
+echo "🚀 Starting MCP server..."
 
-# Update PATH to include user's local bin directory where pip might have installed the script
-export PATH="$HOME/.local/bin:$PATH"
+# Get the directory of this script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-echo "🚀 Starting cua-mcp-server..."
-exec cua-mcp-server 
+# Add the necessary paths to PYTHONPATH
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+
+# Run the server module directly
+python3 -m mcp_server.server 

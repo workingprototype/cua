@@ -36,7 +36,7 @@ This will install:
 If you want to simplify installation, you can use this one-liner to download and run a setup script:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"
+curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash
 ```
 
 Or use the script directly in your MCP configuration like this:
@@ -45,7 +45,7 @@ Or use the script directly in your MCP configuration like this:
 "mcpServers": {
   "cua-agent": {
     "command": "/bin/bash",
-    "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
+    "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
     "env": {
       "CUA_AGENT_LOOP": "OMNI",
       "CUA_MODEL_PROVIDER": "ANTHROPIC",
@@ -66,7 +66,7 @@ To use with Claude Desktop, add an entry to your Claude Desktop configuration (`
 "mcpServers": {
   "cua-agent": {
     "command": "/bin/bash",
-    "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
+    "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
     "env": {
       "CUA_AGENT_LOOP": "OMNI",
       "CUA_MODEL_PROVIDER": "ANTHROPIC",
@@ -94,7 +94,7 @@ The configuration format is similar to Claude Desktop's:
   "mcpServers": {
     "cua-agent": {
       "command": "/bin/bash",
-      "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
+      "args": ["-c", "curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh | bash"],
       "env": {
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
