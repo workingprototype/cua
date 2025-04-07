@@ -31,6 +31,33 @@ This will install:
 - CUA agent and computer dependencies 
 - An executable `cua-mcp-server` script in your PATH
 
+## Easy Setup Script
+
+If you want to simplify installation, you can use this one-liner to download and run a setup script:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"
+```
+
+Or use the script directly in your MCP configuration like this:
+
+```json
+"mcpServers": {
+  "cua-agent": {
+    "command": "/bin/bash",
+    "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
+    "env": {
+      "CUA_AGENT_LOOP": "OMNI",
+      "CUA_MODEL_PROVIDER": "ANTHROPIC",
+      "CUA_MODEL_NAME": "claude-3-opus-20240229",
+      "ANTHROPIC_API_KEY": "your-api-key"
+    }
+  }
+}
+```
+
+This script will automatically check if cua-mcp-server is installed, install it if needed, and run it.
+
 ## Claude Desktop Integration
 
 To use with Claude Desktop, add an entry to your Claude Desktop configuration (`claude_desktop_config.json`, typically found in `~/.config/claude-desktop/`):
@@ -38,8 +65,8 @@ To use with Claude Desktop, add an entry to your Claude Desktop configuration (`
 ```json
 "mcpServers": {
   "cua-agent": {
-    "command": "cua-mcp-server",
-    "args": [],
+    "command": "/bin/bash",
+    "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
     "env": {
       "CUA_AGENT_LOOP": "OMNI",
       "CUA_MODEL_PROVIDER": "ANTHROPIC",
@@ -66,8 +93,8 @@ The configuration format is similar to Claude Desktop's:
 {
   "mcpServers": {
     "cua-agent": {
-      "command": "cua-mcp-server",
-      "args": [],
+      "command": "/bin/bash",
+      "args": ["-c", "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/run_mcp_server.sh)"],
       "env": {
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
