@@ -24,10 +24,8 @@ fi
 
 # Check if mcp_server package is installed
 if ! package_installed mcp_server; then
-    echo "Installing mcp_server..."
     pip3 install -e "cua-mcp-server"
 fi
 
-echo "Running mcp_server..."
 exec python3 -c "from mcp_server.server import main; main()"
 
