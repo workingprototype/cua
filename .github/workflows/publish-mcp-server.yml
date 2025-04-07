@@ -122,18 +122,12 @@ jobs:
         # Update dependencies in pyproject.toml
         if [[ "$OSTYPE" == "darwin"* ]]; then
           # macOS version of sed needs an empty string for -i
-          # Update each cua-agent extra dependency
-          sed -i '' "s/\"cua-agent\[openai\]>=.*,<.*\"/\"cua-agent[openai]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i '' "s/\"cua-agent\[anthropic\]>=.*,<.*\"/\"cua-agent[anthropic]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i '' "s/\"cua-agent\[omni\]>=.*,<.*\"/\"cua-agent[omni]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i '' "s/\"cua-agent\[som\]>=.*,<.*\"/\"cua-agent[som]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
+          # Update cua-agent with all extras
+          sed -i '' "s/\"cua-agent\[all\]>=.*,<.*\"/\"cua-agent[all]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
           sed -i '' "s/\"cua-computer>=.*,<.*\"/\"cua-computer>=$LATEST_COMPUTER,<$NEXT_COMPUTER_MAJOR.0.0\"/" pyproject.toml
         else
           # Linux version
-          sed -i "s/\"cua-agent\[openai\]>=.*,<.*\"/\"cua-agent[openai]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i "s/\"cua-agent\[anthropic\]>=.*,<.*\"/\"cua-agent[anthropic]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i "s/\"cua-agent\[omni\]>=.*,<.*\"/\"cua-agent[omni]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
-          sed -i "s/\"cua-agent\[som\]>=.*,<.*\"/\"cua-agent[som]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
+          sed -i "s/\"cua-agent\[all\]>=.*,<.*\"/\"cua-agent[all]>=$LATEST_AGENT,<$NEXT_AGENT_MAJOR.0.0\"/" pyproject.toml
           sed -i "s/\"cua-computer>=.*,<.*\"/\"cua-computer>=$LATEST_COMPUTER,<$NEXT_COMPUTER_MAJOR.0.0\"/" pyproject.toml
         fi
         
