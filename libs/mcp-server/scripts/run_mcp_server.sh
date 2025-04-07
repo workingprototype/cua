@@ -42,22 +42,13 @@ fi
 if [ ! -d "$VENV_DIR" ]; then
     # Redirect output to prevent JSON parsing errors in Claude
     python3 -m venv "$VENV_DIR" >/dev/null 2>&1
-    
-    # Activate virtual environment
-    source "$VENV_DIR/bin/activate"
-    
-    # Upgrade pip and install required packages
-    pip install --upgrade pip >/dev/null 2>&1
-    pip install "cua-mcp-server" >/dev/null 2>&1
-else
-    # Activate existing virtual environment
-    source "$VENV_DIR/bin/activate"
-    
-    # Check if mcp_server package is installed in the virtual environment
-    if ! python3 -c "import importlib.util; print(importlib.util.find_spec('mcp_server') is not None)" 2>/dev/null | grep -q "True" 2>/dev/null; then
-        pip install "cua-mcp-server" >/dev/null 2>&1
-    fi
 fi
+
+# Activate virtual environment
+source "$VENV_DIR/bin/activate"
+
+# Always install/upgrade the latest version of cua-mcp-server
+pip install --upgrade "cua-mcp-server" >/dev/null 2>&1
 
 # Run the MCP server with isolation from development paths
 cd "$VENV_DIR"  # Change to venv directory to avoid current directory in path
