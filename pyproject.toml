@@ -56,6 +56,7 @@ cua-omniparser = { path = "libs/omniparser" }
 cua-agent = { path = "libs/agent" }
 pylume = { path = "libs/pylume" }
 cua-computer-server = { path = "libs/computer-server" }
+cua-mcp-server = { path = "libs/mcp-server" }
 
 [tool.black]
 line-length = 100

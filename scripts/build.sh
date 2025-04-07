@@ -104,13 +104,16 @@ install_package "libs/agent" "agent" "all"
 # Install computer-server
 install_package "libs/computer-server" "computer-server"
 
+# Install mcp-server
+install_package "libs/mcp-server" "mcp-server"
+
 # Install development tools from root project
 print_step "Installing development dependencies..."
 pip install -e ".[dev,test,docs]"
 
 # Create a .env file for VS Code to use the virtual environment
 print_step "Creating .env file for VS Code..."
-echo "PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server" > .env
+echo "PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server" > .env
 
 print_success "All packages installed successfully!"
 print_step "Your virtual environment is ready. To activate it:"
