@@ -13,6 +13,7 @@ authors = [
 ]
 dependencies = [
     "mcp>=1.6.0,<2.0.0",
+    "torch>=2.2.1",
     "cua-agent[openai]>=0.1.0,<0.2.0",
     "cua-agent[anthropic]>=0.1.0,<0.2.0",
     "cua-agent[omni]>=0.1.0,<0.2.0",
