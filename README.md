@@ -134,6 +134,14 @@ For the best onboarding experience with the packages in this monorepo, we recomm
 Demos of the Computer-Use Agent in action. Share your most impressive demos in Cua's [Discord community](https://discord.com/invite/mVnXXpdE85)!
 
 <details open>
+<summary><b>MCP Server: Work with Claude Desktop and Tableau </b></summary>
+<br>
+<div align="center">
+    <video src="https://github.com/user-attachments/assets/9f573547-5149-493e-9a72-396f3cff29df
+" width="800" controls></video>
+</div>
+
+<details open>
 <summary><b>AI-Gradio: multi-app workflow requiring browser, VS Code and terminal access</b></summary>
 <br>
 <div align="center">
