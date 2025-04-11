@@ -80,18 +80,16 @@ The agent includes a Gradio-based user interface for easy interaction. To use it
 ```bash
 # Install with Gradio support
 pip install "cua-agent[ui]"
+```
 
-# Create a simple launcher script
+### Create a simple launcher script
+
 ```python
 # launch_ui.py
 from agent.ui.gradio.app import create_gradio_ui
 
 app = create_gradio_ui()
 app.launch(share=False)
-```
-
-# Run the launcher
-python launch_ui.py
 ```
 
 ### Setting up API Keys
@@ -109,6 +107,8 @@ export ANTHROPIC_API_KEY=your_anthropic_key_here
 OPENAI_API_KEY=your_key ANTHROPIC_API_KEY=your_key python launch_ui.py
 ```
 
+Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
+
 ### Using Local Models
 
 You can use local models with the OMNI loop provider by selecting "Custom model..." from the dropdown. The default provider URL is set to `http://localhost:1234/v1` which works with LM Studio. 
@@ -118,41 +118,11 @@ If you're using a different local model server:
 - LocalAI: `http://localhost:8080/v1`
 - Ollama with OpenAI compat API: `http://localhost:11434/v1`
 
-To change the URL, modify the `provider_base_url` in your launcher script:
-
-```python
-# In your launcher script
-from agent.ui.gradio.app import create_gradio_ui
-from agent import LLM, LLMProvider
-
-# Create a custom model with a specific URL
-custom_model = LLM(
-    provider=LLMProvider.OAICOMPAT,
-    name="your-model-name",
-    provider_base_url="http://localhost:8000/v1"  # Change to your server URL
-)
-
-app = create_gradio_ui(custom_model=custom_model)
-app.launch()
-```
-
-Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
-
 The Gradio UI provides:
 - Selection of different agent loops (OpenAI, Anthropic, OMNI)
 - Model selection for each provider
 - Configuration of agent parameters
 - Chat interface for interacting with the agent
-
-You can also embed the Gradio UI in your own application:
-
-```python
-# Import directly in your application
-from agent.ui.gradio.app import create_gradio_ui
-
-app = create_gradio_ui()
-app.launch()
-```
 
 ## Agent Loops
 
