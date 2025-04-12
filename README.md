@@ -57,12 +57,22 @@ If you want to use AI agents with virtualized environments:
    sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
    ```
 
-2. Install the Python libraries:
+2. Pull the latest macOS CUA image:
+   ```bash
+   lume pull macos-sequoia-cua:latest --no-cache
+   ```
+
+3. Start Lume daemon service:
+   ```bash
+   lume serve
+   ```
+
+4. Install the Python libraries:
    ```bash
    pip install cua-computer cua-agent[all]
    ```
 
-3. Use the libraries in your Python code:
+5. Use the libraries in your Python code:
    ```python
    from cua.computer import Computer
    from cua.agent import ComputerAgent, LLM, AgentLoop, LLMProvider
@@ -85,7 +95,7 @@ If you want to use AI agents with virtualized environments:
    
    Explore the [Agent Notebook](./notebooks/) for a ready-to-run example.
 
-4. Optionally, you can use the Agent with a Gradio UI:
+6. Optionally, you can use the Agent with a Gradio UI:
 
    ```python
    from utils import load_dotenv_files
@@ -97,7 +107,7 @@ If you want to use AI agents with virtualized environments:
    app.launch(share=False)
    ```
 
-5. For Developers only (contribute and use latest features):
+7. For Developers only (contribute and use latest features):
    ```bash
    # Clone the repository
    git clone https://github.com/trycua/cua.git
