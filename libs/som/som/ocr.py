@@ -17,17 +17,28 @@ class TimeoutException(Exception):
 
 @contextmanager
 def timeout(seconds: int):
-    def timeout_handler(signum, frame):
-        raise TimeoutException("OCR process timed out")
+    import threading
+    
+    # Check if we're in the main thread
+    if threading.current_thread() is threading.main_thread():
+        def timeout_handler(signum, frame):
+            raise TimeoutException("OCR process timed out")
 
-    original_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(seconds)
+        original_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(seconds)
 
-    try:
-        yield
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, original_handler)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, original_handler)
+    else:
+        # In a non-main thread, we can't use signal
+        logger.warning("Timeout function called from non-main thread; signal-based timeout disabled")
+        try:
+            yield
+        finally:
+            pass
 
 
 class OCRProcessor:
