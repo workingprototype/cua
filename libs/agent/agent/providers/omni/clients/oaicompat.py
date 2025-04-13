@@ -45,8 +45,8 @@ class OAICompatClient(BaseOmniClient):
             max_tokens: Maximum tokens to generate
             temperature: Generation temperature
         """
-        super().__init__(api_key="EMPTY", model=model)
-        self.api_key = "EMPTY"  # Local endpoints typically don't require an API key
+        super().__init__(api_key=api_key or "EMPTY", model=model)
+        self.api_key = api_key or "EMPTY" # Local endpoints typically don't require an API key
         self.model = model
         self.provider_base_url = (
             provider_base_url or "http://localhost:8000/v1"
@@ -146,10 +146,18 @@ class OAICompatClient(BaseOmniClient):
                 base_url = self.provider_base_url or "http://localhost:8000/v1"
 
                 # Check if the base URL already includes the chat/completions endpoint
+                
                 endpoint_url = base_url
                 if not endpoint_url.endswith("/chat/completions"):
+                    # If URL is RunPod format, make it OpenAI compatible
+                    if endpoint_url.startswith("https://api.runpod.ai/v2/"):
+                        # Extract RunPod endpoint ID
+                        parts = endpoint_url.split("/")
+                        if len(parts) >= 5:
+                            runpod_id = parts[4]
+                            endpoint_url = f"https://api.runpod.ai/v2/{runpod_id}/openai/v1/chat/completions"
                     # If the URL ends with /v1, append /chat/completions
-                    if endpoint_url.endswith("/v1"):
+                    elif endpoint_url.endswith("/v1"):
                         endpoint_url = f"{endpoint_url}/chat/completions"
                     # If the URL doesn't end with /v1, make sure it has a proper structure
                     elif not endpoint_url.endswith("/"):

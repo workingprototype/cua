@@ -5,10 +5,12 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+from agent.providers.omni.parser import ParseResult
 from computer import Computer
 from .messages import StandardMessageManager, ImageRetentionConfig
 from .types import AgentResponse
 from .experiment import ExperimentManager
+from .callbacks import CallbackManager, CallbackHandler
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ class BaseLoop(ABC):
         base_dir: Optional[str] = "trajectories",
         save_trajectory: bool = True,
         only_n_most_recent_images: Optional[int] = 2,
+        callback_handlers: Optional[List[CallbackHandler]] = None,
         **kwargs,
     ):
         """Initialize base agent loop.
@@ -75,6 +78,9 @@ class BaseLoop(ABC):
 
         # Initialize basic tracking
         self.turn_count = 0
+        
+        # Initialize callback manager
+        self.callback_manager = CallbackManager(handlers=callback_handlers or [])
 
     async def initialize(self) -> None:
         """Initialize both the API client and computer interface with retries."""
@@ -187,3 +193,17 @@ class BaseLoop(ABC):
         """
         if self.experiment_manager:
             self.experiment_manager.save_screenshot(img_base64, action_type)
+            
+    ###########################################
+    # EVENT HOOKS / CALLBACKS
+    ###########################################
+    
+    async def handle_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+        """Process a screenshot through callback managers
+        
+        Args:
+            screenshot_base64: Base64 encoded screenshot
+            action_type: Type of action that triggered the screenshot
+        """
+        if hasattr(self, 'callback_manager'):
+            await self.callback_manager.on_screenshot(screenshot_base64, action_type, parsed_screen)
