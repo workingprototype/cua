@@ -16,10 +16,11 @@ from ...core.messages import StandardMessageManager, ImageRetentionConfig
 from .utils import to_openai_agent_response_format
 from ...core.types import AgentResponse
 from computer import Computer
-from .types import LLMProvider
+from ...core.types import LLMProvider
 from .clients.openai import OpenAIClient
 from .clients.anthropic import AnthropicClient
 from .clients.ollama import OllamaClient
+from .clients.oaicompat import OAICompatClient
 from .prompts import SYSTEM_PROMPT
 from .api_handler import OmniAPIHandler
 from .tools.manager import ToolManager
@@ -60,6 +61,7 @@ class OmniLoop(BaseLoop):
         max_retries: int = 3,
         retry_delay: float = 1.0,
         save_trajectory: bool = True,
+        provider_base_url: Optional[str] = None,
         **kwargs,
     ):
         """Initialize the loop.
@@ -75,10 +77,12 @@ class OmniLoop(BaseLoop):
             max_retries: Maximum number of retries for API calls
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
+            provider_base_url: Base URL for the API provider (used for OAICOMPAT)
         """
         # Set parser and provider before initializing base class
         self.parser = parser
         self.provider = provider
+        self.provider_base_url = provider_base_url
 
         # Initialize message manager with image retention config
         self.message_manager = StandardMessageManager(
@@ -141,6 +145,12 @@ class OmniLoop(BaseLoop):
                 api_key=self.api_key,
                 model=self.model,
             )
+        elif self.provider == LLMProvider.OAICOMPAT:
+            self.client = OAICompatClient(
+                api_key="EMPTY",  # Local endpoints typically don't require an API key
+                model=self.model,
+                provider_base_url=self.provider_base_url,
+            )
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -170,6 +180,12 @@ class OmniLoop(BaseLoop):
                 self.client = OllamaClient(
                     api_key=self.api_key,
                     model=self.model,
+                )
+            elif self.provider == LLMProvider.OAICOMPAT:
+                self.client = OAICompatClient(
+                    api_key="EMPTY",  # Local endpoints typically don't require an API key
+                    model=self.model,
+                    provider_base_url=self.provider_base_url,
                 )
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
@@ -388,6 +404,14 @@ class OmniLoop(BaseLoop):
                 except (KeyError, TypeError, IndexError) as e:
                     logger.error(f"Invalid response format: {str(e)}")
                     return True, action_screenshot_saved
+            elif self.provider == LLMProvider.OAICOMPAT:
+                try:
+                    # OpenAI-compatible response format
+                    raw_text = response["choices"][0]["message"]["content"]
+                    standard_content = [{"type": "text", "text": raw_text}]
+                except (KeyError, TypeError, IndexError) as e:
+                    logger.error(f"Invalid response format: {str(e)}")
+                    return True, action_screenshot_saved
             else:
                 # Assume OpenAI or compatible format
                 try:
@@ -419,6 +443,8 @@ class OmniLoop(BaseLoop):
                     except (json.JSONDecodeError, IndexError):
                         try:
                             # Look for JSON object pattern
+                            import re  # Local import to ensure availability
+
                             json_pattern = r"\{[^}]+\}"
                             json_match = re.search(json_pattern, raw_text)
                             if json_match:
@@ -429,8 +455,20 @@ class OmniLoop(BaseLoop):
                                 logger.error(f"No JSON found in content")
                                 return True, action_screenshot_saved
                         except json.JSONDecodeError as e:
-                            logger.error(f"Failed to parse JSON from text: {str(e)}")
-                            return True, action_screenshot_saved
+                            # Try to sanitize the JSON string and retry
+                            try:
+                                # Remove or replace invalid control characters
+                                import re  # Local import to ensure availability
+
+                                sanitized_text = re.sub(r"[\x00-\x1F\x7F]", "", raw_text)
+                                # Try parsing again with sanitized text
+                                parsed_content = json.loads(sanitized_text)
+                                logger.info(
+                                    "Successfully parsed JSON after sanitizing control characters"
+                                )
+                            except json.JSONDecodeError:
+                                logger.error(f"Failed to parse JSON from text: {str(e)}")
+                                return True, action_screenshot_saved
 
             # Step 4: Process the parsed content if available
             if parsed_content:

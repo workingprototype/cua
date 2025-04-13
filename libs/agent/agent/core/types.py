@@ -1,7 +1,8 @@
 """Core type definitions."""
 
 from typing import Any, Dict, List, Optional, TypedDict, Union
-from enum import Enum, auto
+from enum import Enum, StrEnum, auto
+from dataclasses import dataclass
 
 
 class AgentLoop(Enum):
@@ -12,6 +13,45 @@ class AgentLoop(Enum):
     OPENAI = auto()  # OpenAI implementation
     OLLAMA = auto()  # OLLAMA implementation
     # Add more loop types as needed
+
+
+class LLMProvider(StrEnum):
+    """Supported LLM providers."""
+
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    OLLAMA = "ollama"
+    OAICOMPAT = "oaicompat"
+
+
+@dataclass
+class LLM:
+    """Configuration for LLM model and provider."""
+
+    provider: LLMProvider
+    name: Optional[str] = None
+    provider_base_url: Optional[str] = None
+
+    def __post_init__(self):
+        """Set default model name if not provided."""
+        if self.name is None:
+            from .provider_config import DEFAULT_MODELS
+
+            self.name = DEFAULT_MODELS.get(self.provider)
+
+        # Set default provider URL if none provided
+        if self.provider_base_url is None and self.provider == LLMProvider.OAICOMPAT:
+            # Default for vLLM
+            self.provider_base_url = "http://localhost:8000/v1"
+            # Common alternatives:
+            # - LM Studio: "http://localhost:1234/v1"
+            # - LocalAI: "http://localhost:8080/v1"
+            # - Ollama with OpenAI compatible API: "http://localhost:11434/v1"
+
+
+# For backward compatibility
+LLMModel = LLM
+Model = LLM
 
 
 class AgentResponse(TypedDict, total=False):

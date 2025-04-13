@@ -1,6 +1,6 @@
 """Omni provider implementation."""
 
-from .types import LLMProvider
+from ...core.types import LLMProvider
 from .image_utils import (
     decode_base64_image,
 )

@@ -32,6 +32,7 @@ pip install "cua-agent[all]"
 pip install "cua-agent[openai]" # OpenAI Cua Loop
 pip install "cua-agent[anthropic]" # Anthropic Cua Loop
 pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
+pip install "cua-agent[ui]" # Gradio UI for the agent
 ```
 
 ## Run
@@ -43,6 +44,12 @@ async with Computer() as macos_computer:
       computer=macos_computer,
       loop=AgentLoop.OPENAI,
       model=LLM(provider=LLMProvider.OPENAI)
+      # or
+      # loop=AgentLoop.ANTHROPIC,
+      # model=LLM(provider=LLMProvider.ANTHROPIC)
+      # or
+      # loop=AgentLoop.OMNI,
+      # model=LLM(provider=LLMProvider.OLLAMA, model="gemma3")
   )
 
   tasks = [
@@ -66,6 +73,57 @@ Refer to these notebooks for step-by-step guides on how to use the Computer-Use 
 
 - [Agent Notebook](../../notebooks/agent_nb.ipynb) - Complete examples and workflows
 
+## Using the Gradio UI
+
+The agent includes a Gradio-based user interface for easy interaction. To use it:
+
+```bash
+# Install with Gradio support
+pip install "cua-agent[ui]"
+```
+
+### Create a simple launcher script
+
+```python
+# launch_ui.py
+from agent.ui.gradio.app import create_gradio_ui
+
+app = create_gradio_ui()
+app.launch(share=False)
+```
+
+### Setting up API Keys
+
+For the Gradio UI to show available models, you need to set API keys as environment variables:
+
+```bash
+# For OpenAI models
+export OPENAI_API_KEY=your_openai_key_here
+
+# For Anthropic models
+export ANTHROPIC_API_KEY=your_anthropic_key_here
+
+# Launch with both keys set
+OPENAI_API_KEY=your_key ANTHROPIC_API_KEY=your_key python launch_ui.py
+```
+
+Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
+
+### Using Local Models
+
+You can use local models with the OMNI loop provider by selecting "Custom model..." from the dropdown. The default provider URL is set to `http://localhost:1234/v1` which works with LM Studio. 
+
+If you're using a different local model server:
+- vLLM: `http://localhost:8000/v1`
+- LocalAI: `http://localhost:8080/v1`
+- Ollama with OpenAI compat API: `http://localhost:11434/v1`
+
+The Gradio UI provides:
+- Selection of different agent loops (OpenAI, Anthropic, OMNI)
+- Model selection for each provider
+- Configuration of agent parameters
+- Chat interface for interacting with the agent
+
 ## Agent Loops
 
 The `cua-agent` package provides three agent loops variations, based on different CUA models providers and techniques:
@@ -74,7 +132,7 @@ The `cua-agent` package provides three agent loops variations, based on differen
 |:-----------|:-----------------|:------------|:-------------|
 | `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
 | `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
-| `AgentLoop.OMNI` <br>(experimental) | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
+| `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
 
 ## AgentResponse
 The `AgentResponse` class represents the structured output returned after each agent turn. It contains the agent's response, reasoning, tool usage, and other metadata. The response format aligns with the new [OpenAI Agent SDK specification](https://platform.openai.com/docs/api-reference/responses) for better consistency across different agent loops.

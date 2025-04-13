@@ -64,6 +64,11 @@ find . -type d -name ".pdm-build" -exec rm -rf {} +
 find . -name ".pdm-python" -delete  # .pdm-python is a file, not a directory
 print_success "PDM-related files removed"
 
+# Remove MCP-related files
+print_step "Removing MCP-related files..."
+find . -name "mcp_server.log" -delete
+print_success "MCP-related files removed"
+
 # Remove .env file
 print_step "Removing .env file..."
 rm -f .env
