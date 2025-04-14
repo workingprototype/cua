@@ -242,8 +242,7 @@ def extract_synthesized_text(result: Union[AgentResponse, Dict[str, Any]]) -> Tu
                             if text_value:
                                 synthesized_text += f"{text_value}\n"
 
-            elif output.get("type") == "computer_call":
-                metadata["title"] = "🛠️ Used Computer"
+            elif output.get("type") == "computer_call":                
                 action = output.get("action", {})
                 action_type = action.get("type", "")
 
@@ -267,6 +266,7 @@ def extract_synthesized_text(result: Union[AgentResponse, Dict[str, Any]]) -> Tu
                 else:
                     synthesized_text += f"Performed {action_type} action.\n"
                     
+                metadata["status"] = "done"
                 metadata["title"] = f"🛠️ {synthesized_text.strip().splitlines()[-1]}"
                 
     return synthesized_text.strip(), metadata
@@ -409,9 +409,6 @@ def process_agent_result(result: Union[AgentResponse, Dict[str, Any]]) -> Tuple[
     # Clean up the text - ensure content is a string
     if not isinstance(content, str):
         content = str(content) if content else ""
-
-    print(content)
-    print(metadata)
 
     return content, metadata
 
