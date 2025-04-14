@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
 
+from agent.providers.omni.parser import ParseResult
+
 logger = logging.getLogger(__name__)
 
 class ContentCallback(Protocol):
@@ -19,6 +21,10 @@ class ToolCallback(Protocol):
 class APICallback(Protocol):
     """Protocol for API callbacks."""
     def __call__(self, request: Any, response: Any, error: Optional[Exception] = None) -> None: ...
+
+class ScreenshotCallback(Protocol):
+    """Protocol for screenshot callbacks."""
+    def __call__(self, screenshot_base64: str, action_type: str = "") -> Optional[str]: ...
 
 class BaseCallbackManager(ABC):
     """Base class for callback managers."""
@@ -110,7 +116,20 @@ class CallbackManager:
         """
         for handler in self.handlers:
             await handler.on_error(error, **kwargs)
-
+            
+    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+        """Called when a screenshot is taken.
+        
+        Args:
+            screenshot_base64: Base64 encoded screenshot
+            action_type: Type of action that triggered the screenshot
+            parsed_screen: Optional output from parsing the screenshot
+            
+        Returns:
+            Modified screenshot or original if no modifications
+        """
+        for handler in self.handlers:
+            await handler.on_screenshot(screenshot_base64, action_type, parsed_screen)
 
 class CallbackHandler(ABC):
     """Base class for callback handlers."""
@@ -144,4 +163,40 @@ class CallbackHandler(ABC):
             error: Exception that occurred
             **kwargs: Additional data
         """
-        pass 
+        pass
+        
+    @abstractmethod
+    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+        """Called when a screenshot is taken.
+        
+        Args:
+            screenshot_base64: Base64 encoded screenshot
+            action_type: Type of action that triggered the screenshot
+            
+        Returns:
+            Optional modified screenshot
+        """
+        pass
+
+class DefaultCallbackHandler(CallbackHandler):
+    """Default implementation of CallbackHandler with no-op methods.
+    
+    This class implements all abstract methods from CallbackHandler,
+    allowing subclasses to override only the methods they need.
+    """
+    
+    async def on_action_start(self, action: str, **kwargs) -> None:
+        """Default no-op implementation."""
+        pass
+    
+    async def on_action_end(self, action: str, success: bool, **kwargs) -> None:
+        """Default no-op implementation."""
+        pass
+    
+    async def on_error(self, error: Exception, **kwargs) -> None:
+        """Default no-op implementation."""
+        pass
+        
+    async def on_screenshot(self, screenshot_base64: str, action_type: str = "") -> None:
+        """Default no-op implementation."""
+        pass

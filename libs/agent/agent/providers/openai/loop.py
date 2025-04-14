@@ -194,8 +194,13 @@ class OpenAILoop(BaseLoop):
                 # Convert to base64 if needed
                 if isinstance(screenshot, bytes):
                     screenshot_base64 = base64.b64encode(screenshot).decode("utf-8")
+                elif isinstance(screenshot, (bytearray, memoryview)):
+                    screenshot_base64 = base64.b64encode(screenshot).decode("utf-8")
                 else:
-                    screenshot_base64 = screenshot
+                    screenshot_base64 = str(screenshot)
+
+                # Emit screenshot callbacks
+                await self.handle_screenshot(screenshot_base64, action_type="initial_state")
 
                 # Save screenshot if requested
                 if self.save_trajectory:
@@ -204,8 +209,6 @@ class OpenAILoop(BaseLoop):
                         logger.warning(
                             "Converting non-string screenshot_base64 to string for _save_screenshot"
                         )
-                        if isinstance(screenshot_base64, (bytearray, memoryview)):
-                            screenshot_base64 = base64.b64encode(screenshot_base64).decode("utf-8")
                     self._save_screenshot(screenshot_base64, action_type="state")
                     logger.info("Screenshot saved to trajectory")
 
@@ -336,8 +339,14 @@ class OpenAILoop(BaseLoop):
                         screenshot = await self.computer.interface.screenshot()
                         if isinstance(screenshot, bytes):
                             screenshot_base64 = base64.b64encode(screenshot).decode("utf-8")
+                        elif isinstance(screenshot, (bytearray, memoryview)):
+                            screenshot_base64 = base64.b64encode(bytes(screenshot)).decode("utf-8")
                         else:
-                            screenshot_base64 = screenshot
+                            screenshot_base64 = str(screenshot)
+                            
+                        # Process screenshot through hooks
+                        action_type = f"after_{action.get('type', 'action')}"
+                        await self.handle_screenshot(screenshot_base64, action_type=action_type)
 
                         # Create computer_call_output
                         computer_call_output = {

@@ -147,7 +147,7 @@ class OmniLoop(BaseLoop):
             )
         elif self.provider == LLMProvider.OAICOMPAT:
             self.client = OAICompatClient(
-                api_key="EMPTY",  # Local endpoints typically don't require an API key
+                api_key=self.api_key or "EMPTY",  # Local endpoints typically don't require an API key
                 model=self.model,
                 provider_base_url=self.provider_base_url,
             )
@@ -183,7 +183,7 @@ class OmniLoop(BaseLoop):
                 )
             elif self.provider == LLMProvider.OAICOMPAT:
                 self.client = OAICompatClient(
-                    api_key="EMPTY",  # Local endpoints typically don't require an API key
+                    api_key=self.api_key or "EMPTY",  # Local endpoints typically don't require an API key
                     model=self.model,
                     provider_base_url=self.provider_base_url,
                 )
@@ -548,6 +548,10 @@ class OmniLoop(BaseLoop):
                     img_data = parsed_screen.annotated_image_base64
                     if "," in img_data:
                         img_data = img_data.split(",")[1]
+                    
+                    # Process screenshot through hooks and save if needed
+                    await self.handle_screenshot(img_data, action_type="state", parsed_screen=parsed_screen)
+                    
                     # Save with a generic "state" action type to indicate this is the current screen state
                     self._save_screenshot(img_data, action_type="state")
                 except Exception as e:
@@ -663,6 +667,8 @@ class OmniLoop(BaseLoop):
                     response=response,
                     messages=self.message_manager.messages,
                     model=self.model,
+                    parsed_screen=parsed_screen,
+                    parser=self.parser
                 )
 
                 # Yield the response to the caller
