@@ -172,3 +172,26 @@ async for result in agent.run(task):
           print("\nTool Call Output:")
           print(output)
 ```
+
+### Gradio UI
+
+You can also interact with the agent using a Gradio interface.
+
+```python
+# Ensure environment variables (e.g., API keys) are loaded
+# You might need a helper function like load_dotenv_files() if using .env
+# from utils import load_dotenv_files
+# load_dotenv_files()
+
+from agent.ui.gradio.app import create_gradio_ui
+
+app = create_gradio_ui()
+app.launch(share=False)
+```
+
+**Note on Settings Persistence:**
+
+*   The Gradio UI automatically saves your configuration (Agent Loop, Model Choice, Custom Base URL, Save Trajectory state, Recent Images count) to a file named `.gradio_settings.json` in the project's root directory when you successfully run a task.
+*   This allows your preferences to persist between sessions.
+*   API keys entered into the custom provider field are **not** saved in this file for security reasons. Manage API keys using environment variables (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) or a `.env` file.
+*   It's recommended to add `.gradio_settings.json` to your `.gitignore` file.

@@ -240,3 +240,6 @@ trajectories/
 
 # Installation ID Storage
 .storage/
+
+# Gradio settings
+.gradio_settings.json
