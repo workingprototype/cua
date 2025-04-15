@@ -20,7 +20,7 @@ dependencies = [
     "python-xlib>=0.33; sys_platform == 'linux'",
     "pillow>=10.2.0"
 ]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
 

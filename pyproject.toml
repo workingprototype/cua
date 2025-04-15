@@ -10,7 +10,7 @@ authors = [
     { name = "TryCua", email = "gh@trycua.com" }
 ]
 dependencies = []
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
 
