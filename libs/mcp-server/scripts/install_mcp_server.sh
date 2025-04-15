@@ -59,7 +59,7 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Always install/upgrade the latest version of cua-mcp-server
-pip install --upgrade "cua-mcp-server" >/dev/null 2>&1
+pip install --upgrade "cua-mcp-server"
 
 # Run the MCP server with isolation from development paths
 cd "$VENV_DIR"  # Change to venv directory to avoid current directory in path
