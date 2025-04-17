@@ -74,8 +74,8 @@ If you want to use AI agents with virtualized environments:
 
 5. Use the libraries in your Python code:
    ```python
-   from cua.computer import Computer
-   from cua.agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+   from computer import Computer
+   from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
    async with Computer(verbosity=logging.DEBUG) as macos_computer:
      agent = ComputerAgent(
