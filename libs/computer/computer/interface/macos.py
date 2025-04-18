@@ -414,12 +414,10 @@ class MacOSComputerInterface(BaseComputerInterface):
 
     # Scrolling Actions
     async def scroll_down(self, clicks: int = 1) -> None:
-        for _ in range(clicks):
-            await self.hotkey(Key.PAGE_DOWN)
-
+        await self._send_command("scroll_down", {"clicks": clicks})
+        
     async def scroll_up(self, clicks: int = 1) -> None:
-        for _ in range(clicks):
-            await self.hotkey(Key.PAGE_UP)
+        await self._send_command("scroll_up", {"clicks": clicks})
 
     # Screen Actions
     async def screenshot(
