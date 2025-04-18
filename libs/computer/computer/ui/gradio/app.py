@@ -16,6 +16,7 @@ import random
 import base64
 from datetime import datetime
 from PIL import Image
+from huggingface_hub import DatasetCard, DatasetCardData
 from computer import Computer
 from gradio.components import ChatMessage
 import pandas as pd
@@ -280,11 +281,32 @@ def upload_to_huggingface(dataset_name, visibility, filter_tags=None):
             upload_ds = combined_ds
             session_count = len(upload_ds)
         
+        tags = ['cua']
+        if isinstance(filter_tags, list):
+            tags += filter_tags
+        
         # Push to HuggingFace
         upload_ds.push_to_hub(
             dataset_name,
             private=visibility == "private",
-            token=hf_token
+            token=hf_token,
+            commit_message="(Built with github.com/trycua/cua)"
+        )
+        
+        # Create dataset card
+        card_data = DatasetCardData(
+            language='en',
+            license='mit',
+            task_categories=['visual-question-answering'],
+            tags=tags
+        )
+        card = DatasetCard.from_template(
+            card_data=card_data,
+            template_str="---\n{{ card_data }}\n---\n\n# Uploaded computer interface trajectories\n\nThese trajectories were generated and uploaded using [c/ua](https://github.com/trycua/cua)"
+        )
+        card.push_to_hub(
+            dataset_name,
+            commit_message="Cua dataset card"
         )
         
         return f"Successfully uploaded {session_count} sessions to HuggingFace Datasets Hub at https://huggingface.co/datasets/{dataset_name}"
