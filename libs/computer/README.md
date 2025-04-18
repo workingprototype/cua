@@ -65,14 +65,23 @@ Refer to this notebook for a step-by-step guide on how to use the Computer-Use I
 
 - [Computer-Use Interface (CUI)](../../notebooks/computer_nb.ipynb)
 
-## Using the Gradio UI
+## Using the Gradio Computer UI
 
-The computer module includes a Gradio UI for creating and sharing demonstration data.
+The computer module includes a Gradio UI for creating and sharing demonstration data. The UI provides built-in integration with HuggingFace Datasets for sharing demonstrations and incorporating them into CUA ML pipelines.
 
 ```bash
 # Install with UI support
 pip install "cua-computer[ui]"
 ```
+
+
+<details open>
+<summary>View demonstration video</summary>
+<video src="https://github.com/user-attachments/assets/7c683b58-f04d-4e8c-b63f-6ef36e9637d5" controls width="600"></video>
+</details>
+
+> **Note:** For precise control of the computer, we recommend using VNC or Screen Sharing instead of the Computer Gradio UI.
+
 
 ### Launch the UI
 
