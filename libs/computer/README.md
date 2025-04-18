@@ -64,3 +64,24 @@ The `cua-computer` PyPi package pulls automatically the latest executable versio
 Refer to this notebook for a step-by-step guide on how to use the Computer-Use Interface (CUI):
 
 - [Computer-Use Interface (CUI)](../../notebooks/computer_nb.ipynb)
+
+## Using the Gradio UI
+
+The computer module includes a Gradio UI for creating and sharing demonstration data.
+
+```bash
+# Install with UI support
+pip install "cua-computer[ui]"
+```
+
+### Launch the UI
+
+```python
+# launch_ui.py
+from computer.ui.gradio.app import create_gradio_ui
+
+app = create_gradio_ui()
+app.launch(share=False)
+```
+
+For examples, see [Computer UI Examples](../../examples/computer_ui_examples.py)
