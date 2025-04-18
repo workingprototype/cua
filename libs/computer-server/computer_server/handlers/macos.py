@@ -542,7 +542,7 @@ class MacOSAutomationHandler(BaseAutomationHandler):
         try:
             if x is not None and y is not None:
                 pyautogui.moveTo(x, y)
-            pyautogui.doubleClick()
+            pyautogui.doubleClick(interval=0.1)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}

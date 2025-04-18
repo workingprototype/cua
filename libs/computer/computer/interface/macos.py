@@ -377,17 +377,47 @@ class MacOSComputerInterface(BaseComputerInterface):
         """
         await self.press(key)
 
-    async def hotkey(self, *keys: str) -> None:
-        await self._send_command("hotkey", {"keys": list(keys)})
+    async def hotkey(self, *keys: "KeyType") -> None:
+        """Press multiple keys simultaneously.
+
+        Args:
+            *keys: Multiple keys to press simultaneously. Each key can be any of:
+                - A Key enum value (recommended), e.g. Key.COMMAND
+                - A direct key value string, e.g. 'command'
+                - A single character string, e.g. 'a'
+
+        Examples:
+            ```python
+            # Using enums (recommended)
+            await interface.hotkey(Key.COMMAND, Key.C)  # Copy
+            await interface.hotkey(Key.COMMAND, Key.V)  # Paste
+
+            # Using mixed formats
+            await interface.hotkey(Key.COMMAND, 'a')  # Select all
+            ```
+
+        Raises:
+            ValueError: If any key type is invalid or not recognized
+        """
+        actual_keys = []
+        for key in keys:
+            if isinstance(key, Key):
+                actual_keys.append(key.value)
+            elif isinstance(key, str):
+                # Try to convert to enum if it matches a known key
+                key_or_enum = Key.from_string(key)
+                actual_keys.append(key_or_enum.value if isinstance(key_or_enum, Key) else key_or_enum)
+            else:
+                raise ValueError(f"Invalid key type: {type(key)}. Must be Key enum or string.")
+        
+        await self._send_command("hotkey", {"keys": actual_keys})
 
     # Scrolling Actions
     async def scroll_down(self, clicks: int = 1) -> None:
-        for _ in range(clicks):
-            await self.hotkey("pagedown")
-
+        await self._send_command("scroll_down", {"clicks": clicks})
+        
     async def scroll_up(self, clicks: int = 1) -> None:
-        for _ in range(clicks):
-            await self.hotkey("pageup")
+        await self._send_command("scroll_up", {"clicks": clicks})
 
     # Screen Actions
     async def screenshot(

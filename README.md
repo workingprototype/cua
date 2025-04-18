@@ -107,7 +107,9 @@ If you want to use AI agents with virtualized environments:
    app.launch(share=False)
    ```
 
-7. For Developers only (contribute and use latest features):
+### Option 3: Build from Source (Nightly)
+If you want to contribute to the project or need the latest nightly features:
+
    ```bash
    # Clone the repository
    git clone https://github.com/trycua/cua.git

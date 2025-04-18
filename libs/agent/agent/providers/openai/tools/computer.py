@@ -162,8 +162,8 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
                 y = kwargs.get("y")
                 if x is None or y is None:
                     raise ToolError("x and y coordinates are required for scroll action")
-                scroll_x = kwargs.get("scroll_x", 0)
-                scroll_y = kwargs.get("scroll_y", 0)
+                scroll_x = kwargs.get("scroll_x", 0) // 20
+                scroll_y = kwargs.get("scroll_y", 0) // 20
                 return await self.handle_scroll(x, y, scroll_x, scroll_y)
             elif type == "screenshot":
                 return await self.screenshot()

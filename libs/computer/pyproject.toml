@@ -21,6 +21,12 @@ dependencies = [
 ]
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+ui = [
+    "gradio>=5.23.3,<6.0.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+]
+
 [tool.pdm]
 distribution = true
 
