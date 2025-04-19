@@ -162,6 +162,11 @@ MODEL_MAPPINGS = {
         "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
         "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
     },
+    "uitars": {
+        # UI-TARS models default to custom endpoint
+        "default": "ByteDance-Seed/UI-TARS-1.5-7B",
+        "ui-tars": "ByteDance-Seed/UI-TARS-1.5-7B",
+    },
     "ollama": {
         # For Ollama models, we keep the original name
         "default": "llama3",  # A common default model
@@ -191,6 +196,7 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         "ANTHROPIC": AgentLoop.ANTHROPIC,
         "OMNI": AgentLoop.OMNI,
         "OMNI-OLLAMA": AgentLoop.OMNI,  # Special case for Ollama models with OMNI parser
+        "UITARS": AgentLoop.UITARS,     # UI-TARS implementation
     }
     agent_loop = loop_provider_map.get(loop_provider, AgentLoop.OPENAI)
 
@@ -551,6 +557,7 @@ def create_gradio_ui(
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model..."],  # Add custom model option
+        "UITARS": ["UI-TARS (ByteDance-Seed/UI-TARS-1.5-7B)", "Custom model..."],  # UI-TARS options
     }
 
     # --- Apply Saved Settings (override defaults if available) ---
@@ -692,7 +699,7 @@ def create_gradio_ui(
                 with gr.Accordion("Configuration", open=True):
                     # Configuration options
                     agent_loop = gr.Dropdown(
-                        choices=["OPENAI", "ANTHROPIC", "OMNI"],
+                        choices=["OPENAI", "ANTHROPIC", "OMNI", "UITARS"],
                         label="Agent Loop",
                         value=initial_loop,
                         info="Select the agent loop provider",

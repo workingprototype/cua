@@ -12,6 +12,7 @@ class AgentLoop(Enum):
     OMNI = auto()  # OmniLoop implementation
     OPENAI = auto()  # OpenAI implementation
     OLLAMA = auto()  # OLLAMA implementation
+    UITARS = auto()  # UI-TARS implementation
     # Add more loop types as needed
 
 
