@@ -338,7 +338,7 @@ class UITARSLoop(BaseLoop):
                     "content": self._add_box_token(resp)
                 })
         
-        # Add the latest image
+        # Add the latest image with the instruction
         latest_image = self.history_images[-1]
         if isinstance(latest_image, bytes):
             img_base64 = base64.b64encode(latest_image).decode("utf-8")
@@ -347,7 +347,10 @@ class UITARSLoop(BaseLoop):
             
         messages.append({
             "role": "user",
-            "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}]
+            "content": [
+                {"type": "text", "text": instruction},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
+            ]
         })
         
         # Log the API call
