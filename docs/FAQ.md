@@ -38,10 +38,10 @@ ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verif
 ```
 
 **Cause:**
-This usually happens when EasyOCR attempts to download its language models over HTTPS. Python's SSL module cannot verify the server's certificate because it can't locate the necessary root Certificate Authority (CA) certificates in your environment's trust store.
+This usually happens when EasyOCR attempts to download its language models over HTTPS for the first time. Python's SSL module cannot verify the server's certificate because it can't locate the necessary root Certificate Authority (CA) certificates in your environment's trust store.
 
 **Solution:**
-You need to explicitly tell Python where to find a trusted CA bundle. The `certifi` package provides one. Before running your Python agent script, set the following environment variables in the *same terminal session*:
+You need to explicitly tell Python where to find a trusted CA bundle. The `certifi` package provides one. Before running your Python agent script **the first time it needs to download models**, set the following environment variables in the *same terminal session*:
 ```bash
 # Ensure certifi is installed: pip show certifi
 export SSL_CERT_FILE=$(python -m certifi)
@@ -50,7 +50,7 @@ export REQUESTS_CA_BUNDLE=$(python -m certifi)
 # Now run your Python script that uses the agent...
 # python your_agent_script.py
 ```
-This directs Python to use the CA bundle provided by `certifi` for SSL verification.
+This directs Python to use the CA bundle provided by `certifi` for SSL verification. **Note:** Once EasyOCR has successfully downloaded its models, you typically do not need to set these environment variables before every subsequent run.
 
 ### How do I troubleshoot the agent failing to get the VM IP address or getting stuck on "VM status changed to: stopped"?
 
@@ -87,13 +87,19 @@ This is typically due to known instability issues with the `lume serve` backgrou
         lume serve
         ```
         *(Watch this terminal to ensure it stays running).*
-    *   **Terminal 2:** Run your agent script (including the `export SSL_CERT_FILE...` commands if needed for OCR):
+    *   **Terminal 2:** Run your agent script (including the `export SSL_CERT_FILE...` commands if *first time* using OCR):
         ```bash
-        export SSL_CERT_FILE=$(python -m certifi) # If using OCR
-        export REQUESTS_CA_BUNDLE=$(python -m certifi) # If using OCR
+        # export SSL_CERT_FILE=$(python -m certifi) # Only if first run with OCR
+        # export REQUESTS_CA_BUNDLE=$(python -m certifi) # Only if first run with OCR
         python your_agent_script.py
         ```
 4.  **Retry:** Due to the intermittent nature of the Lume issues, sometimes simply repeating steps 2 and 3 allows the run to succeed if the timing avoids the status reporting bug or the `lume serve` crash.
+
+**Related Issue: "No route to host" Error (macOS Sequoia+)**
+
+*   **Symptom:** Even if the `Computer` library logs show the VM has obtained an IP address, you might encounter connection errors like `No route to host` when the agent tries to connect to the internal server, especially when running the agent script from within an IDE (like VS Code or Cursor).
+*   **Cause:** This is often due to macOS Sequoia's enhanced local network privacy controls. Applications need explicit permission to access the local network, which includes communicating with the VM.
+*   **Solution:** Grant "Local Network" access to the application you are running the script from (e.g., your IDE or terminal application). Go to **System Settings > Privacy & Security > Local Network**, find your application in the list, and toggle the switch ON. You might need to trigger a connection attempt from the application first for it to appear in the list. See [GitHub Issue #61](https://github.com/trycua/cua/issues/61) for more details and discussion.
 
 **Note:** Improving the stability of `lume serve` is an ongoing development area.
 
