@@ -99,7 +99,7 @@ class LumeImageManager: @unchecked Sendable {
 
         // 3. Prepare Target Directory (Path is now directly provided)
         let vmDirURL = URL(fileURLWithPath: targetVmDirPath)
-        Logger.info("Using target VM directory: \(vmDirURL.path)") // Updated log
+        Logger.info("Using target VM directory: \(vmDirURL.path)")
 
         // Create the specific VM directory (don't allow intermediate here, parent should exist)
          do {
@@ -112,8 +112,9 @@ class LumeImageManager: @unchecked Sendable {
          }
         // Logger.info("VM will be stored at: \(vmDirURL.path)") // Redundant log
 
-        // 4. Download and Process Layers Concurrently
-        typealias LayerDownloadResult = (index: Int, mediaType: String, data: Data)
+        // 4. Download Layers Concurrently
+        // Define result type for download tasks (path to downloaded file)
+        typealias LayerDownloadResult = (index: Int, mediaType: String, layerDigest: String, downloadedFilePath: URL)
 
         let totalSize = manifest.layers.reduce(0) { $0 + $1.size }
         let progress = Progress(totalUnitCount: totalSize)
@@ -121,8 +122,8 @@ class LumeImageManager: @unchecked Sendable {
         let progressBar = ProgressBarController(progress: progress, description: "Pulling Layers")
         await progressBar.start()
 
-        // Ensure progress bar finishes even if errors occur
-        defer { Task { await progressBar.finish() } }
+        var downloadedLayersData: [LayerDownloadResult] = []
+        downloadedLayersData.reserveCapacity(manifest.layers.count)
 
         // Use temporary directory for individual layer downloads before processing
         let tempDownloadDir = FileManager.default.temporaryDirectory.appendingPathComponent("lume_pull_\(UUID().uuidString)")
@@ -130,72 +131,132 @@ class LumeImageManager: @unchecked Sendable {
         // Ensure cleanup of temp dir
         defer { Task { try? FileManager.default.removeItem(at: tempDownloadDir) } }
 
-        // Store results: index, mediaType, final processed data URL (or just indicate completion)
-        typealias LayerProcessResult = (index: Int, mediaType: String, finalDataURL: URL)
-        var processedLayers: [LayerProcessResult] = []
-        processedLayers.reserveCapacity(manifest.layers.count)
-
         Logger.info("Starting concurrent download of \(manifest.layers.count) layers...")
 
-        do {
-            // Use TaskGroup to download/decompress concurrently
-            // Note: Decompressing directly after download might still use significant memory
-            // if many large layers finish decompression around the same time.
-            // A more advanced approach might limit concurrent *decompression* tasks.
-            try await withThrowingTaskGroup(of: LayerProcessResult.self) { group in
-                for (index, layer) in manifest.layers.enumerated() {
-                    group.addTask { [self] in // Capture self to call decompress
-                        Logger.debug("Starting download for layer \(index + 1)/\(manifest.layers.count): \(layer.digest) (\(layer.mediaType))")
-                        
-                        // Define final path within temp dir for the *processed* layer data
-                        let finalDataPath = tempDownloadDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_final")
+        // Define a limit for concurrent downloads
+        let maxConcurrentDownloads = 10 // Example limit, adjust as needed
+        var runningDownloadTasks = 0
 
-                        // Decompress if necessary, writing to finalDataPath
-                        switch layer.mediaType {
-                        case DiskMediaTypeLZ4, NvramMediaTypeLZ4:
-                            // Download directly to a temp *compressed* path first
-                            let downloadedFilePath = tempDownloadDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_compressed")
-                            try await ociClient.pullBlob(digest: layer.digest, to: downloadedFilePath, progress: progress)
-                            Logger.debug("Decompressing layer \(index + 1) (\(layer.mediaType))...")
-                            let compressedData = try Data(contentsOf: downloadedFilePath)
-                            let decompressedData = try self.decompress(data: compressedData)
-                            try decompressedData.write(to: finalDataPath)
-                            // Clean up compressed file
-                            try? FileManager.default.removeItem(at: downloadedFilePath)
-                            Logger.debug("Decompressed layer \(index + 1) (\(layer.mediaType)), original size: \(compressedData.count), decompressed: \(decompressedData.count)")
-                        case OCIConfigMediaType:
-                            // Config is not compressed, download directly to final path
-                            try await ociClient.pullBlob(digest: layer.digest, to: finalDataPath, progress: progress)
-                            Logger.debug("Processed config layer \(index + 1)")
-                        default:
-                            Logger.info("Unknown layer media type \(layer.mediaType) for layer \(index + 1), downloading raw data.")
-                            // Download raw data directly to final path
-                            try await ociClient.pullBlob(digest: layer.digest, to: finalDataPath, progress: progress)
+        do {
+            try await withThrowingTaskGroup(of: LayerDownloadResult.self) { group in
+                for (index, layer) in manifest.layers.enumerated() {
+                    // Wait for a slot if concurrency limit is reached
+                    while runningDownloadTasks >= maxConcurrentDownloads {
+                        if try await group.next() != nil {
+                            runningDownloadTasks -= 1
+                        } else {
+                            // Should not happen unless group is empty, but break defensively
+                            break
                         }
-                        Logger.debug("Finished processing layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
-                        return (index: index, mediaType: layer.mediaType, finalDataURL: finalDataPath)
+                    }
+                    
+                    // We have a slot, add the new download task
+                    runningDownloadTasks += 1
+                    
+                    group.addTask { // No need to capture self here anymore
+                        Logger.debug("Queueing download for layer \(index + 1)/\(manifest.layers.count): \(layer.digest) (\(layer.mediaType))")
+                        
+                        // Define path for the downloaded (potentially compressed) layer data
+                        let downloadedFilePath = tempDownloadDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_compressed")
+
+                        // Download the blob to the temporary file path
+                        try await ociClient.pullBlob(digest: layer.digest, to: downloadedFilePath, progress: progress)
+
+                        Logger.debug("Finished download for layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
+                        // Return path to the downloaded file (might still be compressed)
+                        return (index: index, mediaType: layer.mediaType, layerDigest: layer.digest, downloadedFilePath: downloadedFilePath)
                     }
                 }
                 
-                for try await result in group {
-                    processedLayers.append(result)
-                    // Increment main progress after a layer (and its decompression) completes
-                    // Use the *original* manifest layer size for progress increment,
-                    // as totalUnitCount is based on these sizes.
-                    if manifest.layers.indices.contains(result.index) {
-                         let originalLayerSize = manifest.layers[result.index].size
-                         progress.completedUnitCount += originalLayerSize
-                    } else {
-                         Logger.error("Result index \(result.index) out of bounds for manifest layers.")
-                    }
+                // Wait for any remaining tasks to complete after the loop
+                while let _ = try await group.next() {
+                     runningDownloadTasks -= 1 // Decrement count as remaining tasks finish
                 }
             }
-            Logger.info("All layers downloaded and processed successfully.")
+            Logger.info("All layers downloaded successfully.")
         } catch {
              Logger.error("Failed to download or process layers concurrently: \(error.localizedDescription)")
             throw error 
         }
         
+        // Ensure progress bar finishes after download phase
+        await progressBar.finish()
+        
+        // --- Step 4b: Decompress downloaded layers concurrently (limited) ---
+        Logger.info("Starting decompression of downloaded layers...")
+        // Define result type for decompression tasks
+        typealias DecompressResult = (index: Int, mediaType: String, finalDataURL: URL)
+        var processedLayers: [DecompressResult] = []
+        processedLayers.reserveCapacity(downloadedLayersData.count)
+        
+        // Limit decompression concurrency (e.g., half the cores)
+        let maxDecompressTasks = ProcessInfo.processInfo.processorCount / 2 + 1 
+        var runningDecompressTasks = 0
+        
+        do {
+            try await withThrowingTaskGroup(of: DecompressResult.self) { group in
+                for downloadResult in downloadedLayersData {
+                    // Wait for a slot if concurrency limit is reached
+                    while runningDecompressTasks >= maxDecompressTasks {
+                        if try await group.next() != nil {
+                            runningDecompressTasks -= 1
+                        } else {
+                            break // Group likely empty
+                        }
+                    }
+
+                    // Add new decompression task
+                    runningDecompressTasks += 1
+
+                    // Submit decompression task
+                     group.addTask { [self] in // Capture self for decompress method
+                         let finalDataPath = tempDownloadDir.appendingPathComponent("layer_\(downloadResult.index)_\(downloadResult.layerDigest.replacingOccurrences(of: ":", with: "_"))_final")
+                         
+                         switch downloadResult.mediaType {
+                         case DiskMediaTypeLZ4, NvramMediaTypeLZ4:
+                             Logger.debug("Decompressing layer \(downloadResult.index + 1) (\(downloadResult.mediaType))...")
+                             let compressedData = try Data(contentsOf: downloadResult.downloadedFilePath)
+                             let decompressedData = try self.decompress(data: compressedData)
+                             try decompressedData.write(to: finalDataPath)
+                             // Clean up compressed file now
+                             try? FileManager.default.removeItem(at: downloadResult.downloadedFilePath)
+                             Logger.debug("Decompressed layer \(downloadResult.index + 1) size: \(decompressedData.count)")
+                         case OCIConfigMediaType:
+                             // Config not compressed, just move to final path
+                              try FileManager.default.moveItem(at: downloadResult.downloadedFilePath, to: finalDataPath)
+                         default:
+                             // Unknown type, just move the downloaded file
+                              try FileManager.default.moveItem(at: downloadResult.downloadedFilePath, to: finalDataPath)
+                         }
+                         return (index: downloadResult.index, mediaType: downloadResult.mediaType, finalDataURL: finalDataPath)
+                     }
+                 }
+                 
+                 // Collect results as decompression finishes
+                 for try await result in group {
+                     // Decrement counter *before* appending, as the task has finished
+                     // This is slightly different from the download loop where we decrement *after* fetching from group.next()
+                     runningDecompressTasks -= 1 
+                     processedLayers.append(result)
+                     // Optionally, update a *second* progress bar here for decompression phase
+                     Logger.debug("Finished processing layer \(result.index + 1) for final assembly.")
+                 }
+
+                 // Wait for any remaining decompression tasks (redundant if loop exhausted group)
+                 while runningDecompressTasks > 0 {
+                      if try await group.next() != nil {
+                          runningDecompressTasks -= 1
+                      } else {
+                          break // Should be empty
+                      }
+                 }
+            }
+            Logger.info("All layers decompressed/processed successfully.")
+        } catch {
+             Logger.error("Failed during layer decompression/processing: \(error.localizedDescription)")
+             throw error // Rethrow
+        }
+
         // 5. Process Downloaded Data and Reconstruct VM Files
         var diskChunks: [Int: Data] = [:]
         var nvramData: Data? = nil
