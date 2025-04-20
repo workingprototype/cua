@@ -660,23 +660,37 @@ struct OCIClient {
     }
 
     // Simple delegate class to handle download task completion and progress
-    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable { // Mark final and unchecked Sendable
+    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable { 
         let progress: Progress?
-        // Store the continuation to resume when download finishes or errors
+        let destinationURL: URL // Store the final destination
         var continuation: CheckedContinuation<Void, Error>? 
-        var lastProgressUpdate: Date = Date(timeIntervalSince1970: 0) // Throttle progress prints
-
-        init(progress: Progress?) {
+         var lastProgressUpdate: Date = Date(timeIntervalSince1970: 0) // Throttle progress prints
+ 
+        init(progress: Progress?, destinationURL: URL) {
             self.progress = progress
+            self.destinationURL = destinationURL
         }
-
+ 
         func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-            // Resume the continuation with success, passing the temporary location
-            // The caller will handle moving the file.
-            continuation?.resume(returning: ()) 
-            continuation = nil // Avoid resuming multiple times
-        }
-
+            // Move the downloaded file from the system's temp location to the intended destination
+            do {
+                // Ensure parent directory exists (should already, but good practice)
+                try FileManager.default.createDirectory(at: destinationURL.deletingLastPathComponent(), 
+                                                      withIntermediateDirectories: true)
+                // Remove item at destination if it exists, before moving
+                try? FileManager.default.removeItem(at: destinationURL)
+                // Perform the move
+                try FileManager.default.moveItem(at: location, to: destinationURL)
+                Logger.debug("Successfully moved downloaded file to \(destinationURL.path)")
+                // Now resume continuation successfully
+                continuation?.resume(returning: ())
+            } catch {
+                 Logger.error("Failed to move downloaded file from \(location.path) to \(destinationURL.path): \(error.localizedDescription)")
+                 continuation?.resume(throwing: OCIClientError.requestFailed(error)) // Treat move error as failure
+            }
+              continuation = nil // Avoid resuming multiple times
+         }
+ 
         func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
             // Only resume if there's an error AND we haven't already resumed successfully
             if let error = error {
@@ -731,7 +745,7 @@ struct OCIClient {
 
          // Create a delegate and session specifically for this download task
          // (URLSession.shared doesn't support delegates for background tasks)
-         let delegate = DownloadDelegate(progress: progress)
+         let delegate = DownloadDelegate(progress: progress, destinationURL: destinationURL)
          let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
 
          // Perform the download task
