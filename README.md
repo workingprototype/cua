@@ -35,8 +35,8 @@
 
 - Mac with Apple Silicon (M1/M2/M3/M4 series)
 - macOS 15 (Sequoia) or newer
-- Python 3.10+ (for Computer and Agent libraries)
-- Disk space for VM images (40GB+ recommended)
+- Python 3.10+ (required for the Computer, Agent, and MCP libraries). We recommend using Conda (or Anaconda) to create an ad hoc Python environment.
+- Disk space for VM images (30GB+ recommended)
 
 ## Quick Start
 
