@@ -712,14 +712,11 @@ struct OCIClient {
          
          let endpoint = "\(namespace)/blobs/\(digest)"
          
-         // Ensure destination directory exists
+         // Ensure parent directory exists, but DO NOT delete existing destination file.
+         // URLSessionDownloadTask handles overwriting or using existing correctly.
          try FileManager.default.createDirectory(at: destinationURL.deletingLastPathComponent(), 
                                                    withIntermediateDirectories: true, 
                                                    attributes: nil)
-         // Remove existing file if present to ensure fresh download
-         if FileManager.default.fileExists(atPath: destinationURL.path) {
-              try FileManager.default.removeItem(at: destinationURL)
-         }
 
          // Use retryingStreamRequest to build the initial request and handle auth retries
          // We won't consume the byteStream here, just use the request setup.
