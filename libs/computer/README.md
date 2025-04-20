@@ -67,7 +67,7 @@ Refer to this notebook for a step-by-step guide on how to use the Computer-Use I
 
 ## Using the Gradio Computer UI
 
-The computer module includes a Gradio UI for creating and sharing demonstration data. The UI provides built-in integration with HuggingFace Datasets for sharing demonstrations and incorporating them into CUA ML pipelines.
+The computer module includes a Gradio UI for creating and sharing demonstration data. The UI provides built-in integration with Hugging Face Datasets for sharing demonstrations and incorporating them into CUA ML pipelines.
 
 ```bash
 # Install with UI support
