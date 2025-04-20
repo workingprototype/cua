@@ -270,9 +270,22 @@ class LumeImageManager: @unchecked Sendable {
 
         let diskURL = vmDirURL.appendingPathComponent("disk.img")
         Logger.info("Reassembling disk image at \(diskURL.path)...")
-        guard let diskHandle = try? FileHandle(forWritingTo: diskURL) else {
+        
+        // Explicitly create/clear the file before opening handle
+        if !FileManager.default.fileExists(atPath: diskURL.path) {
+            guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else {
+                 Logger.error("Failed to create initial disk image file at \(diskURL.path).")
+                 throw PullError.fileCreationFailed(diskURL.path)
+            }
+        } else {
+             // If it exists, maybe clear it first (optional, depends on desired overwrite behavior)
+             // try? FileManager.default.removeItem(at: diskURL)
+             // guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else { ... }
+        }
+
+        guard let diskHandle = try? FileHandle(forWritingTo: diskURL) else { 
              Logger.error("Failed to open \(diskURL.path) for writing.")
-             throw PullError.vmReconstructionFailed
+             throw PullError.vmReconstructionFailed 
         }
         defer { try? diskHandle.close() }
 
