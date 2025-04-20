@@ -14,6 +14,9 @@ class LumeImageManager: @unchecked Sendable {
     private let cacheDirectory: URL
     private let cachingEnabled: Bool
 
+    private static let holeGranularityBytes = 4 * 1024 * 1024 // 4MB block size for checking zeros
+    private static let zeroChunk = Data(count: holeGranularityBytes)
+
     init(registry: String, organization: String, cacheDirectoryPath: String, cachingEnabled: Bool) {
         self.registry = registry
         self.organization = organization
@@ -257,164 +260,269 @@ class LumeImageManager: @unchecked Sendable {
             throw PullError.targetDirectoryError("Failed to create VM directory: \(error.localizedDescription)")
         }
 
-        // --- Check Cache ---
-        if cachingEnabled && validateCache(manifest: manifest, manifestId: manifestId) {
-            Logger.info("Valid cache found for \(manifestId). Reconstructing from cache...")
-            // TODO: Implement efficient reconstruction directly from cache files
-            Logger.info("Cache hit detected, but reconstruction from cache is not yet implemented. Proceeding with full download.")
-            // Fall through to download for now
-        }
-        
-        // --- Download & Process ---
-        Logger.info("Starting download and processing...")
-        
-        // Create temporary directory for this pull operation
-        let tempProcessingDir = FileManager.default.temporaryDirectory.appendingPathComponent("lume_pull_\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempProcessingDir, withIntermediateDirectories: true)
-        defer { Task { try? FileManager.default.removeItem(at: tempProcessingDir) } }
-
-        // Setup Progress and Progress Bar
-        let totalSize = manifest.layers.reduce(0) { $0 + $1.size }
-        let progress = Progress(totalUnitCount: totalSize)
-        let progressBar = ProgressBarController(progress: progress, description: "Pulling Layers")
-        await progressBar.start()
-        defer { Task { await progressBar.finish() } }
-
-        // Define result type (path to final processed data in temp dir)
-        typealias LayerProcessResult = (index: Int, mediaType: String, finalDataURL: URL)
-        var processedLayers: [LayerProcessResult] = []
-        processedLayers.reserveCapacity(manifest.layers.count)
-
-        let maxConcurrentTasks = 10 
-        var runningTasks = 0
-
-        do {
-            try await withThrowingTaskGroup(of: LayerProcessResult.self) { group in
-                for (index, layer) in manifest.layers.enumerated() {
-                    // Wait for a slot
-                    while runningTasks >= maxConcurrentTasks {
-                        if let result = try await group.next() {
-                            processedLayers.append(result)
-                            if manifest.layers.indices.contains(result.index) {
-                                progress.completedUnitCount += manifest.layers[result.index].size
-                            }
-                            runningTasks -= 1
-                        } else { break }
-                    }
-                    runningTasks += 1
-
-                    // Add task to download, cache, and process
-                    group.addTask { [self] in // Capture self
-                        let downloadedFilePath = tempProcessingDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_downloaded")
-                        let finalDataPath = tempProcessingDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_final")
-                        let cachedLayerPath = self.getCachedLayerPath(manifestId: manifestId, digest: layer.digest)
-
-                        // 1. Download
-                        Logger.debug("Downloading layer \(index + 1)... (\(layer.digest))")
-                        try await ociClient.pullBlob(digest: layer.digest, to: downloadedFilePath, progress: nil)
-
-                        // 2. Cache
-                        if self.cachingEnabled {
-                            do {
-                                try FileManager.default.createDirectory(at: cachedLayerPath.deletingLastPathComponent(), withIntermediateDirectories: true)
-                                try? FileManager.default.removeItem(at: cachedLayerPath)
-                                try FileManager.default.copyItem(at: downloadedFilePath, to: cachedLayerPath)
-                                Logger.debug("Cached layer \(index + 1).")
-                            } catch {
-                                Logger.error("Failed to cache layer \(layer.digest): \(error.localizedDescription)")
-                            }
-                        }
-
-                        // 3. Process (Decompress/Move)
-                        switch layer.mediaType {
-                        case DiskMediaTypeLZ4, NvramMediaTypeLZ4:
-                            Logger.debug("Decompressing layer \(index + 1)...")
-                            let compressedData = try Data(contentsOf: downloadedFilePath)
-                            let decompressedData = try self.decompress(data: compressedData)
-                            try decompressedData.write(to: finalDataPath)
-                            try? FileManager.default.removeItem(at: downloadedFilePath) // Clean up download
-                        case OCIConfigMediaType, "application/vnd.oci.image.config.v1+json":
-                             try FileManager.default.moveItem(at: downloadedFilePath, to: finalDataPath)
-                             Logger.debug("Processed config layer \(index + 1)")
-                        default:
-                             try FileManager.default.moveItem(at: downloadedFilePath, to: finalDataPath)
-                             Logger.info("Unknown layer type \(layer.mediaType) processed by moving.")
-                        }
-                         Logger.debug("Finished task for layer \(index + 1).")
-                        return (index: index, mediaType: layer.mediaType, finalDataURL: finalDataPath)
-                    }
-                }
-
-                // Collect remaining results
-                while let result = try await group.next() {
-                    processedLayers.append(result)
-                     if manifest.layers.indices.contains(result.index) {
-                           progress.completedUnitCount += manifest.layers[result.index].size
-                      }
-                    runningTasks -= 1
-                }
-            }
-            Logger.info("All layers downloaded and processed.")
-        } catch {
-            Logger.error("Failed during layer download/processing: \(error.localizedDescription)")
-            throw error // Rethrow
-        }
-
-        // --- Reconstruction Phase ---
-        Logger.info("Reconstructing VM files...")
-        var diskChunks: [Int: Data] = [:]
+        // --- Initialize the missing variables ---
+        // Dictionary to track paths to processed disk layers (index -> URL)
+        var processedDiskLayerPaths: [Int: URL] = [:]
+        // Track total uncompressed disk size for pre-allocation
+        var totalUncompressedDiskSize: UInt64 = 0
+        // Variables to store NVRAM and config data
         var nvramData: Data? = nil
         var configFileURL: URL? = nil
 
-        // Sort results first to ensure correct order for reading data
-        processedLayers.sort { $0.index < $1.index }
+        // 4. Process layers and calculate total disk size
+        for (_, layer) in manifest.layers.enumerated() {
+            if layer.mediaType == DiskMediaTypeLZ4, 
+               let sizeStr = layer.annotations?[OCIAnnotationUncompressedSize], 
+               let size = UInt64(sizeStr) {
+                totalUncompressedDiskSize += size
+            }
+        }
+        
+        // --- Check Cache ---
+        if cachingEnabled && validateCache(manifest: manifest, manifestId: manifestId) {
+             Logger.info("Valid cache found for \(manifestId). Reconstructing VM from cache...")
+            do {
+                let cacheDir = getImageCacheDirectory(manifestId: manifestId)
 
-        for result in processedLayers {
-            switch result.mediaType {
-            case DiskMediaTypeLZ4:
-                diskChunks[result.index] = try Data(contentsOf: result.finalDataURL)
-            case NvramMediaTypeLZ4:
-                nvramData = try Data(contentsOf: result.finalDataURL)
-            case OCIConfigMediaType, "application/vnd.oci.image.config.v1+json":
-                configFileURL = result.finalDataURL
-                Logger.debug("Identified config file URL: \(configFileURL?.path ?? "nil")")
-            default:
-                Logger.info("Ignoring layer \(result.index) with unknown media type \(result.mediaType) during VM reconstruction.")
+                // --- Copy non-disk files from cache --- 
+                // Config (corresponds to manifest.config.digest)
+                let cachedConfigPath = getCachedLayerPath(manifestId: manifestId, digest: manifest.config.digest)
+                let finalConfigPath = vmDirURL.appendingPathComponent("config.json")
+                if FileManager.default.fileExists(atPath: cachedConfigPath.path) {
+                    try? FileManager.default.removeItem(at: finalConfigPath) // Remove existing if any
+                    try FileManager.default.copyItem(at: cachedConfigPath, to: finalConfigPath)
+                    Logger.debug("Copied config.json from cache.")
+                } else {
+                    Logger.error("Cache inconsistency: config layer missing from cache directory \(cacheDir.path)")
+                    // Decide if this should be fatal or try download?
+                    throw PullError.vmReconstructionFailed // Treat as fatal for now
+                }
+
+                // NVRAM (find the layer by media type)
+                if let nvramLayer = manifest.layers.first(where: { $0.mediaType == NvramMediaTypeLZ4 }) {
+                    let cachedNvramPath = getCachedLayerPath(manifestId: manifestId, digest: nvramLayer.digest)
+                    let finalNvramPath = vmDirURL.appendingPathComponent("nvram.bin")
+                    if FileManager.default.fileExists(atPath: cachedNvramPath.path) {
+                        // NVRAM needs decompression
+                        Logger.debug("Decompressing cached NVRAM...")
+                        let compressedData = try Data(contentsOf: cachedNvramPath)
+                        let decompressedData = try self.decompress(data: compressedData)
+                        try? FileManager.default.removeItem(at: finalNvramPath)
+                        try decompressedData.write(to: finalNvramPath)
+                        Logger.debug("Restored nvram.bin from cache.")
+                    } else {
+                        Logger.error("Cache inconsistency: NVRAM layer missing from cache directory \(cacheDir.path)")
+                        throw PullError.vmReconstructionFailed
+                    }
+                } else {
+                     Logger.info("No NVRAM layer found in manifest, skipping NVRAM restore from cache.")
+                }
+
+                // --- Reassemble Disk from cached layers --- 
+                let diskLayers = manifest.layers.enumerated()
+                                          .filter { $0.element.mediaType == DiskMediaTypeLZ4 } 
+                                          .sorted { $0.offset < $1.offset } // Ensure original order
+
+                if !diskLayers.isEmpty {
+                    let diskURL = vmDirURL.appendingPathComponent("disk.img")
+                    Logger.info("Reassembling disk image from cache at \(diskURL.path)...")
+                    
+                    if !FileManager.default.fileExists(atPath: diskURL.path) {
+                        guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else {
+                            throw PullError.fileCreationFailed(diskURL.path)
+                        }
+                    } else {
+                        // Clear existing disk image before writing from cache
+                         try FileManager.default.removeItem(at: diskURL)
+                         guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else {
+                            throw PullError.fileCreationFailed("Failed to recreate disk image file at \(diskURL.path).")
+                         }
+                    }
+
+                    guard let diskHandle = try? FileHandle(forWritingTo: diskURL) else { 
+                         throw PullError.vmReconstructionFailed 
+                    }
+                    defer { try? diskHandle.close() }
+
+                    // TODO: Add progress bar for cache reassembly?
+                    for (index, layer) in diskLayers { // Use enumerated, sorted results
+                         Logger.debug("Processing cached disk layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
+                         let cachedLayerPath = self.getCachedLayerPath(manifestId: manifestId, digest: layer.digest)
+                         let compressedData = try Data(contentsOf: cachedLayerPath)
+                         let decompressedData = try self.decompress(data: compressedData)
+                         try diskHandle.write(contentsOf: decompressedData)
+                    }
+                    try? diskHandle.synchronize()
+                    Logger.info("Finished reassembling disk image from cache.")
+                } else {
+                     Logger.info("No disk layers found in manifest for cache reconstruction.")
+                }
+
+                 // --- Finalize Cache Reconstruction --- 
+                 let metadata = ImageMetadata(image: imageName, manifestId: manifestId, timestamp: Date())
+                 let metadataURL = vmDirURL.appendingPathComponent("metadata.json")
+                 let metadataData = try JSONEncoder().encode(metadata)
+                 try metadataData.write(to: metadataURL)
+                 Logger.info("Wrote metadata file at \(metadataURL.path)")
+
+                Logger.info("Successfully reconstructed VM from cache: \(vmDirURL.path)")
+                return // *** IMPORTANT: Exit pull early after cache reconstruction ***
+
+            } catch {
+                 Logger.error("Error during cache reconstruction: \(error.localizedDescription). Deleting potentially incomplete VM directory and falling back to download.")
+                 // Attempt to clean up the destination directory on error
+                 try? FileManager.default.removeItem(at: vmDirURL)
+                 // Optionally, could also invalidate/remove the cache dir itself here
+                 // Fall through to download logic
             }
         }
 
-        // Reassemble Disk
+        // --- Fallback: Download if cache invalid, disabled, or reconstruction failed ---
+        if cachingEnabled {
+            Logger.info("Cache miss or invalid for \(manifestId), proceeding with download and caching.")
+            // Prepare cache directory for the new manifest
+            try await setupImageCache(manifestId: manifestId)
+            try saveManifest(manifest, manifestId: manifestId)
+            try saveImageMetadata(imageName: imageName, manifestId: manifestId)
+        }
+
+        // 5. Download and process layers
+        Logger.info("Downloading and processing layers...")
+        
+        // Create a progress object for layer downloads
+        let layerProgress = Progress(totalUnitCount: Int64(manifest.layers.count))
+        
+        // Process each layer and store the results
+        for (index, layer) in manifest.layers.enumerated() {
+            Logger.info("Processing layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
+            
+            // Check if blob already exists in cache
+            let shouldDownload = !cachingEnabled || !FileManager.default.fileExists(
+                atPath: getCachedLayerPath(manifestId: manifestId, digest: layer.digest).path)
+            
+            // Download and process layer based on type
+            if layer.mediaType == DiskMediaTypeLZ4 {
+                // This is a disk layer
+                let layerURL: URL
+                if shouldDownload {
+                    // Download and cache layer
+                    layerURL = cachingEnabled ? 
+                        getCachedLayerPath(manifestId: manifestId, digest: layer.digest) : 
+                        FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                    try await ociClient.pullBlob(digest: layer.digest, to: layerURL, progress: layerProgress)
+                } else {
+                    // Use cached layer
+                    layerURL = getCachedLayerPath(manifestId: manifestId, digest: layer.digest)
+                }
+                processedDiskLayerPaths[index] = layerURL
+                
+            } else if layer.mediaType == NvramMediaTypeLZ4 {
+                // NVRAM layer
+                if shouldDownload {
+                    let nvramURL = cachingEnabled ?
+                        getCachedLayerPath(manifestId: manifestId, digest: layer.digest) :
+                        FileManager.default.temporaryDirectory.appendingPathComponent("nvram.lz4")
+                    try await ociClient.pullBlob(digest: layer.digest, to: nvramURL, progress: layerProgress)
+                    
+                    // Decompress after download
+                    let compressedData = try Data(contentsOf: nvramURL)
+                    nvramData = try decompress(data: compressedData)
+                } else {
+                    // Load from cache and decompress
+                    let compressedData = try Data(contentsOf: getCachedLayerPath(manifestId: manifestId, digest: layer.digest))
+                    nvramData = try decompress(data: compressedData)
+                }
+            } else if layer.digest == manifest.config.digest {
+                // Config layer
+                if shouldDownload {
+                    let configURL = cachingEnabled ? 
+                        getCachedLayerPath(manifestId: manifestId, digest: layer.digest) : 
+                        FileManager.default.temporaryDirectory.appendingPathComponent("config.json")
+                    try await ociClient.pullBlob(digest: layer.digest, to: configURL, progress: layerProgress)
+                    configFileURL = configURL
+                } else {
+                    configFileURL = getCachedLayerPath(manifestId: manifestId, digest: layer.digest)
+                }
+            }
+            
+            // Update progress
+            layerProgress.completedUnitCount += 1
+        }
+
+        // 6. Process Downloaded/Cached Data and Reconstruct VM Files
+        // Use the results collected from the TaskGroup
+        
+        // --- Reassemble Disk (Sparse Write) --- 
         let diskURL = vmDirURL.appendingPathComponent("disk.img")
-        Logger.info("Reassembling disk image at \(diskURL.path)...")
-        if !FileManager.default.fileExists(atPath: diskURL.path) {
-            guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else {
-                 Logger.error("Failed to create initial disk image file at \(diskURL.path).")
-                 throw PullError.fileCreationFailed(diskURL.path)
-            }
+        Logger.info("Reassembling disk image sparsely at \(diskURL.path) (Expected size: \(ByteCountFormatter.string(fromByteCount: Int64(totalUncompressedDiskSize), countStyle: .file)))...")
+        
+        // Create/clear and pre-allocate sparse file
+        try? FileManager.default.removeItem(at: diskURL) // Ensure clean start
+        guard FileManager.default.createFile(atPath: diskURL.path, contents: nil) else {
+             throw PullError.fileCreationFailed(diskURL.path)
         }
-        guard let diskHandle = try? FileHandle(forWritingTo: diskURL) else {
-             Logger.error("Failed to open \(diskURL.path) for writing.")
-             throw PullError.vmReconstructionFailed
+        guard let diskHandle = try? FileHandle(forWritingTo: diskURL) else { 
+             throw PullError.vmReconstructionFailed 
         }
         defer { try? diskHandle.close() }
+        do {
+             try diskHandle.truncate(atOffset: totalUncompressedDiskSize)
+             Logger.debug("Pre-allocated sparse disk image file to \(totalUncompressedDiskSize) bytes.")
+        } catch {
+            Logger.error("Failed to truncate disk image file: \(error.localizedDescription)")
+             throw PullError.vmReconstructionFailed
+        }
 
-        let sortedIndices = diskChunks.keys.sorted()
-        var expectedNextIndex = -1
-        for index in sortedIndices {
-            // Ensure layers contributing to disk are contiguous (basic check)
-            if manifest.layers.indices.contains(index) && manifest.layers[index].mediaType == DiskMediaTypeLZ4 {
-                 if expectedNextIndex == -1 { expectedNextIndex = index + 1 }
-                 else if index != expectedNextIndex { throw PullError.vmReconstructionFailed }
-                 else { expectedNextIndex += 1 }
+        // Process sorted disk layers sequentially
+        let sortedDiskIndices = processedDiskLayerPaths.keys.sorted()
+        var writeOffset: UInt64 = 0
+        for index in sortedDiskIndices {
+             guard let sourceFileURL = processedDiskLayerPaths[index] else { continue } // Should exist
+             Logger.debug("Writing disk layer \(index + 1) from \(sourceFileURL.lastPathComponent) at offset \(writeOffset)")
+             
+             // Read the source file chunk by chunk and write sparsely
+             guard let sourceHandle = try? FileHandle(forReadingFrom: sourceFileURL) else {
+                 Logger.error("Failed to open source layer file for reading: \(sourceFileURL.path)")
+                 throw PullError.vmReconstructionFailed
+             }
+             defer { try? sourceHandle.close() } // Close each source handle when done
 
-                 if let chunk = diskChunks[index] {
-                     try diskHandle.write(contentsOf: chunk)
-                 } else { throw PullError.vmReconstructionFailed }
-            }
+             while true {
+                 let chunkData: Data
+                 do {
+                     // Read in blocks of holeGranularityBytes
+                      if #available(macOS 10.15.4, *) {
+                          chunkData = try sourceHandle.read(upToCount: Self.holeGranularityBytes) ?? Data()
+                      } else {
+                          chunkData = sourceHandle.readData(ofLength: Self.holeGranularityBytes)
+                      }
+                 } catch {
+                     Logger.error("Failed to read from source layer file \(sourceFileURL.path): \(error.localizedDescription)")
+                     throw PullError.vmReconstructionFailed
+                 }
+                 
+                 // Break if EOF
+                 if chunkData.isEmpty { break }
+                 
+                 // Check if chunk is all zeros
+                 if chunkData != Self.zeroChunk || chunkData.count < Self.holeGranularityBytes { // Also write partial last chunk
+                     // Not all zeros, write it
+                     do {
+                          try diskHandle.seek(toOffset: writeOffset)
+                          try diskHandle.write(contentsOf: chunkData)
+                     } catch {
+                          Logger.error("Failed to write non-zero chunk to disk image: \(error.localizedDescription)")
+                          throw PullError.vmReconstructionFailed
+                     }
+                 } // else: Skip writing zero chunk, leaving a hole
+                 
+                 writeOffset += UInt64(chunkData.count)
+             }
         }
         try? diskHandle.synchronize()
         Logger.info("Finished reassembling disk image.")
 
+        // --- Write Other Files --- 
         // Write NVRAM
         if let nvramData = nvramData {
             let nvramURL = vmDirURL.appendingPathComponent("nvram.bin") // Correct filename
