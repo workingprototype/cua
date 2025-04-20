@@ -198,10 +198,11 @@ class LumeImageManager: @unchecked Sendable {
                 for downloadResult in downloadedLayersData {
                     // Wait for a slot if concurrency limit is reached
                     while runningDecompressTasks >= maxDecompressTasks {
+                        // Wait for *any* running task to finish
                         if try await group.next() != nil {
-                            runningDecompressTasks -= 1
+                            runningDecompressTasks -= 1 
                         } else {
-                            break // Group likely empty
+                            break // Group is empty, shouldn't happen here
                         }
                     }
 
@@ -232,23 +233,12 @@ class LumeImageManager: @unchecked Sendable {
                      }
                  }
                  
-                 // Collect results as decompression finishes
-                 for try await result in group {
-                     // Decrement counter *before* appending, as the task has finished
-                     // This is slightly different from the download loop where we decrement *after* fetching from group.next()
-                     runningDecompressTasks -= 1 
+                 // Wait for and collect results from all remaining tasks after loop finishes
+                 while let result = try await group.next() {
                      processedLayers.append(result)
-                     // Optionally, update a *second* progress bar here for decompression phase
                      Logger.debug("Finished processing layer \(result.index + 1) for final assembly.")
-                 }
-
-                 // Wait for any remaining decompression tasks (redundant if loop exhausted group)
-                 while runningDecompressTasks > 0 {
-                      if try await group.next() != nil {
-                          runningDecompressTasks -= 1
-                      } else {
-                          break // Should be empty
-                      }
+                     // Counter doesn't strictly need decrementing here as we exit loop when group is empty
+                     // runningDecompressTasks -= 1 
                  }
             }
             Logger.info("All layers decompressed/processed successfully.")
