@@ -124,37 +124,70 @@ class LumeImageManager: @unchecked Sendable {
         // Ensure progress bar finishes even if errors occur
         defer { Task { await progressBar.finish() } }
 
-        var downloadedLayersData: [LayerDownloadResult] = []
-        downloadedLayersData.reserveCapacity(manifest.layers.count)
+        // Use temporary directory for individual layer downloads before processing
+        let tempDownloadDir = FileManager.default.temporaryDirectory.appendingPathComponent("lume_pull_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDownloadDir, withIntermediateDirectories: true)
+        // Ensure cleanup of temp dir
+        defer { Task { try? FileManager.default.removeItem(at: tempDownloadDir) } }
+
+        // Store results: index, mediaType, final processed data URL (or just indicate completion)
+        typealias LayerProcessResult = (index: Int, mediaType: String, finalDataURL: URL)
+        var processedLayers: [LayerProcessResult] = []
+        processedLayers.reserveCapacity(manifest.layers.count)
 
         Logger.info("Starting concurrent download of \(manifest.layers.count) layers...")
 
         do {
-            try await withThrowingTaskGroup(of: LayerDownloadResult.self) { group in
+            // Use TaskGroup to download/decompress concurrently
+            // Note: Decompressing directly after download might still use significant memory
+            // if many large layers finish decompression around the same time.
+            // A more advanced approach might limit concurrent *decompression* tasks.
+            try await withThrowingTaskGroup(of: LayerProcessResult.self) { group in
                 for (index, layer) in manifest.layers.enumerated() {
                     group.addTask { [self] in // Capture self to call decompress
-                        Logger.info("Starting download for layer \(index + 1)/\(manifest.layers.count): \(layer.digest) (\(layer.mediaType))")
-                        let blobData = try await ociClient.pullBlob(layer.digest, progress: progress) // Use ociClient
+                        Logger.debug("Starting download for layer \(index + 1)/\(manifest.layers.count): \(layer.digest) (\(layer.mediaType))")
                         
-                        let finalData: Data
+                        // Define final path within temp dir for the *processed* layer data
+                        let finalDataPath = tempDownloadDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_final")
+
+                        // Decompress if necessary, writing to finalDataPath
                         switch layer.mediaType {
                         case DiskMediaTypeLZ4, NvramMediaTypeLZ4:
-                            finalData = try self.decompress(data: blobData)
-                            Logger.debug("Decompressed layer \(index + 1) (\(layer.mediaType)), original size: \(blobData.count), decompressed: \(finalData.count)")
+                            // Download directly to a temp *compressed* path first
+                            let downloadedFilePath = tempDownloadDir.appendingPathComponent("layer_\(index)_\(layer.digest.replacingOccurrences(of: ":", with: "_"))_compressed")
+                            try await ociClient.pullBlob(digest: layer.digest, to: downloadedFilePath, progress: progress)
+                            Logger.debug("Decompressing layer \(index + 1) (\(layer.mediaType))...")
+                            let compressedData = try Data(contentsOf: downloadedFilePath)
+                            let decompressedData = try self.decompress(data: compressedData)
+                            try decompressedData.write(to: finalDataPath)
+                            // Clean up compressed file
+                            try? FileManager.default.removeItem(at: downloadedFilePath)
+                            Logger.debug("Decompressed layer \(index + 1) (\(layer.mediaType)), original size: \(compressedData.count), decompressed: \(decompressedData.count)")
                         case OCIConfigMediaType:
-                            finalData = blobData
+                            // Config is not compressed, download directly to final path
+                            try await ociClient.pullBlob(digest: layer.digest, to: finalDataPath, progress: progress)
                             Logger.debug("Processed config layer \(index + 1)")
                         default:
-                            Logger.info("Unknown layer media type \(layer.mediaType) for layer \(index + 1), storing raw data.")
-                            finalData = blobData
+                            Logger.info("Unknown layer media type \(layer.mediaType) for layer \(index + 1), downloading raw data.")
+                            // Download raw data directly to final path
+                            try await ociClient.pullBlob(digest: layer.digest, to: finalDataPath, progress: progress)
                         }
-                        Logger.info("Finished processing layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
-                        return (index: index, mediaType: layer.mediaType, data: finalData)
+                        Logger.debug("Finished processing layer \(index + 1)/\(manifest.layers.count): \(layer.digest)")
+                        return (index: index, mediaType: layer.mediaType, finalDataURL: finalDataPath)
                     }
                 }
                 
                 for try await result in group {
-                    downloadedLayersData.append(result)
+                    processedLayers.append(result)
+                    // Increment main progress after a layer (and its decompression) completes
+                    // Use the *original* manifest layer size for progress increment,
+                    // as totalUnitCount is based on these sizes.
+                    if manifest.layers.indices.contains(result.index) {
+                         let originalLayerSize = manifest.layers[result.index].size
+                         progress.completedUnitCount += originalLayerSize
+                    } else {
+                         Logger.error("Result index \(result.index) out of bounds for manifest layers.")
+                    }
                 }
             }
             Logger.info("All layers downloaded and processed successfully.")
@@ -166,16 +199,19 @@ class LumeImageManager: @unchecked Sendable {
         // 5. Process Downloaded Data and Reconstruct VM Files
         var diskChunks: [Int: Data] = [:]
         var nvramData: Data? = nil
-        var configData: Data? = nil
+        var configFileURL: URL? = nil
 
-        for result in downloadedLayersData {
+        for result in processedLayers {
             switch result.mediaType {
             case DiskMediaTypeLZ4:
-                diskChunks[result.index] = result.data
+                // Read the final (decompressed) data for this chunk
+                // This still loads chunk into memory, but only one at a time during assembly
+                diskChunks[result.index] = try Data(contentsOf: result.finalDataURL)
             case NvramMediaTypeLZ4:
-                nvramData = result.data
+                nvramData = try Data(contentsOf: result.finalDataURL)
             case OCIConfigMediaType:
-                configData = result.data
+                configFileURL = result.finalDataURL // Keep track of the final config file URL
+                Logger.debug("Ignoring config layer content for VM reconstruction.")
             default:
                  Logger.info("Ignoring layer \(result.index) with unknown media type \(result.mediaType) during VM reconstruction.")
             }
@@ -224,11 +260,13 @@ class LumeImageManager: @unchecked Sendable {
             Logger.info("Wrote nvram file at \(nvramURL.path)")
         }
 
-        // Write config.json (using downloaded data)
-        if let configData = configData {
+        // Copy config.json from its temporary final location
+        if let sourceConfigURL = configFileURL {
              let configJsonURL = vmDirURL.appendingPathComponent("config.json")
              do {
-                  try configData.write(to: configJsonURL)
+                  // Remove existing destination if present before copying
+                  try? FileManager.default.removeItem(at: configJsonURL)
+                  try FileManager.default.copyItem(at: sourceConfigURL, to: configJsonURL)
                   Logger.info("Wrote config.json from downloaded config layer at \(configJsonURL.path)")
              } catch {
                   Logger.error("Failed to write downloaded config.json: \(error.localizedDescription)")

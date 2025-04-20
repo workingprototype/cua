@@ -659,49 +659,159 @@ struct OCIClient {
         }
     }
 
-     func pullBlob(_ digest: String, progress: Progress? = nil) async throws -> Data {
-         Logger.debug("Pulling blob: \(digest)")
+    // Simple delegate class to handle download task completion and progress
+    private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable { // Mark final and unchecked Sendable
+        let progress: Progress?
+        // Store the continuation to resume when download finishes or errors
+        var continuation: CheckedContinuation<Void, Error>? 
+        var lastProgressUpdate: Date = Date(timeIntervalSince1970: 0) // Throttle progress prints
+
+        init(progress: Progress?) {
+            self.progress = progress
+        }
+
+        func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+            // Resume the continuation with success, passing the temporary location
+            // The caller will handle moving the file.
+            continuation?.resume(returning: ()) 
+            continuation = nil // Avoid resuming multiple times
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+            // Only resume if there's an error AND we haven't already resumed successfully
+            if let error = error {
+                Logger.error("OCIClient download delegate received error: \(error.localizedDescription)")
+                continuation?.resume(throwing: OCIClientError.requestFailed(error))
+                continuation = nil // Avoid resuming multiple times
+            }
+            // If error is nil, didFinishDownloadingTo should have been called.
+            // If continuation is *still* not nil here, it means didFinishDownloadingTo wasn't called (unusual)
+            else if continuation != nil { 
+                 Logger.error("Download task completed without error, but didFinishDownloadingTo was not called.")
+                 continuation?.resume(throwing: OCIClientError.invalidResponseData) // Indicate an unexpected state
+                 continuation = nil
+            }
+        }
+
+        func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+            progress?.totalUnitCount = totalBytesExpectedToWrite
+            progress?.completedUnitCount = totalBytesWritten
+
+            // Throttle progress bar redraw to avoid excessive console updates
+            let now = Date()
+            if now.timeIntervalSince(lastProgressUpdate) > 0.1 { // Update max 10 times/sec
+                 // The actual drawing happens via the ProgressBarController observing the Progress object
+                 lastProgressUpdate = now
+            }
+        }
+    }
+
+    // Modified pullBlob to use file download
+     func pullBlob(digest: String, to destinationURL: URL, progress: Progress?) async throws {
+         Logger.debug("Pulling blob \(digest) to file: \(destinationURL.path)")
          
          let endpoint = "\(namespace)/blobs/\(digest)"
-         var downloadedData = Data()
-         var receivedBytes: Int64 = 0
          
-         do {
-             let (byteStream, httpResponse) = try await retryingStreamRequest(
-                 "GET",
-                 endpoint: endpoint,
-                 expectedStatusCodes: [200],
-                 timeoutInterval: 3600
-             )
-             
-             let expectedLength = httpResponse.expectedContentLength
-             if expectedLength > 0 { 
-                 progress?.totalUnitCount = expectedLength
-             }
+         // Ensure destination directory exists
+         try FileManager.default.createDirectory(at: destinationURL.deletingLastPathComponent(), 
+                                                   withIntermediateDirectories: true, 
+                                                   attributes: nil)
+         // Remove existing file if present to ensure fresh download
+         if FileManager.default.fileExists(atPath: destinationURL.path) {
+              try FileManager.default.removeItem(at: destinationURL)
+         }
 
-             for try await byte in byteStream {
-                 downloadedData.append(byte)
-                 receivedBytes += 1
-                 progress?.completedUnitCount = receivedBytes 
-             }
+         // Use retryingStreamRequest to build the initial request and handle auth retries
+         // We won't consume the byteStream here, just use the request setup.
+         // This is a bit awkward but reuses the retry logic.
+         // Alternatively, duplicate retry logic for download tasks.
+         let (request, _) = try await buildRequestWithRetry(
+             "GET",
+             endpoint: endpoint,
+             expectedStatusCodes: [200],
+             timeoutInterval: 3600 // Use long timeout
+         )
+
+         // Create a delegate and session specifically for this download task
+         // (URLSession.shared doesn't support delegates for background tasks)
+         let delegate = DownloadDelegate(progress: progress)
+         let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+
+         // Perform the download task
+         return try await withCheckedThrowingContinuation { continuation in
+             // Assign the continuation to the delegate
+             delegate.continuation = continuation
              
-             progress?.completedUnitCount = receivedBytes
-             if progress?.totalUnitCount == 0 && receivedBytes > 0 {
-                 progress?.totalUnitCount = receivedBytes
-             }
-             
-             Logger.debug("Blob pull successful for \(digest), size: \(downloadedData.count)")
-             return downloadedData
-             
-         } catch let error as OCIClientError {
-             Logger.error("OCIClient error pulling blob \(digest): \(error.localizedDescription)")
-             if case .authenticationFailed = error {
-                  throw PullError.tokenFetchFailed // Map to PullError
-             }
-             throw PullError.layerDownloadFailed(digest) // Map to PullError
-         } catch {
-             Logger.error("Unknown error pulling blob \(digest): \(error.localizedDescription)")
-             throw PullError.layerDownloadFailed(digest)
+             let downloadTask = session.downloadTask(with: request)
+             downloadTask.resume()
          }
      }
+
+     // Helper function to prepare a request and handle potential token refresh needed *before* starting download task
+     private func buildRequestWithRetry(
+         _ method: String,
+         endpoint: String? = nil,
+         url: URL? = nil,
+         headers: [String: String] = [:],
+         parameters: [String: String] = [:],
+         expectedStatusCodes: Swift.Set<Int> = [200], // Note: Not checked here, only used by caller
+         timeoutInterval: TimeInterval? = nil
+     ) async throws -> (URLRequest, HTTPURLResponse?) { // Response might not be relevant here
+         var attempt = 1
+         while true {
+             let requestURL: URL
+             // --- URL Construction (duplicated from _dataRequest) ---
+             if let fullURL = url {
+                 guard var components = URLComponents(url: fullURL, resolvingAgainstBaseURL: true) else {
+                     throw OCIClientError.invalidURL(fullURL.absoluteString)
+                 }
+                 if !parameters.isEmpty {
+                     var queryItems = components.queryItems ?? []
+                     queryItems.append(contentsOf: parameters.map { URLQueryItem(name: $0.key, value: $0.value) })
+                     components.queryItems = queryItems
+                 }
+                 guard let finalURL = components.url else {
+                     throw OCIClientError.invalidURL("Failed to add parameters to \(fullURL.absoluteString)")
+                 }
+                 requestURL = finalURL
+             } else if let endpoint = endpoint {
+                 guard let constructedURL = makeURL(endpoint: endpoint, parameters: parameters) else {
+                     throw OCIClientError.invalidURL("\(baseURL.absoluteString)\(endpoint)")
+                 }
+                 requestURL = constructedURL
+             } else {
+                 throw OCIClientError.invalidURL("Either endpoint or url must be provided")
+             }
+             // --- End URL Construction ---
+
+             var request = URLRequest(url: requestURL)
+             request.httpMethod = method
+             if let timeout = timeoutInterval { request.timeoutInterval = timeout }
+
+             // Common headers
+             request.setValue("LumeClient/1.0", forHTTPHeaderField: "User-Agent") 
+             if let authHeader = await authenticationKeeper.validHeader() {
+                 request.setValue(authHeader.1, forHTTPHeaderField: authHeader.0)
+             } else if attempt > 1 {
+                 // If we already refreshed and still have no valid header, fail
+                  throw OCIClientError.authenticationFailed("No valid auth header even after refresh attempt")
+             } else {
+                 // No valid header on first attempt, need to refresh
+                 Logger.info("No valid auth header found, attempting token refresh before making request...")
+                 guard await refreshToken() else {
+                     throw OCIClientError.authenticationFailed("Initial token refresh failed")
+                 }
+                 attempt += 1
+                 continue // Retry building request with potentially new token
+             }
+
+             // Request-specific headers
+             for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
+
+             // We don't actually *make* the request here, just build it.
+             // The caller (e.g., pullBlob) will use this request with a downloadTask.
+             // We return nil for response as it's not generated here.
+             return (request, nil) 
+        }
+    }
 } 
