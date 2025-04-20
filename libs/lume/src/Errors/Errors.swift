@@ -59,6 +59,8 @@ enum PullError: Error, LocalizedError {
     case reassemblySetupFailed(path: String, underlyingError: Error)
     case missingUncompressedSizeAnnotation
     case invalidMediaType
+    case vmReconstructionFailed
+    case targetDirectoryError(String)
     
     var errorDescription: String? {
         switch self {
@@ -84,6 +86,10 @@ enum PullError: Error, LocalizedError {
             return "Could not find the required uncompressed disk size annotation in the image config.json."
         case .invalidMediaType:
             return "Invalid media type"
+        case .vmReconstructionFailed:
+            return "Failed to reconstruct VM files from downloaded layers."
+        case .targetDirectoryError(let details):
+            return "Error creating target directory for VM: \(details)"
         }
     }
 }
@@ -224,4 +230,19 @@ enum VmrunError: Error, LocalizedError {
             return "vmrun command '\(command)' failed. Output: \(output ?? "No output")"
         }
     }
+}
+
+// Push-related errors
+enum PushError: Error {
+    case uploadInitiationFailed
+    case blobUploadFailed
+    case manifestPushFailed
+    case authenticationFailed
+    case missingToken
+    case invalidURL
+    case manifestFetchFailed
+    case missingDiskImage
+    // Add more specific errors as needed, e.g.:
+    // case blobCheckFailed(String)
+    // case manifestCreationFailed
 }

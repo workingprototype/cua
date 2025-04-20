@@ -419,12 +419,54 @@ final class LumeController {
                 storage: storage
             )
 
-            let imageContainerRegistry = ImageContainerRegistry(
-                registry: registry, organization: organization)
-            try await imageContainerRegistry.pull(
+            // Determine target location and path BEFORE calling pull
+            let targetLocationName: String
+            do {
+                targetLocationName = try storage ?? home.getDefaultLocation().name
+            } catch {
+                 Logger.error("Failed to get default storage location: \(error.localizedDescription)")
+                 throw error // Re-throw the error from getDefaultLocation()
+            }
+            
+            // Assuming home.getLocation exists and might throw - Corrected: Use settingsManager
+            let targetLocation: VMLocation 
+            do {
+                 targetLocation = try SettingsManager.shared.getLocation(name: targetLocationName) // Use SettingsManager.shared
+            } catch {
+                 Logger.error("Failed to find storage location named '\(targetLocationName)': \(error.localizedDescription)")
+                 throw error // Re-throw the error
+            }
+
+            // Use URL for path manipulation
+            let targetVmDirURL = URL(fileURLWithPath: targetLocation.expandedPath)
+                                     .appendingPathComponent("\(vmName).lume")
+            let targetVmDirPath = targetVmDirURL.path
+            
+            Logger.info("Resolved target VM directory path: \(targetVmDirPath)")
+
+            // Ensure parent directory exists
+            let parentDir = targetVmDirURL.deletingLastPathComponent()
+             if !FileManager.default.fileExists(atPath: parentDir.path) {
+                 Logger.info("Parent storage directory \(parentDir.path) does not exist, attempting to create it.")
+                 try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true, attributes: nil)
+             }
+
+            // Get cache settings from SettingsManager
+            let cacheDir = (SettingsManager.shared.getCacheDirectory() as NSString).expandingTildeInPath
+            let cachingEnabled = SettingsManager.shared.isCachingEnabled()
+
+            // Use LumeImageManager
+            let imageManager = LumeImageManager(
+                registry: registry, 
+                organization: organization,
+                cacheDirectoryPath: cacheDir, // Pass resolved path
+                cachingEnabled: cachingEnabled // Pass flag
+            )
+            try await imageManager.pull(
                 image: image,
                 name: vmName,
-                locationName: storage)
+                targetVmDirPath: targetVmDirPath // Pass the resolved path
+            )
 
             Logger.info(
                 "Setting new VM mac address",
@@ -494,11 +536,19 @@ final class LumeController {
             // Get the VM directory
             let vmDir = try home.getVMDirectory(name, storage: actualLocation)
             
-            // Use ImageContainerRegistry to push the VM 
-            let imageContainerRegistry = ImageContainerRegistry(
-                registry: registry, organization: organization)
+            // Get cache settings from SettingsManager
+            let cacheDir = (SettingsManager.shared.getCacheDirectory() as NSString).expandingTildeInPath
+            let cachingEnabled = SettingsManager.shared.isCachingEnabled()
+
+            // Use LumeImageManager
+            let imageManager = LumeImageManager(
+                registry: registry, 
+                organization: organization,
+                cacheDirectoryPath: cacheDir, // Pass resolved path
+                cachingEnabled: cachingEnabled // Pass flag
+            )
             
-            try await imageContainerRegistry.push(
+            try await imageManager.push(
                 vmDirPath: vmDir.dir.path,
                 imageName: imageName,
                 tags: tags,
@@ -561,9 +611,18 @@ final class LumeController {
     public func getImages(organization: String = "trycua") async throws -> ImageList {
         Logger.info("Listing local images", metadata: ["organization": organization])
 
-        let imageContainerRegistry = ImageContainerRegistry(
-            registry: "ghcr.io", organization: organization)
-        let cachedImages = try await imageContainerRegistry.getImages()
+        // Get cache settings from SettingsManager
+        let cacheDir = (SettingsManager.shared.getCacheDirectory() as NSString).expandingTildeInPath
+        let cachingEnabled = SettingsManager.shared.isCachingEnabled()
+
+        // Use LumeImageManager
+        let imageManager = LumeImageManager(
+            registry: "ghcr.io", 
+            organization: organization,
+            cacheDirectoryPath: cacheDir, // Pass resolved path
+            cachingEnabled: cachingEnabled // Pass flag
+        )
+        let cachedImages = try await imageManager.getImages()
 
         let imageInfos = cachedImages.map { image in
             ImageInfo(
