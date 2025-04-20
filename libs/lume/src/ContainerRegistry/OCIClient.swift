@@ -132,7 +132,8 @@ struct OCIClient {
         headers: [String: String] = [:],
         parameters: [String: String] = [:],
         body: Data? = nil,
-        expectedStatusCodes: Swift.Set<Int> = [200]
+        expectedStatusCodes: Swift.Set<Int> = [200],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         let requestURL: URL
         if let fullURL = url {
@@ -159,6 +160,9 @@ struct OCIClient {
 
         var request = URLRequest(url: requestURL)
         request.httpMethod = method
+        if let timeout = timeoutInterval {
+            request.timeoutInterval = timeout
+        }
 
         // Common headers
         request.setValue("LumeClient/1.0", forHTTPHeaderField: "User-Agent") 
@@ -216,7 +220,8 @@ struct OCIClient {
         url: URL? = nil,
         headers: [String: String] = [:],
         parameters: [String: String] = [:],
-        expectedStatusCodes: Swift.Set<Int> = [200]
+        expectedStatusCodes: Swift.Set<Int> = [200],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
         let requestURL: URL
         if let fullURL = url {
@@ -243,6 +248,9 @@ struct OCIClient {
 
         var request = URLRequest(url: requestURL)
         request.httpMethod = method
+        if let timeout = timeoutInterval {
+            request.timeoutInterval = timeout
+        }
 
         // Common headers
         request.setValue("LumeClient/1.0", forHTTPHeaderField: "User-Agent")
@@ -305,13 +313,15 @@ struct OCIClient {
         headers: [String: String] = [:],
         parameters: [String: String] = [:],
         body: Data? = nil,
-        expectedStatusCodes: Swift.Set<Int> = [200]
+        expectedStatusCodes: Swift.Set<Int> = [200],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         // Initial attempt
         do {
             return try await dataRequest(
                 method, endpoint: endpoint, url: url, headers: headers,
-                parameters: parameters, body: body, expectedStatusCodes: expectedStatusCodes
+                parameters: parameters, body: body, expectedStatusCodes: expectedStatusCodes,
+                timeoutInterval: timeoutInterval
             )
         } catch OCIClientError.authenticationFailed(_) {
             // Authentication failed, attempt to refresh token
@@ -326,7 +336,8 @@ struct OCIClient {
             do {
                 return try await dataRequest(
                     method, endpoint: endpoint, url: url, headers: headers,
-                    parameters: parameters, body: body, expectedStatusCodes: expectedStatusCodes
+                    parameters: parameters, body: body, expectedStatusCodes: expectedStatusCodes,
+                    timeoutInterval: timeoutInterval
                 )
             } catch {
                  Logger.error("Request failed even after token refresh: \(error.localizedDescription)")
@@ -345,13 +356,15 @@ struct OCIClient {
         url: URL? = nil,
         headers: [String: String] = [:],
         parameters: [String: String] = [:],
-        expectedStatusCodes: Swift.Set<Int> = [200]
+        expectedStatusCodes: Swift.Set<Int> = [200],
+        timeoutInterval: TimeInterval? = nil
     ) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
          // Initial attempt
         do {
             return try await streamRequest(
                 method, endpoint: endpoint, url: url, headers: headers,
-                parameters: parameters, expectedStatusCodes: expectedStatusCodes
+                parameters: parameters, expectedStatusCodes: expectedStatusCodes,
+                timeoutInterval: timeoutInterval
             )
         } catch OCIClientError.authenticationFailed(_) {
             // Authentication failed, attempt to refresh token
@@ -366,7 +379,8 @@ struct OCIClient {
             do {
                  return try await streamRequest(
                      method, endpoint: endpoint, url: url, headers: headers,
-                     parameters: parameters, expectedStatusCodes: expectedStatusCodes
+                     parameters: parameters, expectedStatusCodes: expectedStatusCodes,
+                     timeoutInterval: timeoutInterval
                  )
             } catch {
                  Logger.error("Stream request failed even after token refresh: \(error.localizedDescription)")
@@ -656,7 +670,8 @@ struct OCIClient {
              let (byteStream, httpResponse) = try await retryingStreamRequest(
                  "GET",
                  endpoint: endpoint,
-                 expectedStatusCodes: [200]
+                 expectedStatusCodes: [200],
+                 timeoutInterval: 3600
              )
              
              let expectedLength = httpResponse.expectedContentLength

@@ -437,9 +437,8 @@ final class LumeController {
                  throw error // Re-throw the error
             }
 
-            // Use URL for path manipulation
             let targetVmDirURL = URL(fileURLWithPath: targetLocation.expandedPath)
-                                     .appendingPathComponent("\(vmName).lume")
+                                     .appendingPathComponent(vmName) // Just use vmName
             let targetVmDirPath = targetVmDirURL.path
             
             Logger.info("Resolved target VM directory path: \(targetVmDirPath)")

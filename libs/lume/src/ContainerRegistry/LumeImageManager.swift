@@ -117,6 +117,12 @@ class LumeImageManager: @unchecked Sendable {
 
         let totalSize = manifest.layers.reduce(0) { $0 + $1.size }
         let progress = Progress(totalUnitCount: totalSize)
+        // Create and start the progress bar
+        let progressBar = ProgressBarController(progress: progress, description: "Pulling Layers")
+        await progressBar.start()
+
+        // Ensure progress bar finishes even if errors occur
+        defer { Task { await progressBar.finish() } }
 
         var downloadedLayersData: [LayerDownloadResult] = []
         downloadedLayersData.reserveCapacity(manifest.layers.count)
@@ -322,6 +328,12 @@ class LumeImageManager: @unchecked Sendable {
         Logger.info("Disk image size: \(diskRawData.count) bytes. Splitting into \(totalChunks) chunks (max size: \(layerLimitBytes) bytes).")
 
         let diskProgress = Progress(totalUnitCount: Int64(diskRawData.count))
+        // Create and start the progress bar for disk operations
+        let diskProgressBar = ProgressBarController(progress: diskProgress, description: "Processing/Uploading Disk")
+        await diskProgressBar.start()
+        
+        // Ensure progress bar finishes even if errors occur
+        defer { Task { await diskProgressBar.finish() } }
 
         typealias ChunkResult = (index: Int, layer: OCIManifestLayer)
         var processedDiskLayers: [ChunkResult] = []
