@@ -67,9 +67,27 @@ struct OCIManifestLayer {
 struct OCIConfig: Codable {
     struct Annotations: Codable {
         let uncompressedSize: String?  // Use optional String
-
+        
         enum CodingKeys: String, CodingKey {
             case uncompressedSize = "org.trycua.lume.uncompressed-disk-size"
+            case legacyUncompressedSize = "com.trycua.lume.disk.uncompressed_size"
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            // Try to decode using the new key first, then fall back to the legacy key
+            if let size = try container.decodeIfPresent(String.self, forKey: .uncompressedSize) {
+                uncompressedSize = size
+            } else {
+                uncompressedSize = try container.decodeIfPresent(String.self, forKey: .legacyUncompressedSize)
+            }
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encodeIfPresent(uncompressedSize, forKey: .uncompressedSize)
+            // Also encode to legacy key for backward compatibility
+            try container.encodeIfPresent(uncompressedSize, forKey: .legacyUncompressedSize)
         }
     }
     let annotations: Annotations?  // Optional annotations
@@ -634,7 +652,8 @@ class ImageContainerRegistry: @unchecked Sendable {
     public func pull(
         image: String,
         name: String?,
-        locationName: String? = nil
+        locationName: String? = nil,
+        debug: Bool = false
     ) async throws {
         guard !image.isEmpty else {
             throw ValidationError("Image name cannot be empty")
@@ -974,6 +993,36 @@ class ImageContainerRegistry: @unchecked Sendable {
             if !diskParts.isEmpty && totalPartsFromCollector > 0 {
                 // Use totalPartsFromCollector here
                 Logger.info("Reassembling \(totalPartsFromCollector) disk image parts using sparse file technique...")
+                
+                // Validate that we have all expected parts
+                let partNumbers = diskParts.map { $0.0 }
+                var missingParts: [Int] = []
+                for i in 1...totalPartsFromCollector {
+                    if !partNumbers.contains(i) {
+                        missingParts.append(i)
+                    }
+                }
+
+                if !missingParts.isEmpty {
+                    Logger.error("MISSING PARTS DETECTED: \(missingParts.sorted().map { String($0) }.joined(separator: ", "))")
+                    Logger.error("This will likely result in a corrupted image. Available parts: \(partNumbers.sorted().map { String($0) }.joined(separator: ", "))")
+                    
+                    // Save diagnostic information
+                    saveReassemblyChecksum(outputURL: tempVMDir.appendingPathComponent("disk.img"), 
+                                           diskParts: diskParts, 
+                                           totalPartsExpected: totalPartsFromCollector)
+                    
+                    if missingParts.count > totalPartsFromCollector / 10 {
+                        Logger.error("Too many missing parts (\(missingParts.count) of \(totalPartsFromCollector)). Aborting reassembly.")
+                        throw PullError.missingPart(missingParts.first ?? 0)
+                    } else {
+                        Logger.error("Continuing with reassembly despite missing parts. VM may not boot correctly.")
+                    }
+                } else {
+                    Logger.info("All \(totalPartsFromCollector) parts found and ready for reassembly.")
+                }
+                
+                // Create a log showing how much of the disk has been covered by chunks
                 let outputURL = tempVMDir.appendingPathComponent("disk.img")
 
                 // Wrap setup in do-catch for better error reporting
@@ -1216,6 +1265,46 @@ class ImageContainerRegistry: @unchecked Sendable {
         Logger.info(
             "Run 'lume run \(vmName)' to reduce the disk image file size by using macOS sparse file system"
         )
+        
+        if debug {
+            Logger.info("DEBUG MODE: Performing verification on pulled image")
+            let finalDiskPath = URL(fileURLWithPath: vmDir.dir.path).appendingPathComponent("disk.img")
+            
+            if FileManager.default.fileExists(atPath: finalDiskPath.path) {
+                // Get size of the pulled image
+                let finalDiskAttributes = try FileManager.default.attributesOfItem(atPath: finalDiskPath.path)
+                let finalDiskSize = finalDiskAttributes[.size] as? UInt64 ?? 0
+                let finalDiskActualUsage = getActualDiskUsage(path: finalDiskPath.path)
+                
+                Logger.info("Final disk image details:")
+                Logger.info("  Path: \(finalDiskPath.path)")
+                Logger.info("  Logical size: \(ByteCountFormatter.string(fromByteCount: Int64(finalDiskSize), countStyle: .file)) (\(finalDiskSize) bytes)")
+                Logger.info("  Actual disk usage: \(ByteCountFormatter.string(fromByteCount: Int64(finalDiskActualUsage), countStyle: .file))")
+                
+                // Calculate checksum of the pulled image
+                let finalDiskChecksum = calculateSHA256(filePath: finalDiskPath.path)
+                Logger.info("  SHA256: \(finalDiskChecksum)")
+                
+                // Check if we have the config.json with expected disk size
+                let configPath = URL(fileURLWithPath: vmDir.dir.path).appendingPathComponent("config.json")
+                if FileManager.default.fileExists(atPath: configPath.path) {
+                    if let expectedSize = getUncompressedSizeFromConfig(configPath: configPath) {
+                        Logger.info("  Expected size from config: \(ByteCountFormatter.string(fromByteCount: Int64(expectedSize), countStyle: .file)) (\(expectedSize) bytes)")
+                        if finalDiskSize != expectedSize {
+                            Logger.error("  ⚠️ WARNING: Actual disk size (\(finalDiskSize)) does not match expected size (\(expectedSize))")
+                        } else {
+                            Logger.info("  ✅ Size matches expected size from config")
+                        }
+                    }
+                }
+                
+                // Suggest running lume check command to diagnose issues
+                Logger.info("")
+                Logger.info("If the image doesn't work, try running 'lume check \(vmName)' to diagnose issues")
+            } else {
+                Logger.error("DEBUG MODE: Final disk image not found at \(finalDiskPath.path)")
+            }
+        }
     }
 
     private func copyFromCache(manifest: Manifest, manifestId: String, to destination: URL)
@@ -1983,14 +2072,29 @@ class ImageContainerRegistry: @unchecked Sendable {
             if let sizeString = ociConfig.annotations?.uncompressedSize,
                 let size = UInt64(sizeString)
             {
-                Logger.info("Found uncompressed disk size annotation: \(size) bytes")
+                Logger.info("Found uncompressed disk size annotation: \(size) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))")
                 return size
             } else {
+                // Try to decode the raw JSON to see what annotations are present
+                if let json = try JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any],
+                   let annotations = json["annotations"] as? [String: Any] {
+                    Logger.info("Config contains the following annotations: \(annotations.keys.joined(separator: ", "))")
+                }
+                
                 Logger.info("No uncompressed disk size annotation found in config.json")
                 return nil
             }
         } catch {
             Logger.error("Failed to parse config.json for uncompressed size: \(error)")
+            // Try to log the raw JSON
+            do {
+                let configData = try Data(contentsOf: configPath)
+                if let jsonString = String(data: configData, encoding: .utf8) {
+                    Logger.info("Raw config.json content: \(jsonString.prefix(500))...")
+                }
+            } catch {
+                Logger.error("Failed to read config.json content: \(error)")
+            }
             return nil
         }
     }
@@ -2548,10 +2652,12 @@ class ImageContainerRegistry: @unchecked Sendable {
                 
                 if let uncompressedSize = layer.uncompressedSize {
                     var annotations: [String: String] = [:]
-                    annotations["org.trycua.lume.uncompressed-size"] = "\(uncompressedSize)" // Updated prefix
+                    annotations["org.trycua.lume.uncompressed-size"] = "\(uncompressedSize)" 
+                    annotations["com.trycua.lume.disk.uncompressed_size"] = "\(uncompressedSize)" // Include legacy format too
                     
                     if let digest = layer.uncompressedContentDigest {
-                        annotations["org.trycua.lume.uncompressed-content-digest"] = digest // Updated prefix
+                        annotations["org.trycua.lume.uncompressed-content-digest"] = digest
+                        annotations["com.trycua.lume.disk.uncompressed_digest"] = digest // Legacy format
                     }
                     
                     layerDict["annotations"] = annotations
@@ -2573,10 +2679,13 @@ class ImageContainerRegistry: @unchecked Sendable {
         
         // Add annotations
         var annotations: [String: String] = [:]
-        annotations["org.trycua.lume.upload-time"] = ISO8601DateFormatter().string(from: Date()) // Updated prefix
+        annotations["org.trycua.lume.upload-time"] = ISO8601DateFormatter().string(from: Date())
         
         if let diskSize = uncompressedDiskSize {
-            annotations["org.trycua.lume.uncompressed-disk-size"] = "\(diskSize)" // Updated prefix
+            // Add both new and legacy annotations for maximum compatibility
+            annotations["org.trycua.lume.uncompressed-disk-size"] = "\(diskSize)"
+            annotations["com.trycua.lume.disk.uncompressed_size"] = "\(diskSize)"
+            Logger.info("Setting disk size annotation to \(diskSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(diskSize), countStyle: .file)))")
         }
         
         manifest["annotations"] = annotations
@@ -2805,6 +2914,46 @@ class ImageContainerRegistry: @unchecked Sendable {
         }
         
         return "hash-calculation-failed"
+    }
+
+    // Add a new helper function for creating checksum files during reassembly
+    private func saveReassemblyChecksum(outputURL: URL, diskParts: [(Int, URL)], totalPartsExpected: Int) {
+        // Create a checksum file to help diagnose issues
+        let checksumURL = outputURL.deletingLastPathComponent().appendingPathComponent("reassembly_checksums.txt")
+        var checksumContent = "# Reassembly Checksums\n"
+        checksumContent += "Total parts expected: \(totalPartsExpected)\n"
+        checksumContent += "Total parts found: \(diskParts.count)\n\n"
+        
+        // Part numbers found
+        let partNumbers = diskParts.map { $0.0 }.sorted()
+        checksumContent += "Part numbers found: \(partNumbers.map { String($0) }.joined(separator: ", "))\n\n"
+        
+        // Missing part numbers (if any)
+        var missingParts: [Int] = []
+        for i in 1...totalPartsExpected {
+            if !partNumbers.contains(i) {
+                missingParts.append(i)
+            }
+        }
+
+        if !missingParts.isEmpty {
+            checksumContent += "MISSING PARTS: \(missingParts.sorted().map { String($0) }.joined(separator: ", "))\n\n"
+        }
+        
+        // Part checksums
+        checksumContent += "Part checksums:\n"
+        for (partNum, url) in diskParts.sorted(by: { $0.0 < $1.0 }) {
+            if let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64 {
+                let checksum = calculateSHA256(filePath: url.path)
+                checksumContent += "Part \(partNum): size=\(fileSize) checksum=\(checksum) path=\(url.lastPathComponent)\n"
+            } else {
+                checksumContent += "Part \(partNum): ERROR - Could not get file size for \(url.lastPathComponent)\n"
+            }
+        }
+        
+        // Write to file
+        try? checksumContent.write(to: checksumURL, atomically: true, encoding: .utf8)
+        Logger.info("Saved reassembly checksums to: \(checksumURL.path)")
     }
 }
 
