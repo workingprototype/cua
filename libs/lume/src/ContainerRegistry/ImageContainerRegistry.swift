@@ -69,7 +69,7 @@ struct OCIConfig: Codable {
         let uncompressedSize: String?  // Use optional String
 
         enum CodingKeys: String, CodingKey {
-            case uncompressedSize = "com.trycua.lume.disk.uncompressed_size"
+            case uncompressedSize = "org.trycua.lume.uncompressed-disk-size"
         }
     }
     let annotations: Annotations?  // Optional annotations
@@ -2758,7 +2758,8 @@ class ImageContainerRegistry: @unchecked Sendable {
 
             // Check if the chunk is all zeros
             if decompressedData.count == Self.holeGranularityBytes && decompressedData == Self.zeroChunk {
-                // It's a zero chunk, just advance the offset, don't write
+                // It's a zero chunk, just advance the offset without writing
+                // This maintains sparseness by not physically writing zeros
                 currentWriteOffset += UInt64(decompressedData.count)
             } else {
                 // Not a zero chunk (or a partial chunk at the end), write it
@@ -2766,10 +2767,14 @@ class ImageContainerRegistry: @unchecked Sendable {
                 try outputHandle.write(contentsOf: decompressedData)
                 currentWriteOffset += UInt64(decompressedData.count)
             }
+            
             totalDecompressedBytes += UInt64(decompressedData.count)
         }
         
-        // No explicit finalize needed when initialized with source data
+        // Ensure the file size is correctly set by seeking to the end position
+        // This guarantees the file has the correct logical size even with sparse blocks
+        try outputHandle.seek(toOffset: startOffset + totalDecompressedBytes)
+        try outputHandle.synchronize()
 
         return totalDecompressedBytes
     }
