@@ -434,7 +434,7 @@ class ImageContainerRegistry: @unchecked Sendable {
     private let cachingEnabled: Bool
 
     // Constants for zero-skipping write logic
-    private static let holeGranularityBytes = 4 * 1024 * 1024 // 4MB block size for checking zeros
+    private static let holeGranularityBytes = 1 * 1024 * 1024 // 1MB block size for checking zeros (was 4MB)
     private static let zeroChunk = Data(count: holeGranularityBytes)
 
     // Add the createProgressBar function here as a private method
@@ -1025,35 +1025,6 @@ class ImageContainerRegistry: @unchecked Sendable {
                 // Create a log showing how much of the disk has been covered by chunks
                 let outputURL = tempVMDir.appendingPathComponent("disk.img")
 
-                // Wrap setup in do-catch for better error reporting
-                let outputHandle: FileHandle
-                do {
-                    // 1. Ensure parent directory exists
-                    try FileManager.default.createDirectory(
-                        at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true
-                    )
-
-                    // 2. Explicitly create the file first, removing old one if needed
-                    if FileManager.default.fileExists(atPath: outputURL.path) {
-                        try FileManager.default.removeItem(at: outputURL)
-                    }
-                    guard FileManager.default.createFile(atPath: outputURL.path, contents: nil)
-                    else {
-                        throw PullError.fileCreationFailed(outputURL.path)
-                    }
-
-                    // 3. Now open the handle for writing
-                    outputHandle = try FileHandle(forWritingTo: outputURL)
-
-                } catch {
-                    // Catch errors during directory/file creation or handle opening
-                    Logger.error(
-                        "Failed during setup for disk image reassembly: \(error.localizedDescription)",
-                        metadata: ["path": outputURL.path])
-                    throw PullError.reassemblySetupFailed(
-                        path: outputURL.path, underlyingError: error)
-                }
-
                 // Calculate expected size from the manifest layers (sum of compressed parts - for logging only now)
                 // Filter based on the correct media type now
                 let expectedCompressedTotalSize = UInt64(
@@ -1088,9 +1059,16 @@ class ImageContainerRegistry: @unchecked Sendable {
                     throw PullError.missingUncompressedSizeAnnotation
                 }
 
+                // Match the dry run implementation EXACTLY
+                Logger.info("Pre-allocating sparse file of \(ByteCountFormatter.string(fromByteCount: Int64(sizeForTruncate), countStyle: .file))...")
+                if FileManager.default.fileExists(atPath: outputURL.path) { 
+                    try FileManager.default.removeItem(at: outputURL) 
+                }
+                guard FileManager.default.createFile(atPath: outputURL.path, contents: nil) else { 
+                    throw PullError.fileCreationFailed(outputURL.path) 
+                }
+                let outputHandle = try FileHandle(forWritingTo: outputURL)
                 defer { try? outputHandle.close() }
-
-                // Set the file size without writing data (creates a sparse file)
                 try outputHandle.truncate(atOffset: sizeForTruncate)
 
                 // Verify the sparse file was created with the correct size
@@ -1100,7 +1078,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                 Logger.info(
                     "Sparse file initialized with size: \(ByteCountFormatter.string(fromByteCount: Int64(initialSize), countStyle: .file))"
                 )
-
+                
                 // Remove test pattern writes that can interfere with sparse file handling
                 
                 Logger.info("Sparse file is ready for writing.")
@@ -1128,13 +1106,11 @@ class ImageContainerRegistry: @unchecked Sendable {
 
                     // Remove inputHandle from here - it's not needed when using decompressChunkAndWriteSparse directly
                     
-                    // Seek to the correct offset in the output sparse file
+                    // Seek to the correct offset in the output sparse file - this is needed
                     try outputHandle.seek(toOffset: currentOffset)
 
-                    // ALWAYS use decompressChunkAndWriteSparse for consistent behavior with dry-run
-                    Logger.info(
-                        "Decompressing part \(partNum) using decompressChunkAndWriteSparse")
-
+                    // Just like dry run - no extra statements
+                    Logger.info("Decompressing & writing part \(partNum)/\(totalPartsFromCollector): \(partURL.lastPathComponent) at offset \(currentOffset)...")
                     let decompressedBytesWritten = try decompressChunkAndWriteSparse(
                         inputPath: partURL.path,
                         outputHandle: outputHandle,
@@ -1397,31 +1373,17 @@ class ImageContainerRegistry: @unchecked Sendable {
             }
 
             // Wrap file handle setup and sparse file creation within this block
-            let outputHandle: FileHandle
-            do {
-                // Ensure parent directory exists
-                try FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                // Explicitly create the file first, removing old one if needed
-                if FileManager.default.fileExists(atPath: outputURL.path) {
-                    try FileManager.default.removeItem(at: outputURL)
-                }
-                guard FileManager.default.createFile(atPath: outputURL.path, contents: nil) else {
-                    throw PullError.fileCreationFailed(outputURL.path)
-                }
-                // Open handle for writing
-                outputHandle = try FileHandle(forWritingTo: outputURL)
-                // Set the file size (creates sparse file)
-                try outputHandle.truncate(atOffset: sizeForTruncate)
-                Logger.info("Sparse file initialized for cache reassembly with size: \(ByteCountFormatter.string(fromByteCount: Int64(sizeForTruncate), countStyle: .file))")
-            } catch {
-                 Logger.error("Failed during setup for cached disk image reassembly: \(error.localizedDescription)", metadata: ["path": outputURL.path])
-                 throw PullError.reassemblySetupFailed(path: outputURL.path, underlyingError: error)
+            Logger.info("Pre-allocating sparse file of \(ByteCountFormatter.string(fromByteCount: Int64(sizeForTruncate), countStyle: .file))...")
+            if FileManager.default.fileExists(atPath: outputURL.path) { 
+                try FileManager.default.removeItem(at: outputURL) 
             }
-
-            // Ensure handle is closed when exiting this scope
+            guard FileManager.default.createFile(atPath: outputURL.path, contents: nil) else { 
+                throw PullError.fileCreationFailed(outputURL.path) 
+            }
+            let outputHandle = try FileHandle(forWritingTo: outputURL)
             defer { try? outputHandle.close() }
-
-            // ... (Get uncompressed size etc.) ...
+            try outputHandle.truncate(atOffset: sizeForTruncate)
+            Logger.info("Sparse file initialized for cache reassembly with size: \(ByteCountFormatter.string(fromByteCount: Int64(sizeForTruncate), countStyle: .file))")
 
             var reassemblyProgressLogger = ProgressLogger(threshold: 0.05)
             var currentOffset: UInt64 = 0
@@ -1437,16 +1399,17 @@ class ImageContainerRegistry: @unchecked Sendable {
 
                 // Log using the sequential collector part number
                 Logger.info(
-                    "Decompressing part \(collectorPartNum) of \(totalParts) from cache: \(sourceURL.lastPathComponent) at offset \(currentOffset)..."
+                    "Decompressing & writing part \(collectorPartNum)/\(totalParts) from cache: \(sourceURL.lastPathComponent) at offset \(currentOffset)..."
                 )
 
-                // Always use the correct sparse decompression function
+                // Always use decompressChunkAndWriteSparse for consistent behavior with dry-run
                 let decompressedBytesWritten = try decompressChunkAndWriteSparse(
                     inputPath: sourceURL.path,
                     outputHandle: outputHandle,
                     startOffset: currentOffset
                 )
                 currentOffset += decompressedBytesWritten
+                
                 // Update progress (using sizeForTruncate which should be available)
                 reassemblyProgressLogger.logProgress(
                         current: Double(currentOffset) / Double(sizeForTruncate), 
