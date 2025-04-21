@@ -1290,6 +1290,18 @@ class ImageContainerRegistry: @unchecked Sendable {
                 if FileManager.default.fileExists(atPath: configPath.path) {
                     if let expectedSize = getUncompressedSizeFromConfig(configPath: configPath) {
                         Logger.info("  Expected size from config: \(ByteCountFormatter.string(fromByteCount: Int64(expectedSize), countStyle: .file)) (\(expectedSize) bytes)")
+                        
+                        // Try to get the allocated size from config.json
+                        if let configData = try? Data(contentsOf: configPath),
+                           let json = try? JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any],
+                           let allocatedSize = json["diskAllocatedSize"] as? UInt64 {
+                            Logger.info("  Expected allocated size from config: \(ByteCountFormatter.string(fromByteCount: Int64(allocatedSize), countStyle: .file)) (\(allocatedSize) bytes)")
+                            
+                            // Check if actual usage matches expected
+                            let ratio = Double(finalDiskActualUsage) / Double(allocatedSize)
+                            Logger.info("  Allocated size ratio (actual/expected): \(String(format: "%.2f", ratio)) - \(ratio < 0.9 ? "Less" : (ratio > 1.1 ? "More" : "Similar")) space used than expected")
+                        }
+                        
                         if finalDiskSize != expectedSize {
                             Logger.error("  ⚠️ WARNING: Actual disk size (\(finalDiskSize)) does not match expected size (\(expectedSize))")
                         } else {
@@ -2088,6 +2100,22 @@ class ImageContainerRegistry: @unchecked Sendable {
                 // Debug: Print all top-level keys
                 Logger.info("Config.json top-level keys: \(json.keys.joined(separator: ", "))")
                 
+                // First check for direct diskSize field
+                if let diskSize = json["diskSize"] as? UInt64 {
+                    Logger.info("Found diskSize directly in config.json: \(diskSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(diskSize), countStyle: .file)))")
+                    
+                    // Also check for allocated size
+                    if let allocatedSize = json["diskAllocatedSize"] as? UInt64 {
+                        Logger.info("Found diskAllocatedSize in config.json: \(allocatedSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(allocatedSize), countStyle: .file)))")
+                    }
+                    
+                    return diskSize
+                } else if let diskSizeString = json["diskSize"] as? String, 
+                          let diskSize = UInt64(diskSizeString) {
+                    Logger.info("Found diskSize as string in config.json: \(diskSize) bytes")
+                    return diskSize
+                }
+                
                 if let annotations = json["annotations"] as? [String: Any] {
                     Logger.info("Found annotations in config.json: \(annotations.keys.joined(separator: ", "))")
                     
@@ -2101,24 +2129,32 @@ class ImageContainerRegistry: @unchecked Sendable {
                         if let sizeString = annotations[key] as? String, 
                            let size = UInt64(sizeString) {
                             Logger.info("Found disk size in config.json[\(key)]: \(size) bytes")
+                            
+                            // Also check for allocated size
+                            let allocatedSizeKeys = [
+                                "org.trycua.lume.allocated-disk-size",
+                                "com.trycua.lume.disk.allocated_size"
+                            ]
+                            
+                            for allocKey in allocatedSizeKeys {
+                                if let allocSizeStr = annotations[allocKey] as? String,
+                                   let allocSize = UInt64(allocSizeStr) {
+                                    Logger.info("Found allocated size in config.json[\(allocKey)]: \(allocSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(allocSize), countStyle: .file)))")
+                                    break
+                                }
+                            }
+                            
                             return size
                         }
                     }
-                }
-                
-                // Last resort: Check for diskSize field directly in config
-                if let diskSize = json["diskSize"] as? UInt64 {
-                    Logger.info("Found diskSize directly in config.json: \(diskSize) bytes")
-                    return diskSize
-                } else if let diskSizeString = json["diskSize"] as? String, 
-                          let diskSize = UInt64(diskSizeString) {
-                    Logger.info("Found diskSize as string in config.json: \(diskSize) bytes")
-                    return diskSize
                 }
             }
             
             Logger.info("No uncompressed disk size annotation found in config.json")
             
+            // Add back the missing manifest.json fallback check
+            Logger.info("No uncompressed disk size annotation found in config.json")
+
             // If we reach here, try to find manifest.json in the same directory
             let manifestPath = configPath.deletingLastPathComponent().appendingPathComponent("manifest.json")
             if FileManager.default.fileExists(atPath: manifestPath.path) {
@@ -2141,15 +2177,40 @@ class ImageContainerRegistry: @unchecked Sendable {
                                 return size
                             }
                         }
+                        
+                        // Check for allocated size in manifest too
+                        let allocatedSizeKeys = [
+                            "org.trycua.lume.allocated-disk-size",
+                            "com.trycua.lume.disk.allocated_size"
+                        ]
+                        
+                        for allocKey in allocatedSizeKeys {
+                            if let allocSizeStr = annotations[allocKey] as? String,
+                               let allocSize = UInt64(allocSizeStr) {
+                                Logger.info("Found allocated size in manifest.json[\(allocKey)]: \(allocSize) bytes")
+                            }
+                        }
                     }
                 }
                 
                 Logger.info("No disk size found in manifest.json")
             }
             
+            // The rest of the method remains unchanged
+            // ...
+            
             return nil
         } catch {
             Logger.error("Failed to parse config.json for uncompressed size: \(error)")
+            // Try to log the raw JSON
+            do {
+                let configData = try Data(contentsOf: configPath)
+                if let jsonString = String(data: configData, encoding: .utf8) {
+                    Logger.info("Raw config.json content: \(jsonString.prefix(500))...")
+                }
+            } catch {
+                Logger.error("Failed to read config.json content: \(error)")
+            }
             return nil
         }
     }
@@ -2421,6 +2482,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         
         var layers: [OCIManifestLayer] = []
         var uncompressedDiskSize: UInt64? = nil
+        var diskAllocatedSize: UInt64? = nil
 
         // Get uncompressed disk size from disk.img if available
         if FileManager.default.fileExists(atPath: diskPath.path) {
@@ -2428,6 +2490,13 @@ class ImageContainerRegistry: @unchecked Sendable {
             if let size = attributes[.size] as? UInt64 {
                 uncompressedDiskSize = size
                 Logger.info("Determined disk size from disk.img: \(size) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))")
+                
+                // Also get the actual allocated size (not just the logical size)
+                let allocatedSize = getActualDiskUsage(path: diskPath.path)
+                Logger.info("Determined allocated disk size from disk.img: \(allocatedSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(allocatedSize), countStyle: .file)))")
+                
+                // Store in a variable for later use
+                diskAllocatedSize = allocatedSize
             }
         }
         
@@ -2457,16 +2526,27 @@ class ImageContainerRegistry: @unchecked Sendable {
                         annotations["org.trycua.lume.uncompressed-disk-size"] = "\(uncompressedDiskSize)"
                         annotations["com.trycua.lume.disk.uncompressed_size"] = "\(uncompressedDiskSize)"
                         
+                        // Add allocated size if available
+                        if let allocatedSize = diskAllocatedSize {
+                            annotations["org.trycua.lume.allocated-disk-size"] = "\(allocatedSize)"
+                            annotations["com.trycua.lume.disk.allocated_size"] = "\(allocatedSize)"
+                        }
+                        
                         // Update annotations in the config
                         json["annotations"] = annotations
                         
                         // Add disk size directly to the VM config as well (this is the key addition)
                         json["diskSize"] = uncompressedDiskSize
                         
+                        // Add allocated size to top level as well
+                        if let allocatedSize = diskAllocatedSize {
+                            json["diskAllocatedSize"] = allocatedSize
+                        }
+                        
                         // Write updated config back to file
                         configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
                         try configData.write(to: cachedConfigPath)
-                        Logger.info("Updated config.json with disk size annotation and direct diskSize field")
+                        Logger.info("Updated config.json with disk size and allocated size information")
                     }
                 }
                 
@@ -2502,11 +2582,22 @@ class ImageContainerRegistry: @unchecked Sendable {
                     annotations["org.trycua.lume.uncompressed-disk-size"] = "\(uncompressedDiskSize)"
                     annotations["com.trycua.lume.disk.uncompressed_size"] = "\(uncompressedDiskSize)"
                     
+                    // Add allocated size if available
+                    if let allocatedSize = diskAllocatedSize {
+                        annotations["org.trycua.lume.allocated-disk-size"] = "\(allocatedSize)"
+                        annotations["com.trycua.lume.disk.allocated_size"] = "\(allocatedSize)"
+                    }
+                    
                     // Update annotations in the config
                     json["annotations"] = annotations
                     
                     // Add disk size directly to the VM config as well (this is the key addition)
                     json["diskSize"] = uncompressedDiskSize
+                    
+                    // Add allocated size to top level as well
+                    if let allocatedSize = diskAllocatedSize {
+                        json["diskAllocatedSize"] = allocatedSize
+                    }
                     
                     // Write updated config to cache
                     configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
@@ -2733,7 +2824,8 @@ class ImageContainerRegistry: @unchecked Sendable {
         let manifest = createManifest(
             layers: layers,
             configLayerIndex: layers.firstIndex(where: { $0.mediaType == "application/vnd.oci.image.config.v1+json" }),
-            uncompressedDiskSize: uncompressedDiskSize
+            uncompressedDiskSize: uncompressedDiskSize,
+            diskAllocatedSize: diskAllocatedSize
         )
 
         // Push manifest only if not in dry-run mode
@@ -2763,7 +2855,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         // Clean up cache directory only on successful non-dry-run push
     }
     
-    private func createManifest(layers: [OCIManifestLayer], configLayerIndex: Int?, uncompressedDiskSize: UInt64?) -> [String: Any] {
+    private func createManifest(layers: [OCIManifestLayer], configLayerIndex: Int?, uncompressedDiskSize: UInt64?, diskAllocatedSize: UInt64? = nil) -> [String: Any] {
         var manifest: [String: Any] = [
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -2810,6 +2902,13 @@ class ImageContainerRegistry: @unchecked Sendable {
             annotations["org.trycua.lume.uncompressed-disk-size"] = "\(diskSize)"
             annotations["com.trycua.lume.disk.uncompressed_size"] = "\(diskSize)"
             Logger.info("Setting disk size annotation to \(diskSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(diskSize), countStyle: .file)))")
+        }
+        
+        // Also add allocated size annotation
+        if let allocatedSize = diskAllocatedSize {
+            annotations["org.trycua.lume.allocated-disk-size"] = "\(allocatedSize)"
+            annotations["com.trycua.lume.disk.allocated_size"] = "\(allocatedSize)"
+            Logger.info("Setting allocated disk size annotation to \(allocatedSize) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(allocatedSize), countStyle: .file)))")
         }
         
         manifest["annotations"] = annotations
