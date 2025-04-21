@@ -653,7 +653,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         image: String,
         name: String?,
         locationName: String? = nil,
-        debug: Bool = false
+        debug: Bool = true
     ) async throws {
         guard !image.isEmpty else {
             throw ValidationError("Image name cannot be empty")
