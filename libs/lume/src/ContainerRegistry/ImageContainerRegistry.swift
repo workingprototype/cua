@@ -1391,7 +1391,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                     if let vmConfig = try? decoder.decode(VMConfig.self, from: configData) {
                         vmConfigDiskSize = vmConfig.diskSize
                         if let size = vmConfigDiskSize {
-                            Logger.info("Found diskSize from VM config.json: \(size) bytes")
+                            Logger.info("Found disk size in cached config: \(size) bytes")
                         }
                     }
                 } catch {
@@ -2067,34 +2067,89 @@ class ImageContainerRegistry: @unchecked Sendable {
         do {
             let configData = try Data(contentsOf: configPath)
             let decoder = JSONDecoder()
-            let ociConfig = try decoder.decode(OCIConfig.self, from: configData)
-
-            if let sizeString = ociConfig.annotations?.uncompressedSize,
-                let size = UInt64(sizeString)
-            {
-                Logger.info("Found uncompressed disk size annotation: \(size) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))")
-                return size
-            } else {
-                // Try to decode the raw JSON to see what annotations are present
-                if let json = try JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any],
-                   let annotations = json["annotations"] as? [String: Any] {
-                    Logger.info("Config contains the following annotations: \(annotations.keys.joined(separator: ", "))")
+            
+            // First, dump raw config content for debugging
+            if let jsonStr = String(data: configData, encoding: .utf8) {
+                Logger.info("Config.json raw content (first 200 chars): \(jsonStr.prefix(200))...")
+            }
+            
+            // Try to decode as OCIConfig
+            if let ociConfig = try? decoder.decode(OCIConfig.self, from: configData) {
+                if let sizeString = ociConfig.annotations?.uncompressedSize,
+                    let size = UInt64(sizeString)
+                {
+                    Logger.info("Found uncompressed disk size annotation in config.json: \(size) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))")
+                    return size
+                }
+            }
+                
+            // Fallback: Try to decode as raw JSON and look for annotations
+            if let json = try JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any] {
+                // Debug: Print all top-level keys
+                Logger.info("Config.json top-level keys: \(json.keys.joined(separator: ", "))")
+                
+                if let annotations = json["annotations"] as? [String: Any] {
+                    Logger.info("Found annotations in config.json: \(annotations.keys.joined(separator: ", "))")
+                    
+                    // Check for either format of the disk size annotation
+                    let possibleKeys = [
+                        "org.trycua.lume.uncompressed-disk-size",
+                        "com.trycua.lume.disk.uncompressed_size"
+                    ]
+                    
+                    for key in possibleKeys {
+                        if let sizeString = annotations[key] as? String, 
+                           let size = UInt64(sizeString) {
+                            Logger.info("Found disk size in config.json[\(key)]: \(size) bytes")
+                            return size
+                        }
+                    }
                 }
                 
-                Logger.info("No uncompressed disk size annotation found in config.json")
-                return nil
+                // Last resort: Check for diskSize field directly in config
+                if let diskSize = json["diskSize"] as? UInt64 {
+                    Logger.info("Found diskSize directly in config.json: \(diskSize) bytes")
+                    return diskSize
+                } else if let diskSizeString = json["diskSize"] as? String, 
+                          let diskSize = UInt64(diskSizeString) {
+                    Logger.info("Found diskSize as string in config.json: \(diskSize) bytes")
+                    return diskSize
+                }
             }
+            
+            Logger.info("No uncompressed disk size annotation found in config.json")
+            
+            // If we reach here, try to find manifest.json in the same directory
+            let manifestPath = configPath.deletingLastPathComponent().appendingPathComponent("manifest.json")
+            if FileManager.default.fileExists(atPath: manifestPath.path) {
+                Logger.info("Trying to extract disk size from manifest.json")
+                let manifestData = try Data(contentsOf: manifestPath)
+                
+                if let manifestJson = try JSONSerialization.jsonObject(with: manifestData, options: []) as? [String: Any] {
+                    if let annotations = manifestJson["annotations"] as? [String: Any] {
+                        Logger.info("Found annotations in manifest.json: \(annotations.keys.joined(separator: ", "))")
+                        
+                        let possibleKeys = [
+                            "org.trycua.lume.uncompressed-disk-size",
+                            "com.trycua.lume.disk.uncompressed_size"
+                        ]
+                        
+                        for key in possibleKeys {
+                            if let sizeString = annotations[key] as? String, 
+                               let size = UInt64(sizeString) {
+                                Logger.info("Found disk size in manifest.json[\(key)]: \(size) bytes")
+                                return size
+                            }
+                        }
+                    }
+                }
+                
+                Logger.info("No disk size found in manifest.json")
+            }
+            
+            return nil
         } catch {
             Logger.error("Failed to parse config.json for uncompressed size: \(error)")
-            // Try to log the raw JSON
-            do {
-                let configData = try Data(contentsOf: configPath)
-                if let jsonString = String(data: configData, encoding: .utf8) {
-                    Logger.info("Raw config.json content: \(jsonString.prefix(500))...")
-                }
-            } catch {
-                Logger.error("Failed to read config.json content: \(error)")
-            }
             return nil
         }
     }
@@ -2367,6 +2422,15 @@ class ImageContainerRegistry: @unchecked Sendable {
         var layers: [OCIManifestLayer] = []
         var uncompressedDiskSize: UInt64? = nil
 
+        // Get uncompressed disk size from disk.img if available
+        if FileManager.default.fileExists(atPath: diskPath.path) {
+            let attributes = try FileManager.default.attributesOfItem(atPath: diskPath.path)
+            if let size = attributes[.size] as? UInt64 {
+                uncompressedDiskSize = size
+                Logger.info("Determined disk size from disk.img: \(size) bytes (\(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)))")
+            }
+        }
+        
         // Process config.json
         let cachedConfigPath = workDir.appendingPathComponent("config.json")
         var configDigest: String? = nil
@@ -2396,10 +2460,13 @@ class ImageContainerRegistry: @unchecked Sendable {
                         // Update annotations in the config
                         json["annotations"] = annotations
                         
+                        // Add disk size directly to the VM config as well (this is the key addition)
+                        json["diskSize"] = uncompressedDiskSize
+                        
                         // Write updated config back to file
                         configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
                         try configData.write(to: cachedConfigPath)
-                        Logger.info("Updated config.json with disk size annotation")
+                        Logger.info("Updated config.json with disk size annotation and direct diskSize field")
                     }
                 }
                 
@@ -2437,6 +2504,9 @@ class ImageContainerRegistry: @unchecked Sendable {
                     
                     // Update annotations in the config
                     json["annotations"] = annotations
+                    
+                    // Add disk size directly to the VM config as well (this is the key addition)
+                    json["diskSize"] = uncompressedDiskSize
                     
                     // Write updated config to cache
                     configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
