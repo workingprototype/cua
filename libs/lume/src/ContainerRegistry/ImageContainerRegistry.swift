@@ -653,12 +653,8 @@ class ImageContainerRegistry: @unchecked Sendable {
         image: String,
         name: String?,
         locationName: String? = nil,
-        debug: Bool = true,
-        disableSparse: Bool = false
+        debug: Bool = true
     ) async throws {
-        // Add this line near the beginning of the method after setting the vmName
-        Logger.info(disableSparse ? "Sparse file optimization DISABLED" : "Sparse file optimization enabled")
-        
         guard !image.isEmpty else {
             throw ValidationError("Image name cannot be empty")
         }
@@ -725,7 +721,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         Logger.info("Caching enabled: \(cachingEnabled)")
         if cachingEnabled && validateCache(manifest: manifest, manifestId: manifestId) {
             Logger.info("Using cached version of image")
-            try await copyFromCache(manifest: manifest, manifestId: manifestId, to: tempVMDir, disableSparse: disableSparse)
+            try await copyFromCache(manifest: manifest, manifestId: manifestId, to: tempVMDir)
         } else {
             // If caching is disabled, log it
             if !cachingEnabled {
@@ -1134,66 +1130,38 @@ class ImageContainerRegistry: @unchecked Sendable {
                     }
                     let partURL = partInfo.1 // Get the URL from the tuple
                     
-                    // We no longer need to find the original manifest layer here,
-                    // as all parts collected by the collector should be the lz4 type.
-                    // Remove the block that used extractPartInfo:
-                    /* 
-                    guard let layer = manifest.layers.first(where: { layer in
-                         if let info = extractPartInfo(from: layer.mediaType) { 
-                             return info.partNum == partNum 
-                         }
-                         return false
-                    }) else {
-                         // Should not happen if totalParts was derived correctly
-                         Logger.error("Could not find manifest layer for logical part number \(partNum).")
-                         throw PullError.missingPart(partNum) // Or a different error
-                    }
-                    let layerMediaType = layer.mediaType 
-                    */
-                    // Assume the media type for decompression purposes
-                    // Remove unused variable: let layerMediaType = "application/octet-stream+lz4" 
-
                     Logger.info(
                         "Processing part \(partNum) of \(totalPartsFromCollector): \(partURL.lastPathComponent)")
 
-                    let inputHandle = try FileHandle(forReadingFrom: partURL)
-                    defer {
-                        try? inputHandle.close()
-                        // Clean up temp downloaded part if not from cache
-                        if !partURL.path.contains(cacheDirectory.path) {
-                            try? FileManager.default.removeItem(at: partURL)
-                        }
-                    }
-
+                    // Remove inputHandle from here - it's not needed when using decompressChunkAndWriteSparse directly
+                    // This ensures we're using the exact same method as the dry run
+                    
                     // Seek to the correct offset in the output sparse file
                     try outputHandle.seek(toOffset: currentOffset)
 
-                    // Always attempt decompression using decompressChunkAndWriteSparse for lz4 parts
+                    // ALWAYS use decompressChunkAndWriteSparse for consistent behavior with dry-run
                     Logger.info(
                         "Decompressing part \(partNum) using decompressChunkAndWriteSparse")
 
                     let decompressedBytesWritten = try decompressChunkAndWriteSparse(
                         inputPath: partURL.path,
                         outputHandle: outputHandle,
-                        startOffset: currentOffset,
-                        disableSparse: disableSparse
+                        startOffset: currentOffset
                     )
+                    
+                    // Clean up temp downloaded part if not from cache
+                    if !partURL.path.contains(cacheDirectory.path) {
+                        try? FileManager.default.removeItem(at: partURL)
+                    }
+                    
                     currentOffset += decompressedBytesWritten
                     reassemblyProgressLogger.logProgress(
                         current: Double(currentOffset) / Double(sizeForTruncate), // Use sizeForTruncate
                         context: "Reassembling")
 
-                    // Remove the old block that checked getDecompressionCommand and did direct copy
-                    /*
-                    if let decompressCmd = getDecompressionCommand(for: layerMediaType) {  // Use extracted mediaType
-                        // ... [removed decompression logic using external tool] ...
-                    } else {
-                        // No decompression command available, try direct copy
-                        // ... [removed direct copy logic] ...
-                    }
-                    */
-
-                    // Ensure data is written before processing next part (optional but safer)
+                    // Completely remove the old block that checked getDecompressionCommand and did direct copy
+                    
+                    // Ensure data is written before processing next part
                     try outputHandle.synchronize()
                 }
 
@@ -1322,22 +1290,11 @@ class ImageContainerRegistry: @unchecked Sendable {
                 Logger.error("DEBUG MODE: Final disk image not found at \(finalDiskPath.path)")
             }
         }
-
-        // Add image finalization step
-        let finalImagePath = tempVMDir.appendingPathComponent("disk.img").path
-        if finalizeImage(path: finalImagePath) {
-            Logger.info("Disk image finalized successfully")
-        } else {
-            Logger.error("Disk image finalization may not have been successful - the VM might not boot correctly")
-        }
     }
 
-    private func copyFromCache(
-        manifest: Manifest, 
-        manifestId: String, 
-        to destination: URL,
-        disableSparse: Bool = false  // Add this parameter
-    ) async throws {
+    private func copyFromCache(manifest: Manifest, manifestId: String, to destination: URL)
+        async throws
+    {
         Logger.info("Copying from cache...")
         
         // Define output URL and expected size variable scope here
@@ -1346,8 +1303,6 @@ class ImageContainerRegistry: @unchecked Sendable {
 
         // Instantiate collector
         let diskPartsCollector = DiskPartsCollector()
-        // Remove totalDiskParts
-        // var totalDiskParts: Int? = nil
         var lz4LayerCount = 0 // Count lz4 layers found
 
         // First identify disk parts and non-disk files
@@ -1500,8 +1455,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                 let decompressedBytesWritten = try decompressChunkAndWriteSparse(
                     inputPath: sourceURL.path,
                     outputHandle: outputHandle,
-                    startOffset: currentOffset,
-                    disableSparse: disableSparse
+                    startOffset: currentOffset
                 )
                 currentOffset += decompressedBytesWritten
                 // Update progress (using sizeForTruncate which should be available)
@@ -1538,14 +1492,6 @@ class ImageContainerRegistry: @unchecked Sendable {
         }
 
         Logger.info("Cache copy complete")
-
-        // Add image finalization step for cached copy
-        let cachedFinalImagePath = outputURL.path
-        if finalizeImage(path: cachedFinalImagePath) {
-            Logger.info("Cached disk image finalized successfully")
-        } else {
-            Logger.error("Cached disk image finalization may not have been successful")
-        }
     }
 
     private func getToken(repository: String) async throws -> String {
@@ -2467,8 +2413,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         chunkSizeMb: Int = 512,
         verbose: Bool = false,
         dryRun: Bool = false,
-        reassemble: Bool = false,
-        disableSparse: Bool = false  // Add parameter
+        reassemble: Bool = false
     ) async throws {
         Logger.info(
             "Pushing VM to registry",
@@ -2822,7 +2767,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                 var currentOffset: UInt64 = 0
                 for (index, cachedChunkPath, _) in diskChunks {
                     Logger.info("Decompressing & writing part \(index + 1)/\(diskChunks.count): \(cachedChunkPath.lastPathComponent) at offset \(currentOffset)...")
-                    let decompressedBytesWritten = try decompressChunkAndWriteSparse(inputPath: cachedChunkPath.path, outputHandle: outputHandle, startOffset: currentOffset, disableSparse: disableSparse)
+                    let decompressedBytesWritten = try decompressChunkAndWriteSparse(inputPath: cachedChunkPath.path, outputHandle: outputHandle, startOffset: currentOffset)
                     currentOffset += decompressedBytesWritten
                 }
                 Logger.info("Verifying reassembled file...")
@@ -3087,26 +3032,22 @@ class ImageContainerRegistry: @unchecked Sendable {
     // Add these helper methods for dry-run and reassemble implementation
     
     // NEW Helper function using Compression framework and sparse writing
-    private func decompressChunkAndWriteSparse(
-        inputPath: String, 
-        outputHandle: FileHandle, 
-        startOffset: UInt64,
-        disableSparse: Bool = false
-    ) throws -> UInt64 {
+    private func decompressChunkAndWriteSparse(inputPath: String, outputHandle: FileHandle, startOffset: UInt64) throws -> UInt64 {
         guard FileManager.default.fileExists(atPath: inputPath) else {
             Logger.error("Compressed chunk not found at: \(inputPath)")
-            return 0
+            return 0 // Or throw an error
         }
 
         let sourceData = try Data(contentsOf: URL(fileURLWithPath: inputPath), options: .alwaysMapped)
         var currentWriteOffset = startOffset
         var totalDecompressedBytes: UInt64 = 0
-        var sourceReadOffset = 0
+        var sourceReadOffset = 0 // Keep track of how much compressed data we've provided
 
+        // Use the initializer with the readingFrom closure
         let filter = try InputFilter(.decompress, using: .lz4) { (length: Int) -> Data? in
             let bytesAvailable = sourceData.count - sourceReadOffset
             if bytesAvailable == 0 {
-                return nil
+                return nil // No more data
             }
             let bytesToRead = min(length, bytesAvailable)
             let chunk = sourceData.subdata(in: sourceReadOffset ..< sourceReadOffset + bytesToRead)
@@ -3114,21 +3055,17 @@ class ImageContainerRegistry: @unchecked Sendable {
             return chunk
         }
 
-        // Determine if this is a critical region of the disk image
-        let isCriticalRegion = startOffset < 100 * 1024 * 1024 || // First 100MB
-                              startOffset > (40 * 1024 * 1024 * 1024) // Last ~3GB (for 43GB image)
-
+        // Process the decompressed output by reading from the filter
         while let decompressedData = try filter.readData(ofLength: Self.holeGranularityBytes) {
-            if decompressedData.isEmpty { break }
+            if decompressedData.isEmpty { break } // End of stream
 
-            // Check if sparse optimization is enabled, chunk is all zeros, and not in critical region
-            if !disableSparse && !isCriticalRegion &&
-               decompressedData.count == Self.holeGranularityBytes && 
-               decompressedData == Self.zeroChunk {
-                // Skip writing zeros when sparse is enabled and it's safe to do so
+            // Check if the chunk is all zeros
+            if decompressedData.count == Self.holeGranularityBytes && decompressedData == Self.zeroChunk {
+                // It's a zero chunk, just advance the offset without writing
+                // This maintains sparseness by not physically writing zeros
                 currentWriteOffset += UInt64(decompressedData.count)
             } else {
-                // Always write the data if sparse is disabled or it's non-zero or in a critical region
+                // Not a zero chunk (or a partial chunk at the end), write it
                 try outputHandle.seek(toOffset: currentWriteOffset)
                 try outputHandle.write(contentsOf: decompressedData)
                 currentWriteOffset += UInt64(decompressedData.count)
@@ -3137,6 +3074,8 @@ class ImageContainerRegistry: @unchecked Sendable {
             totalDecompressedBytes += UInt64(decompressedData.count)
         }
         
+        // Ensure the file size is correctly set by seeking to the end position
+        // This guarantees the file has the correct logical size even with sparse blocks
         try outputHandle.seek(toOffset: startOffset + totalDecompressedBytes)
         try outputHandle.synchronize()
 
@@ -3209,114 +3148,6 @@ class ImageContainerRegistry: @unchecked Sendable {
         // Write to file
         try? checksumContent.write(to: checksumURL, atomically: true, encoding: .utf8)
         Logger.info("Saved reassembly checksums to: \(checksumURL.path)")
-    }
-
-    // Add this helper function
-    private func finalizeImage(path: String) -> Bool {
-        Logger.info("Finalizing image at \(path)")
-        
-        // First check if the file exists and get its size
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
-              let fileSize = attributes[.size] as? UInt64 else {
-            Logger.error("Could not get attributes for image at \(path)")
-            return false
-        }
-        
-        Logger.info("Image size before finalization: \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file))")
-        
-        // First try normal file handle sync (fast but less reliable for sparse files)
-        if let fileHandle = FileHandle(forWritingAtPath: path) {
-            do {
-                // Try to sync the file to disk
-                try fileHandle.synchronize()
-                
-                // Close the handle
-                try fileHandle.close()
-                
-                // Use sync to ensure data is written to disk
-                sync()
-                
-                Logger.info("Basic file sync completed")
-            } catch {
-                Logger.error("Error in basic file sync: \(error)")
-                try? fileHandle.close()
-            }
-        }
-        
-        // Now use rsync with sparse flag (more reliable for VM images)
-        Logger.info("Using rsync with sparse flag to finalize the image...")
-        
-        // Create a temporary file for rsync
-        let tempPath = path + ".rsync_temp"
-        
-        // Use rsync with sparse flag (-S) to preserve sparseness
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/rsync")
-        // -a: archive mode, -S: handle sparse files efficiently, --inplace: modify in place
-        process.arguments = ["-aS", "--inplace", path, tempPath]
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
-            
-            if process.terminationStatus == 0 {
-                // Replace the original with the copy
-                try FileManager.default.removeItem(atPath: path)
-                try FileManager.default.moveItem(atPath: tempPath, toPath: path)
-                
-                // Check the size after finalization
-                if let newAttributes = try? FileManager.default.attributesOfItem(atPath: path),
-                   let newFileSize = newAttributes[.size] as? UInt64 {
-                    Logger.info("Image size after rsync finalization: \(ByteCountFormatter.string(fromByteCount: Int64(newFileSize), countStyle: .file))")
-                    
-                    if newFileSize != fileSize {
-                        Logger.info("Note: Image size changed during finalization from \(fileSize) to \(newFileSize) bytes")
-                    }
-                    
-                    // Get actual disk usage after finalization
-                    let actualUsage = getActualDiskUsage(path: path)
-                    Logger.info("Actual disk usage after finalization: \(ByteCountFormatter.string(fromByteCount: Int64(actualUsage), countStyle: .file))")
-                    
-                    // Calculate sparseness ratio (logical size / actual usage)
-                    if actualUsage > 0 {
-                        let sparsenessRatio = Double(newFileSize) / Double(actualUsage)
-                        Logger.info("Sparseness ratio: \(String(format: "%.2f", sparsenessRatio))x (higher is better)")
-                    }
-                }
-                
-                return true
-            } else {
-                Logger.error("rsync finalization failed with status: \(process.terminationStatus)")
-            }
-        } catch {
-            Logger.error("Error in rsync finalization: \(error)")
-            try? FileManager.default.removeItem(atPath: tempPath)
-        }
-        
-        // Fallback to cp -c if rsync fails
-        Logger.info("Falling back to cp -c for finalization...")
-        
-        let cpProcess = Process()
-        cpProcess.executableURL = URL(fileURLWithPath: "/bin/cp")
-        cpProcess.arguments = ["-c", path, path + ".cp_temp"]
-        
-        do {
-            try cpProcess.run()
-            cpProcess.waitUntilExit()
-            
-            if cpProcess.terminationStatus == 0 {
-                // Replace the original with the copy
-                try FileManager.default.removeItem(atPath: path)
-                try FileManager.default.moveItem(atPath: path + ".cp_temp", toPath: path)
-                Logger.info("Finalization with cp -c completed")
-                return true
-            }
-        } catch {
-            Logger.error("Error in cp finalization: \(error)")
-            try? FileManager.default.removeItem(atPath: path + ".cp_temp")
-        }
-        
-        return false
     }
 }
 
