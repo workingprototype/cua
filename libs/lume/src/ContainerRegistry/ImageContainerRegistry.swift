@@ -3224,7 +3224,7 @@ class ImageContainerRegistry: @unchecked Sendable {
         
         Logger.info("Image size before finalization: \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file))")
         
-        // Attempt to use posix_fadvise to ensure the file is completely written
+        // First try normal file handle sync (fast but less reliable for sparse files)
         if let fileHandle = FileHandle(forWritingAtPath: path) {
             do {
                 // Try to sync the file to disk
@@ -3236,23 +3236,24 @@ class ImageContainerRegistry: @unchecked Sendable {
                 // Use sync to ensure data is written to disk
                 sync()
                 
-                Logger.info("Successfully finalized image")
-                return true
+                Logger.info("Basic file sync completed")
             } catch {
-                Logger.error("Error finalizing image: \(error)")
+                Logger.error("Error in basic file sync: \(error)")
                 try? fileHandle.close()
             }
         }
         
-        Logger.info("Using fallback method to finalize image...")
+        // Now use rsync with sparse flag (more reliable for VM images)
+        Logger.info("Using rsync with sparse flag to finalize the image...")
         
-        // Fallback: Use 'cp' command to make a copy, then move it back
-        let tempPath = path + ".finalize_temp"
+        // Create a temporary file for rsync
+        let tempPath = path + ".rsync_temp"
         
-        // Use cp -p to preserve attributes
+        // Use rsync with sparse flag (-S) to preserve sparseness
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/cp")
-        process.arguments = ["-p", path, tempPath]
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/rsync")
+        // -a: archive mode, -S: handle sparse files efficiently, --inplace: modify in place
+        process.arguments = ["-aS", "--inplace", path, tempPath]
         
         do {
             try process.run()
@@ -3266,18 +3267,53 @@ class ImageContainerRegistry: @unchecked Sendable {
                 // Check the size after finalization
                 if let newAttributes = try? FileManager.default.attributesOfItem(atPath: path),
                    let newFileSize = newAttributes[.size] as? UInt64 {
-                    Logger.info("Image size after finalization: \(ByteCountFormatter.string(fromByteCount: Int64(newFileSize), countStyle: .file))")
+                    Logger.info("Image size after rsync finalization: \(ByteCountFormatter.string(fromByteCount: Int64(newFileSize), countStyle: .file))")
                     
                     if newFileSize != fileSize {
                         Logger.info("Note: Image size changed during finalization from \(fileSize) to \(newFileSize) bytes")
                     }
+                    
+                    // Get actual disk usage after finalization
+                    let actualUsage = getActualDiskUsage(path: path)
+                    Logger.info("Actual disk usage after finalization: \(ByteCountFormatter.string(fromByteCount: Int64(actualUsage), countStyle: .file))")
+                    
+                    // Calculate sparseness ratio (logical size / actual usage)
+                    if actualUsage > 0 {
+                        let sparsenessRatio = Double(newFileSize) / Double(actualUsage)
+                        Logger.info("Sparseness ratio: \(String(format: "%.2f", sparsenessRatio))x (higher is better)")
+                    }
                 }
                 
                 return true
+            } else {
+                Logger.error("rsync finalization failed with status: \(process.terminationStatus)")
             }
         } catch {
-            Logger.error("Error in fallback finalization: \(error)")
+            Logger.error("Error in rsync finalization: \(error)")
             try? FileManager.default.removeItem(atPath: tempPath)
+        }
+        
+        // Fallback to cp -c if rsync fails
+        Logger.info("Falling back to cp -c for finalization...")
+        
+        let cpProcess = Process()
+        cpProcess.executableURL = URL(fileURLWithPath: "/bin/cp")
+        cpProcess.arguments = ["-c", path, path + ".cp_temp"]
+        
+        do {
+            try cpProcess.run()
+            cpProcess.waitUntilExit()
+            
+            if cpProcess.terminationStatus == 0 {
+                // Replace the original with the copy
+                try FileManager.default.removeItem(atPath: path)
+                try FileManager.default.moveItem(atPath: path + ".cp_temp", toPath: path)
+                Logger.info("Finalization with cp -c completed")
+                return true
+            }
+        } catch {
+            Logger.error("Error in cp finalization: \(error)")
+            try? FileManager.default.removeItem(atPath: path + ".cp_temp")
         }
         
         return false
