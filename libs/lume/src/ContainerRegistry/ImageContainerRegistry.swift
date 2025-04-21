@@ -1101,16 +1101,9 @@ class ImageContainerRegistry: @unchecked Sendable {
                     "Sparse file initialized with size: \(ByteCountFormatter.string(fromByteCount: Int64(initialSize), countStyle: .file))"
                 )
 
-                // Add a simple test pattern at the beginning and end of the file to verify it's writable
-                try outputHandle.seek(toOffset: 0)
-                let testPattern = "LUME_TEST_PATTERN".data(using: .utf8)!
-                try outputHandle.write(contentsOf: testPattern)
-
-                try outputHandle.seek(toOffset: sizeForTruncate - UInt64(testPattern.count))
-                try outputHandle.write(contentsOf: testPattern)
-                try outputHandle.synchronize()
-
-                Logger.info("Test patterns written to sparse file. File is ready for writing.")
+                // Remove test pattern writes that can interfere with sparse file handling
+                
+                Logger.info("Sparse file is ready for writing.")
 
                 var reassemblyProgressLogger = ProgressLogger(threshold: 0.05)
                 var currentOffset: UInt64 = 0  // Track position in the final *decompressed* file
@@ -1134,7 +1127,6 @@ class ImageContainerRegistry: @unchecked Sendable {
                         "Processing part \(partNum) of \(totalPartsFromCollector): \(partURL.lastPathComponent)")
 
                     // Remove inputHandle from here - it's not needed when using decompressChunkAndWriteSparse directly
-                    // This ensures we're using the exact same method as the dry run
                     
                     // Seek to the correct offset in the output sparse file
                     try outputHandle.seek(toOffset: currentOffset)
@@ -1159,10 +1151,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                         current: Double(currentOffset) / Double(sizeForTruncate), // Use sizeForTruncate
                         context: "Reassembling")
 
-                    // Completely remove the old block that checked getDecompressionCommand and did direct copy
-                    
-                    // Ensure data is written before processing next part
-                    try outputHandle.synchronize()
+                    // Don't synchronize after each chunk to match the dry run behavior
                 }
 
                 // Finalize progress, close handle (done by defer)
@@ -1463,7 +1452,7 @@ class ImageContainerRegistry: @unchecked Sendable {
                         current: Double(currentOffset) / Double(sizeForTruncate), 
                         context: "Reassembling Cache")
                 
-                try outputHandle.synchronize() // Optional: Synchronize after each chunk
+                // Remove synchronize call to match dry run behavior
             }
 
             // Finalize progress, close handle (done by defer)
@@ -3061,8 +3050,7 @@ class ImageContainerRegistry: @unchecked Sendable {
 
             // Check if the chunk is all zeros
             if decompressedData.count == Self.holeGranularityBytes && decompressedData == Self.zeroChunk {
-                // It's a zero chunk, just advance the offset without writing
-                // This maintains sparseness by not physically writing zeros
+                // It's a zero chunk, just advance the offset, don't write
                 currentWriteOffset += UInt64(decompressedData.count)
             } else {
                 // Not a zero chunk (or a partial chunk at the end), write it
@@ -3070,14 +3058,10 @@ class ImageContainerRegistry: @unchecked Sendable {
                 try outputHandle.write(contentsOf: decompressedData)
                 currentWriteOffset += UInt64(decompressedData.count)
             }
-            
             totalDecompressedBytes += UInt64(decompressedData.count)
         }
         
-        // Ensure the file size is correctly set by seeking to the end position
-        // This guarantees the file has the correct logical size even with sparse blocks
-        try outputHandle.seek(toOffset: startOffset + totalDecompressedBytes)
-        try outputHandle.synchronize()
+        // No explicit finalize needed when initialized with source data
 
         return totalDecompressedBytes
     }
