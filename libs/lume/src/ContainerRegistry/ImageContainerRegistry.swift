@@ -2375,9 +2375,37 @@ class ImageContainerRegistry: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: cachedConfigPath.path) {
             Logger.info("Using cached config.json")
             do {
-                let configData = try Data(contentsOf: cachedConfigPath)
+                var configData = try Data(contentsOf: cachedConfigPath)
+                
+                // Update config.json with disk size annotation if needed
+                if let uncompressedDiskSize = uncompressedDiskSize {
+                    Logger.info("Updating config.json with disk size annotation: \(uncompressedDiskSize) bytes")
+                    
+                    // Parse existing config
+                    if var json = try JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any] {
+                        // Create annotations dictionary if it doesn't exist
+                        var annotations: [String: String] = [:]
+                        if let existingAnnotations = json["annotations"] as? [String: String] {
+                            annotations = existingAnnotations
+                        }
+                        
+                        // Add disk size to annotations using both formats for maximum compatibility
+                        annotations["org.trycua.lume.uncompressed-disk-size"] = "\(uncompressedDiskSize)"
+                        annotations["com.trycua.lume.disk.uncompressed_size"] = "\(uncompressedDiskSize)"
+                        
+                        // Update annotations in the config
+                        json["annotations"] = annotations
+                        
+                        // Write updated config back to file
+                        configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
+                        try configData.write(to: cachedConfigPath)
+                        Logger.info("Updated config.json with disk size annotation")
+                    }
+                }
+                
                 configDigest = "sha256:" + configData.sha256String()
                 configSize = configData.count
+                
                 // Try to get uncompressed disk size from cached config
                 if let vmConfig = try? JSONDecoder().decode(VMConfig.self, from: configData) {
                     uncompressedDiskSize = vmConfig.diskSize
@@ -2389,10 +2417,36 @@ class ImageContainerRegistry: @unchecked Sendable {
             }
         } else if FileManager.default.fileExists(atPath: configPath.path) {
             Logger.info("Processing config.json")
-            let configData = try Data(contentsOf: configPath)
+            var configData = try Data(contentsOf: configPath)
+            
+            // Update config.json with disk size annotation if needed
+            if let uncompressedDiskSize = uncompressedDiskSize {
+                Logger.info("Updating config.json with disk size annotation: \(uncompressedDiskSize) bytes")
+                
+                // Parse existing config
+                if var json = try JSONSerialization.jsonObject(with: configData, options: []) as? [String: Any] {
+                    // Create annotations dictionary if it doesn't exist
+                    var annotations: [String: String] = [:]
+                    if let existingAnnotations = json["annotations"] as? [String: String] {
+                        annotations = existingAnnotations
+                    }
+                    
+                    // Add disk size to annotations using both formats for maximum compatibility
+                    annotations["org.trycua.lume.uncompressed-disk-size"] = "\(uncompressedDiskSize)"
+                    annotations["com.trycua.lume.disk.uncompressed_size"] = "\(uncompressedDiskSize)"
+                    
+                    // Update annotations in the config
+                    json["annotations"] = annotations
+                    
+                    // Write updated config to cache
+                    configData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted])
+                }
+            }
+            
             configDigest = "sha256:" + configData.sha256String()
             configSize = configData.count
             try configData.write(to: cachedConfigPath) // Save to cache
+            
             // Try to get uncompressed disk size from original config
             if let vmConfig = try? JSONDecoder().decode(VMConfig.self, from: configData) {
                 uncompressedDiskSize = vmConfig.diskSize
