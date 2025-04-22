@@ -227,24 +227,18 @@ class Computer:
                         self.logger.error(f"Failed to initialize PyLume context: {e}")
                         raise RuntimeError(f"Failed to initialize PyLume: {e}")
 
-                # Try to get the VM, if it doesn't exist, create it and pull the image
+                # Try to get the VM, if it doesn't exist, return an error
                 try:
                     vm = await self.config.pylume.get_vm(self.config.name)  # type: ignore[attr-defined]
                     self.logger.verbose(f"Found existing VM: {self.config.name}")
                 except Exception as e:
-                    self.logger.verbose(f"VM not found, pulling image: {e}")
-                    image_ref = ImageRef(
-                        image=self.config.image,
-                        tag=self.config.tag,
-                        registry="ghcr.io",
-                        organization="trycua",
+                    self.logger.error(f"VM not found: {self.config.name}")
+                    self.logger.error(
+                        f"Please pull the VM first with lume pull macos-sequoia-cua-sparse:latest: {e}"
                     )
-                    self.logger.info(f"Pulling image {self.config.image}:{self.config.tag}...")
-                    try:
-                        await self.config.pylume.pull_image(image_ref, name=self.config.name)  # type: ignore[attr-defined]
-                    except Exception as pull_error:
-                        self.logger.error(f"Failed to pull image: {pull_error}")
-                        raise RuntimeError(f"Failed to pull VM image: {pull_error}")
+                    raise RuntimeError(
+                        f"VM not found: {self.config.name}. Please pull the VM first."
+                    )
 
                 # Convert paths to SharedDirectory objects
                 shared_directories = []
