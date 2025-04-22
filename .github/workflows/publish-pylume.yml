@@ -63,6 +63,5 @@ jobs:
       version: ${{ needs.determine-version.outputs.version }}
       is_lume_package: true
       base_package_name: "pylume"
-      make_latest: false
     secrets:
       PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}

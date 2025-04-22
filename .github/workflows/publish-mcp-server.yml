@@ -144,7 +144,6 @@ jobs:
       version: ${{ needs.prepare.outputs.version }}
       is_lume_package: false
       base_package_name: "cua-mcp-server"
-      make_latest: false
     secrets:
       PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
   
