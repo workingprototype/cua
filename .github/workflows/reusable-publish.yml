@@ -63,7 +63,7 @@ jobs:
       uses: pdm-project/setup-pdm@v3
       with:
         python-version: '3.10'
-        cache: 'pdm'
+        cache: true
     
     - name: Set version
       id: set-version
