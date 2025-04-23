@@ -18,6 +18,17 @@
 **cua-mcp-server** is a MCP server for the Computer-Use Agent (CUA), allowing you to run CUA through Claude Desktop or other MCP clients.
 ### Get started with Agent
 
+## Prerequisites
+
+Before installing the MCP server, you'll need to set up the full Computer-Use Agent capabilities as described in [Option 2 of the main README](../../README.md#option-2-full-computer-use-agent-capabilities). This includes:
+
+1. Installing the Lume CLI
+2. Pulling the latest macOS CUA image
+3. Starting the Lume daemon service
+4. Installing the required Python libraries (Optional: only needed if you want to verify the agent is working before installing MCP server)
+
+Make sure these steps are completed and working before proceeding with the MCP server installation.
+
 ## Installation
 
 Install the package from PyPI:
