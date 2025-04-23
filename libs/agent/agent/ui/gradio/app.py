@@ -165,7 +165,6 @@ MODEL_MAPPINGS = {
     "uitars": {
         # UI-TARS models default to custom endpoint
         "default": "ByteDance-Seed/UI-TARS-1.5-7B",
-        "ui-tars": "ByteDance-Seed/UI-TARS-1.5-7B",
     },
     "ollama": {
         # For Ollama models, we keep the original name
@@ -287,7 +286,9 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         # Assign the determined model name
         model_name_to_use = cleaned_model_name
         # agent_loop remains AgentLoop.OMNI
-
+    elif agent_loop == AgentLoop.UITARS:
+        provider = LLMProvider.OAICOMPAT
+        model_name_to_use = MODEL_MAPPINGS["uitars"]["default"]  # Default 
     else:
         # Default to OpenAI if unrecognized loop
         provider = LLMProvider.OPENAI
@@ -557,7 +558,7 @@ def create_gradio_ui(
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model..."],  # Add custom model option
-        "UITARS": ["UI-TARS (ByteDance-Seed/UI-TARS-1.5-7B)", "Custom model..."],  # UI-TARS options
+        "UITARS": ["Custom model..."],  # UI-TARS options
     }
 
     # --- Apply Saved Settings (override defaults if available) ---
@@ -814,6 +815,8 @@ def create_gradio_ui(
                         provider, cleaned_model_name_from_func, agent_loop_type = (
                             get_provider_and_model(model_string_to_analyze, agent_loop_choice)
                         )
+                        
+                        print(f"provider={provider} cleaned_model_name_from_func={cleaned_model_name_from_func} agent_loop_type={agent_loop_type} agent_loop_choice={agent_loop_choice}")
 
                         # Determine the final model name to send to the agent
                         # If custom selected, use the custom text box value, otherwise use the cleaned name

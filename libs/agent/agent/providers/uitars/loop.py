@@ -1,59 +1,80 @@
-"""UI-TARS Agent provider implementation."""
+"""UI-TARS-specific agent loop implementation."""
 
 import logging
 import asyncio
-import base64
 import re
-import ast
+import os
 import json
-from typing import Any, Dict, List, Optional, AsyncGenerator, Tuple, Union
+import base64
+import copy
+from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator, cast
 
-from openai import OpenAI
+from httpx import ConnectError, ReadTimeout
 
-from computer import Computer
 from ...core.base import BaseLoop
-from ...core.types import AgentResponse, LLMProvider
 from ...core.messages import StandardMessageManager, ImageRetentionConfig
-from .prompts import COMPUTER_USE
+from ...core.types import AgentResponse, LLMProvider
+from ...core.visualization import VisualizationHelper
+from computer import Computer
 
+from .utils import add_box_token, parse_actions, parse_action_parameters
+from .tools.manager import ToolManager
+from .tools.computer import ToolResult
+from .prompts import COMPUTER_USE, SYSTEM_PROMPT
+
+from .clients.oaicompat import OAICompatClient
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class UITARSLoop(BaseLoop):
-    """UI-TARS implementation of the agent loop.
+    """UI-TARS-specific implementation of the agent loop.
 
-    This class extends BaseLoop to provide specialized support for UI-TARS models
+    This class extends BaseLoop to provide support for the UI-TARS model
     with computer control capabilities.
     """
 
+    ###########################################
+    # INITIALIZATION AND CONFIGURATION
+    ###########################################
+
     def __init__(
         self,
-        api_key: str,
         computer: Computer,
-        model: str = "ui-tars",
+        api_key: str,
+        model: str,
+        provider_base_url: Optional[str] = "http://localhost:8000/v1",
         only_n_most_recent_images: Optional[int] = 2,
         base_dir: Optional[str] = "trajectories",
         max_retries: int = 3,
         retry_delay: float = 1.0,
         save_trajectory: bool = True,
-        provider_base_url: Optional[str] = None,
         **kwargs,
     ):
-        """Initialize the UI-TARS loop.
+        """Initialize the loop.
 
         Args:
-            api_key: API key (may be empty for local deployments)
-            model: Model name (if using non-default UI-TARS model)
             computer: Computer instance
+            api_key: API key (may not be needed for local endpoints)
+            model: Model name (e.g., "ui-tars")
+            provider_base_url: Base URL for the API provider
             only_n_most_recent_images: Maximum number of recent screenshots to include in API requests
             base_dir: Base directory for saving experiment data
             max_retries: Maximum number of retries for API calls
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
-            provider_base_url: Custom endpoint URL for the model
-            **kwargs: Additional provider-specific arguments
         """
-        # Initialize base class with core config
+        # Set provider before initializing base class
+        self.provider = LLMProvider.OAICOMPAT
+        self.provider_base_url = provider_base_url
+
+        # Initialize message manager with image retention config
+        self.message_manager = StandardMessageManager(
+            config=ImageRetentionConfig(num_images_to_keep=only_n_most_recent_images)
+        )
+
+        # Initialize base class (which will set up experiment manager)
         super().__init__(
             computer=computer,
             model=model,
@@ -66,596 +87,508 @@ class UITARSLoop(BaseLoop):
             **kwargs,
         )
 
-        # Initialize message manager
-        self.message_manager = StandardMessageManager(
-            config=ImageRetentionConfig(num_images_to_keep=only_n_most_recent_images)
-        )
-
-        # UI-TARS specific attributes
-        self.provider = LLMProvider.OAICOMPAT
+        # Set API client attributes
         self.client = None
-        self.api_base_url = provider_base_url or "http://localhost:1234/v1"
-        
-        # Runtime configuration
-        self.temperature = kwargs.get("temperature", 0.0)
-        self.top_k = kwargs.get("top_k", -1)
-        self.top_p = kwargs.get("top_p", 0.9)
-        self.max_tokens = kwargs.get("max_tokens", 500)
-        self.language = kwargs.get("language", "English")
-        
-        # For tracking state
-        self.thoughts = []
-        self.actions = []
-        self.observations = []
-        self.history_images = []
-        self.history_responses = []
+        self.retry_count = 0
+
+        # Initialize visualization helper
+        self.viz_helper = VisualizationHelper(agent=self)
+
+        # Initialize tool manager
+        self.tool_manager = ToolManager(computer=computer)
+
+        logger.info("UITARSLoop initialized with StandardMessageManager")
+
+    async def initialize(self) -> None:
+        """Initialize the loop by setting up tools and clients."""
+        # Initialize base class
+        await super().initialize()
+
+        # Initialize tool manager with error handling
+        try:
+            logger.info("Initializing tool manager...")
+            await self.tool_manager.initialize()
+            logger.info("Tool manager initialized successfully.")
+        except Exception as e:
+            logger.error(f"Error initializing tool manager: {str(e)}")
+            logger.warning("Will attempt to initialize tools on first use.")
+
+        # Initialize client for the OAICompat provider
+        try:
+            await self.initialize_client()
+        except Exception as e:
+            logger.error(f"Error initializing client: {str(e)}")
+            raise RuntimeError(f"Failed to initialize client: {str(e)}")
+
+    ###########################################
+    # CLIENT INITIALIZATION - IMPLEMENTING ABSTRACT METHOD
+    ###########################################
 
     async def initialize_client(self) -> None:
-        """Initialize the OpenAI API client for UI-TARS.
+        """Initialize the appropriate client.
 
-        Implements abstract method from BaseLoop.
+        Implements abstract method from BaseLoop to set up the specific
+        provider client (OAICompat for UI-TARS).
         """
         try:
-            # Initialize OpenAI client with the custom base URL
-            self.client = OpenAI(
-                base_url=self.api_base_url,
-                api_key=self.api_key or "empty",  # Some servers require non-empty API key
+            logger.info(f"Initializing OAICompat client for UI-TARS with model {self.model}...")
+
+            self.client = OAICompatClient(
+                api_key=self.api_key or "EMPTY",  # Local endpoints typically don't require an API key
+                model=self.model,
+                provider_base_url=self.provider_base_url,
+            )
+
+            logger.info(f"Initialized OAICompat client with model {self.model}")
+        except Exception as e:
+            logger.error(f"Error initializing client: {str(e)}")
+            self.client = None
+            raise RuntimeError(f"Failed to initialize client: {str(e)}")
+
+    ###########################################
+    # MESSAGE FORMATTING
+    ###########################################
+
+    def to_uitars_format(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert messages to UI-TARS compatible format.
+        
+        Args:
+            messages: List of messages in standard format
+            
+        Returns:
+            List of messages formatted for UI-TARS
+        """
+        # Create a copy of the messages to avoid modifying the original
+        uitars_messages = copy.deepcopy(messages)
+        
+        # Find the first user message to modify
+        first_user_idx = None
+        instruction = ""
+        
+        for idx, msg in enumerate(uitars_messages):
+            if msg.get("role") == "user":
+                first_user_idx = idx
+                content = msg.get("content", "")
+                if isinstance(content, str):
+                    instruction = content
+                    break
+                elif isinstance(content, list):
+                    for item in content:
+                        if item.get("type") == "text":
+                            instruction = item.get("text", "")
+                            break
+                    if instruction:
+                        break
+        
+        # Only modify the first user message if found
+        if first_user_idx is not None and instruction:
+            # Create the computer use prompt
+            user_prompt = COMPUTER_USE.format(
+                instruction=instruction,
+                language="English"
             )
             
-            # Try to list models but don't fail if it's not supported
-            try:
-                models = self.client.models.list()
-                logger.info(f"UI-TARS client initialized. Connected to API at {self.api_base_url}")
-            except Exception as e:
-                # Some custom endpoints may not support listing models
-                logger.warning(f"Could not list models, but continuing: {str(e)}")
-                logger.info(f"UI-TARS client initialized with API at {self.api_base_url}")
-                
-        except Exception as e:
-            logger.error(f"Error initializing UI-TARS client: {str(e)}")
-            self.client = None
-            raise RuntimeError(f"Failed to initialize UI-TARS client: {str(e)}")
+            # Replace the content of the first user message
+            if isinstance(uitars_messages[first_user_idx].get("content", ""), str):
+                uitars_messages[first_user_idx]["content"] = [{"type": "text", "text": user_prompt}]
+            elif isinstance(uitars_messages[first_user_idx].get("content", ""), list):
+                # Find and replace only the text part, keeping images
+                for i, item in enumerate(uitars_messages[first_user_idx]["content"]):
+                    if item.get("type") == "text":
+                        uitars_messages[first_user_idx]["content"][i]["text"] = user_prompt
+                        break
+        
+        # Add box tokens to assistant responses
+        for idx, msg in enumerate(uitars_messages):
+            if msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                if content and isinstance(content, list):
+                    for i, part in enumerate(content):
+                        if part.get('type') == 'text':
+                            uitars_messages[idx]["content"][i]["text"] = add_box_token(part['text'])
+        
+        return uitars_messages
 
-    async def run(self, instruction: str) -> AsyncGenerator[AgentResponse, None]:
-        """Run the agent loop with provided instruction.
+    ###########################################
+    # API CALL HANDLING
+    ###########################################
+
+    async def _make_api_call(self, messages: List[Dict[str, Any]], system_prompt: str) -> Any:
+        """Make API call to provider with retry logic."""
+        # Create new turn directory for this API call
+        self._create_turn_dir()
+
+        request_data = None
+        last_error = None
+
+        for attempt in range(self.max_retries):
+            try:
+                # Ensure client is initialized
+                if self.client is None:
+                    logger.info(
+                        f"Client not initialized in _make_api_call (attempt {attempt+1}), initializing now..."
+                    )
+                    await self.initialize_client()
+                    if self.client is None:
+                        raise RuntimeError("Failed to initialize client")
+
+                # Convert messages to UI-TARS format
+                uitars_messages = self.to_uitars_format(messages)
+                
+                # Log request
+                request_data = {
+                    "messages": uitars_messages,
+                    "max_tokens": self.max_tokens,
+                    "system": system_prompt,
+                }
+
+                self._log_api_call("request", request_data)
+
+                # Make API call
+                response = await self.client.run_interleaved(
+                    messages=uitars_messages,
+                    system=system_prompt,
+                    max_tokens=self.max_tokens,
+                )
+
+                # Log success response
+                self._log_api_call("response", request_data, response)
+
+                return response
+
+            except (ConnectError, ReadTimeout) as e:
+                last_error = e
+                logger.warning(
+                    f"Connection error on attempt {attempt + 1}/{self.max_retries}: {str(e)}"
+                )
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay * (attempt + 1))  # Exponential backoff
+                    # Reset client on connection errors to force re-initialization
+                    self.client = None
+                continue
+
+            except RuntimeError as e:
+                # Handle client initialization errors specifically
+                last_error = e
+                self._log_api_call("error", request_data, error=e)
+                logger.error(
+                    f"Client initialization error (attempt {attempt + 1}/{self.max_retries}): {str(e)}"
+                )
+                if attempt < self.max_retries - 1:
+                    # Reset client to force re-initialization
+                    self.client = None
+                    await asyncio.sleep(self.retry_delay)
+                continue
+
+            except Exception as e:
+                # Log unexpected error
+                last_error = e
+                self._log_api_call("error", request_data, error=e)
+                logger.error(f"Unexpected error in API call: {str(e)}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+                continue
+
+        # If we get here, all retries failed
+        error_message = f"API call failed after {self.max_retries} attempts"
+        if last_error:
+            error_message += f": {str(last_error)}"
+
+        logger.error(error_message)
+        raise RuntimeError(error_message)
+
+    ###########################################
+    # RESPONSE AND ACTION HANDLING
+    ###########################################
+
+    async def _handle_response(
+        self, response: Any, messages: List[Dict[str, Any]]
+    ) -> Tuple[bool, bool]:
+        """Handle API response.
 
         Args:
-            instruction: User instruction for the agent
+            response: API response
+            messages: List of messages to update
+
+        Returns:
+            Tuple of (should_continue, action_screenshot_saved)
+        """
+        action_screenshot_saved = False
+
+        try:
+            # Step 1: Extract the raw response text
+            raw_text = None
+            
+            try:
+                # OpenAI-compatible response format
+                raw_text = response["choices"][0]["message"]["content"]
+            except (KeyError, TypeError, IndexError) as e:
+                logger.error(f"Invalid response format: {str(e)}")
+                return True, action_screenshot_saved
+
+            # Step 2: Add the response to message history
+            self.message_manager.add_assistant_message([{"type": "text", "text": raw_text}])
+            
+            # Step 3: Parse actions from the response
+            parsed_actions = parse_actions(raw_text)
+            
+            if not parsed_actions:
+                logger.warning("No action found in the response")
+                return True, action_screenshot_saved
+            
+            # Step 4: Execute each action
+            for action in parsed_actions:
+                action_type = None
+                
+                # Handle "finished" action
+                if action.startswith("finished"):
+                    logger.info("Agent completed the task")
+                    return False, action_screenshot_saved
+                
+                # Process other action types (click, type, etc.)
+                try:
+                    # Parse action parameters using the utility function
+                    action_name, tool_args = parse_action_parameters(action)
+                    
+                    if not action_name:
+                        logger.warning(f"Could not parse action: {action}")
+                        continue
+
+                    # Mark actions that would create screenshots
+                    if action_name in ["click", "left_double", "right_single", "drag", "scroll"]:
+                        action_screenshot_saved = True
+                    
+                    # Execute the tool with prepared arguments
+                    await self._ensure_tools_initialized()
+                    
+                    # Let's log what we're about to execute for debugging
+                    logger.info(f"Executing computer tool with arguments: {tool_args}")
+                    
+                    result = await self.tool_manager.execute_tool(name="computer", tool_input=tool_args)
+                    
+                    # Handle the result
+                    if hasattr(result, "error") and result.error:
+                        logger.error(f"Error executing tool: {result.error}")
+                    else:
+                        # Action was successful
+                        logger.info(f"Successfully executed {action_name}")
+                        
+                        # Save screenshot if one was returned and we haven't already saved one
+                        if hasattr(result, "base64_image") and result.base64_image:
+                            self._save_screenshot(result.base64_image, action_type=action_name)
+                            action_screenshot_saved = True
+                    
+                except Exception as e:
+                    logger.error(f"Error executing action {action}: {str(e)}")
+            
+            # Continue the loop if there are actions to process
+            return True, action_screenshot_saved
+
+        except Exception as e:
+            logger.error(f"Error handling response: {str(e)}")
+            # Add error message using the message manager
+            error_message = [{"type": "text", "text": f"Error: {str(e)}"}]
+            self.message_manager.add_assistant_message(error_message)
+            raise
+
+    ###########################################
+    # SCREEN HANDLING
+    ###########################################
+
+    async def _get_current_screen(self, save_screenshot: bool = True) -> str:
+        """Get the current screen as a base64 encoded image.
+
+        Args:
+            save_screenshot: Whether to save the screenshot
+
+        Returns:
+            Base64 encoded screenshot
+        """
+        try:
+            # Take a screenshot
+            screenshot = await self.computer.interface.screenshot()
+            
+            # Convert to base64
+            img_base64 = base64.b64encode(screenshot).decode("utf-8")
+            
+            # Process screenshot through hooks and save if needed
+            await self.handle_screenshot(img_base64, action_type="state")
+            
+            # Save screenshot if requested
+            if save_screenshot and self.save_trajectory:
+                self._save_screenshot(img_base64, action_type="state")
+                
+            return img_base64
+            
+        except Exception as e:
+            logger.error(f"Error getting current screen: {str(e)}")
+            raise
+
+    ###########################################
+    # SYSTEM PROMPT
+    ###########################################
+
+    def _get_system_prompt(self) -> str:
+        """Get the system prompt for the model."""
+        return SYSTEM_PROMPT
+
+    ###########################################
+    # MAIN LOOP - IMPLEMENTING ABSTRACT METHOD
+    ###########################################
+
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+        """Run the agent loop with provided messages.
+
+        Args:
+            messages: List of messages in standard OpenAI format
 
         Yields:
-            Agent responses in a standardized format
+            Agent response format
         """
-        try:
-            logger.info("Starting UI-TARS loop run")
+        # Initialize the message manager with the provided messages
+        self.message_manager.messages = messages.copy()
+        logger.info(f"Starting UITARSLoop run with {len(self.message_manager.messages)} messages")
 
-            # Create queue for response streaming
-            queue = asyncio.Queue()
+        # Continue running until explicitly told to stop
+        running = True
+        turn_created = False
+        # Track if an action-specific screenshot has been saved this turn
+        action_screenshot_saved = False
 
-            # Start loop in background task
-            loop_task = asyncio.create_task(self._run_loop(queue, instruction))
+        attempt = 0
+        max_attempts = 3
 
-            # Process and yield messages as they arrive
-            while True:
-                try:
-                    item = await queue.get()
-                    if item is None:  # Stop signal
-                        break
-                    yield item
-                    queue.task_done()
-                except Exception as e:
-                    logger.error(f"Error processing queue item: {str(e)}")
-                    continue
-
-            # Wait for loop to complete
-            await loop_task
-
-            # Send completion message
-            yield {
-                "role": "assistant",
-                "content": "Task completed successfully.",
-                "metadata": {"title": "✅ Complete"},
-            }
-
-        except Exception as e:
-            logger.error(f"Error executing task: {str(e)}")
-            yield {
-                "role": "assistant",
-                "content": f"Error: {str(e)}",
-                "metadata": {"title": "❌ Error"},
-            }
-
-    async def _run_loop(self, queue: asyncio.Queue, instruction: str) -> None:
-        """Run the main agent loop with the given instruction.
-
-        Args:
-            queue: Queue for streaming responses
-            instruction: User instruction
-        """
-        try:
-            screen_size = await self.computer.interface.get_screen_size()
-            
-            # Reset history for each run
-            self.thoughts = []
-            self.actions = []
-            self.observations = []
-            self.history_images = []
-            self.history_responses = []
-            
-            # Capture initial screenshot
+        while running and attempt < max_attempts:
             try:
-                # Take screenshot
-                screenshot = await self.computer.interface.screenshot()
-                logger.info("Screenshot captured successfully")
-
-                # Convert to base64
-                if isinstance(screenshot, bytes):
-                    screenshot_base64 = base64.b64encode(screenshot).decode("utf-8")
-                else:
-                    screenshot_base64 = str(screenshot)
-
-                # Emit screenshot callbacks
-                await self.handle_screenshot(screenshot_base64, action_type="initial_state")
-
-                # Save screenshot if requested
-                if self.save_trajectory:
-                    self._save_screenshot(screenshot_base64, action_type="state")
-                    logger.info("Screenshot saved to trajectory")
-                
-                # Add to history
-                self.history_images.append(screenshot)
-                
-                # Create turn directory
-                if self.save_trajectory:
+                # Create a new turn directory if it's not already created
+                if not turn_created:
                     self._create_turn_dir()
-                
-                # Process first screenshot response
-                response, action_list = await self._get_ui_tars_response(instruction)
-                
-                # Add to history
-                self.history_responses.append(response)
-                self.thoughts.append(response)
-                
-                # Process response
-                await self._process_response(response, action_list, queue)
-                
-                # Continue running until task is complete
-                task_complete = False
-                while not task_complete:
-                    # Check if the last action was a "finished" or "DONE" action
-                    if any(action == "DONE" for action in action_list):
-                        logger.info("Task completed. Received DONE action.")
-                        task_complete = True
-                        continue
-                        
-                    # Execute the next actions
-                    await self._execute_actions(action_list, queue)
-                    
-                    # Take a screenshot after the action
-                    screenshot = await self.computer.interface.screenshot()
-                    if isinstance(screenshot, bytes):
-                        screenshot_base64 = base64.b64encode(screenshot).decode("utf-8")
-                    else:
-                        screenshot_base64 = str(screenshot)
-                    
-                    # Emit screenshot callbacks
-                    action_type = "after_action"
-                    await self.handle_screenshot(screenshot_base64, action_type=action_type)
-                    
-                    # Save screenshot if requested
-                    if self.save_trajectory:
-                        self._save_screenshot(screenshot_base64, action_type=action_type)
-                    
-                    # Add to history
-                    self.history_images.append(screenshot)
-                    
-                    # Create a new turn directory
-                    if self.save_trajectory:
-                        self._create_turn_dir()
-                    
-                    # Get next action from UI-TARS
-                    response, action_list = await self._get_ui_tars_response(instruction)
-                    
-                    # Add to history
-                    self.history_responses.append(response)
-                    self.thoughts.append(response)
-                    
-                    # Process response
-                    await self._process_response(response, action_list, queue)
-                    
-                    # Check for limits (to prevent infinite loops)
-                    if len(self.history_responses) >= 50:  # Max 50 turns
-                        logger.warning("Reached maximum number of turns (50). Stopping.")
-                        task_complete = True
-                    
-            except Exception as e:
-                logger.error(f"Error in screenshot capture: {str(e)}")
-                await queue.put({
-                    "role": "assistant",
-                    "content": f"Error capturing screenshot: {str(e)}",
-                    "metadata": {"title": "❌ Error"},
-                })
-                
-            # Signal completion
-            await queue.put(None)
-                
-        except Exception as e:
-            logger.error(f"Error in _run_loop: {str(e)}")
-            await queue.put({
-                "role": "assistant",
-                "content": f"Error: {str(e)}",
-                "metadata": {"title": "❌ Error"},
-            })
-            await queue.put(None)  # Signal completion
+                    turn_created = True
 
-    async def _get_ui_tars_response(self, instruction: str) -> Tuple[str, List[str]]:
-        """Get a response from the UI-TARS model.
-        
-        Args:
-            instruction: User instruction
-            
-        Returns:
-            Tuple of (raw_response, parsed_actions)
-        """
-        # Prepare the prompt with the user instruction
-        user_prompt = COMPUTER_USE.format(
-            instruction=instruction,
-            language=self.language
-        )
-        
-        # Prepare messages for the API call
-        messages = [
-            {
-                "role": "system",
-                "content": [{"type": "text", "text": "You are a helpful assistant."}]
-            },
-            {
-                "role": "user", 
-                "content": [{"type": "text", "text": user_prompt}]
-            }
-        ]
-        
-        # Add images to the conversation history
-        images_to_use = self.history_images[-self.only_n_most_recent_images:] if self.only_n_most_recent_images else self.history_images
-        
-        # Add previous conversation turns if available
-        if len(self.history_responses) > 0:
-            for i, (img, resp) in enumerate(zip(images_to_use, self.history_responses[-len(images_to_use):])):
-                # Convert image to base64 if needed
-                if isinstance(img, bytes):
-                    img_base64 = base64.b64encode(img).decode("utf-8")
-                else:
-                    img_base64 = img
-                
-                # Add the image message
-                messages.append({
-                    "role": "user",
-                    "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}]
-                })
-                
-                # Add the assistant's response
-                messages.append({
-                    "role": "assistant",
-                    "content": self._add_box_token(resp)
-                })
-        
-        # Add the latest image with the instruction
-        latest_image = self.history_images[-1]
-        if isinstance(latest_image, bytes):
-            img_base64 = base64.b64encode(latest_image).decode("utf-8")
-        else:
-            img_base64 = latest_image
-            
-        messages.append({
-            "role": "user",
-            "content": [
-                {"type": "text", "text": instruction},
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
-            ]
-        })
-        
-        # Log the API call
-        if self.save_trajectory:
-            self._log_api_call("request", {"messages": messages})
-        
-        # Make the API call
-        try:
-            logger.info("Sending request to UI-TARS model")
-            response = self.client.chat.completions.create( # type: ignore
-                model=self.model,
-                messages=messages,
-                frequency_penalty=1,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_k=self.top_k,
-                top_p=self.top_p
-            )
-            
-            # Extract the response content
-            raw_response = response.choices[0].message.content.strip()
-            
-            # Log the API response
-            if self.save_trajectory:
-                self._log_api_call("response", {"messages": messages}, {"completion": raw_response})
-            
-            # Parse the actions from the response
-            actions = self._parse_actions(raw_response)
-            
-            return raw_response, actions
-            
-        except Exception as e:
-            logger.error(f"Error calling UI-TARS API: {str(e)}")
-            if self.save_trajectory:
-                self._log_api_call("error", {"messages": messages}, error=e)
-            return str(e), ["DONE"]  # Return DONE to terminate the loop on error
+                # Ensure client is initialized
+                if self.client is None:
+                    logger.info("Initializing client...")
+                    await self.initialize_client()
+                    if self.client is None:
+                        raise RuntimeError("Failed to initialize client")
+                    logger.info("Client initialized successfully")
 
-    def _parse_actions(self, response: str) -> List[str]:
-        """Parse actions from the UI-TARS response.
-        
-        Args:
-            response: Raw model response text
-            
-        Returns:
-            List of actions to execute
-        """
-        try:
-            # Extract the action part from the response
-            action_part = response.split("Action:", 1)[1].strip() if "Action:" in response else ""
-            
-            if not action_part:
-                logger.warning("No action found in response")
-                return ["DONE"]
+                # Get current screen
+                base64_screenshot = await self._get_current_screen()
                 
-            # Check for special actions
-            if "finished" in action_part.lower():
-                return ["DONE"]
-            if "wait()" in action_part:
-                return ["WAIT"]
-                
-            # Extract the action and parameters
-            actions = []
-            
-            # Simplest approach: just identify the action type and prep for computer interface
-            if "click" in action_part:
-                # Extract coordinates from the start_box parameter
-                box_match = re.search(r"start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                if box_match:
-                    x, y = box_match.groups()
-                    actions.append(f"left_click({x},{y})")
-            elif "left_double" in action_part:
-                box_match = re.search(r"start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                if box_match:
-                    x, y = box_match.groups()
-                    actions.append(f"double_click({x},{y})")
-            elif "right_single" in action_part:
-                box_match = re.search(r"start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                if box_match:
-                    x, y = box_match.groups()
-                    actions.append(f"right_click({x},{y})")
-            elif "drag" in action_part:
-                start_box = re.search(r"start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                end_box = re.search(r"end_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                if start_box and end_box:
-                    start_x, start_y = start_box.groups()
-                    end_x, end_y = end_box.groups()
-                    actions.append(f"drag({start_x},{start_y},{end_x},{end_y})")
-            elif "hotkey" in action_part:
-                key_match = re.search(r"key='([^']+)'", action_part)
-                if key_match:
-                    key = key_match.group(1)
-                    actions.append(f"hotkey({key})")
-            elif "type" in action_part:
-                content_match = re.search(r"content='([^']*)'", action_part)
-                if content_match:
-                    content = content_match.group(1)
-                    actions.append(f"type({content})")
-            elif "scroll" in action_part:
-                box_match = re.search(r"start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'", action_part)
-                direction_match = re.search(r"direction='([^']+)'", action_part)
-                if box_match and direction_match:
-                    x, y = box_match.groups()
-                    direction = direction_match.group(1)
-                    actions.append(f"scroll({x},{y},{direction})")
-            
-            # If no actions were extracted, add a DONE action to terminate the loop
-            if not actions:
-                return ["DONE"]
-                
-            return actions
-            
-        except Exception as e:
-            logger.error(f"Error parsing actions: {str(e)}")
-            return ["DONE"]  # Return DONE to terminate the loop on error
-
-    async def _execute_actions(self, actions: List[str], queue: asyncio.Queue) -> None:
-        """Execute the given actions using the computer interface.
-        
-        Args:
-            actions: List of actions to execute
-            queue: Queue for response streaming
-        """
-        for action in actions:
-            try:
-                # Skip special actions
-                if action == "DONE" or action == "WAIT":
-                    continue
-                    
-                # Parse the action string
-                if action.startswith("left_click"):
-                    # Extract coordinates
-                    coords = re.search(r"left_click\((\d+),(\d+)\)", action)
-                    if coords:
-                        x, y = int(coords.group(1)), int(coords.group(2))
-                        await self.computer.interface.left_click(x, y)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Clicked at position ({x}, {y})",
-                            "metadata": {"title": "🖱️ Click"},
-                        })
-                
-                elif action.startswith("double_click"):
-                    # Extract coordinates
-                    coords = re.search(r"double_click\((\d+),(\d+)\)", action)
-                    if coords:
-                        x, y = int(coords.group(1)), int(coords.group(2))
-                        await self.computer.interface.double_click(x, y)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Double-clicked at position ({x}, {y})",
-                            "metadata": {"title": "🖱️ Double Click"},
-                        })
-                
-                elif action.startswith("right_click"):
-                    # Extract coordinates
-                    coords = re.search(r"right_click\((\d+),(\d+)\)", action)
-                    if coords:
-                        x, y = int(coords.group(1)), int(coords.group(2))
-                        await self.computer.interface.right_click(x, y)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Right-clicked at position ({x}, {y})",
-                            "metadata": {"title": "🖱️ Right Click"},
-                        })
-                
-                elif action.startswith("drag"):
-                    # Extract coordinates
-                    coords = re.search(r"drag\((\d+),(\d+),(\d+),(\d+)\)", action)
-                    if coords:
-                        start_x, start_y, end_x, end_y = map(int, coords.groups())
-                        await self.computer.interface.move_cursor(start_x, start_y)
-                        await self.computer.interface.drag_to(end_x, end_y)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Dragged from ({start_x}, {start_y}) to ({end_x}, {end_y})",
-                            "metadata": {"title": "🖱️ Drag"},
-                        })
-                
-                elif action.startswith("hotkey"):
-                    # Extract key
-                    key_match = re.search(r"hotkey\(([^)]+)\)", action)
-                    if key_match:
-                        keys = key_match.group(1).split(",")
-                        # Clean up keys
-                        clean_keys = [k.strip() for k in keys]
-                        for key in clean_keys:
-                            await self.computer.interface.press_key(key)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Pressed hotkey: {', '.join(clean_keys)}",
-                            "metadata": {"title": "⌨️ Hotkey"},
-                        })
-                
-                elif action.startswith("type"):
-                    # Extract content
-                    content_match = re.search(r"type\(([^)]*)\)", action)
-                    if content_match:
-                        content = content_match.group(1)
-                        await self.computer.interface.type_text(content)
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Typed: {content}",
-                            "metadata": {"title": "⌨️ Type"},
-                        })
-                
-                elif action.startswith("scroll"):
-                    # Extract parameters
-                    params = re.search(r"scroll\((\d+),(\d+),([^)]+)\)", action)
-                    if params:
-                        x, y, direction = params.groups()
-                        x, y = int(x), int(y)
-                        direction = direction.strip("'\"")
-                        
-                        # Move cursor to position
-                        await self.computer.interface.move_cursor(x, y)
-                        
-                        # Scroll based on direction
-                        if direction == "down":
-                            await self.computer.interface.scroll_down(5)
-                        elif direction == "up":
-                            await self.computer.interface.scroll_up(5)
-                            
-                        await queue.put({
-                            "role": "assistant",
-                            "content": f"Scrolled {direction} at position ({x}, {y})",
-                            "metadata": {"title": "🖱️ Scroll"},
-                        })
-                
-                # Wait a bit after each action
-                await asyncio.sleep(0.5)
-                
-            except Exception as e:
-                logger.error(f"Error executing action {action}: {str(e)}")
-                await queue.put({
-                    "role": "assistant",
-                    "content": f"Error executing action {action}: {str(e)}",
-                    "metadata": {"title": "❌ Error"},
-                })
-
-    async def _process_response(self, response: str, actions: List[str], queue: asyncio.Queue) -> None:
-        """Process the model response and send to queue.
-        
-        Args:
-            response: Raw model response
-            actions: Parsed actions
-            queue: Queue for streaming responses
-        """
-        try:
-            # Extract thought from response
-            thought = ""
-            if "Thought:" in response:
-                thought_match = re.search(r"Thought: (.*?)(?=\s*Action:|$)", response, re.DOTALL)
-                if thought_match:
-                    thought = thought_match.group(1).strip()
-            
-            # Send thought to queue
-            if thought:
-                await queue.put({
-                    "role": "assistant",
-                    "content": thought,
-                    "metadata": {"title": "🧠 Thinking"},
-                })
-            
-            # Send the actions to queue
-            action_summary = "Actions: " + ", ".join(actions)
-            await queue.put({
-                "role": "assistant",
-                "content": action_summary,
-                "metadata": {"title": "🛠️ Action Plan"},
-            })
-            
-        except Exception as e:
-            logger.error(f"Error processing response: {str(e)}")
-            await queue.put({
-                "role": "assistant",
-                "content": f"Error processing response: {str(e)}",
-                "metadata": {"title": "❌ Error"},
-            })
-
-    def _add_box_token(self, input_string):
-        """Add box tokens to the coordinates in the model response.
-        
-        Args:
-            input_string: Raw model response
-            
-        Returns:
-            String with box tokens added
-        """
-        if "Action: " not in input_string or "start_box=" not in input_string:
-            return input_string
-            
-        suffix = input_string.split("Action: ")[0] + "Action: "
-        actions = input_string.split("Action: ")[1:]
-        processed_actions = []
-        
-        for action in actions:
-            action = action.strip()
-            coordinates = re.findall(r"(start_box|end_box)='\((\d+),\s*(\d+)\)'", action)
-            
-            updated_action = action
-            for coord_type, x, y in coordinates:
-                updated_action = updated_action.replace(
-                    f"{coord_type}='({x},{y})'", 
-                    f"{coord_type}='<|box_start|>({x},{y})<|box_end|>'"
+                # Add screenshot to message history
+                self.message_manager.add_user_message(
+                    [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{base64_screenshot}"},
+                        }
+                    ]
                 )
-            processed_actions.append(updated_action)
+                logger.info("Added screenshot to message history")
+
+                # Get system prompt
+                system_prompt = self._get_system_prompt()
+
+                # Make API call with retries
+                response = await self._make_api_call(
+                    self.message_manager.messages, system_prompt
+                )
+
+                # Handle the response (may execute actions)
+                # Returns: (should_continue, action_screenshot_saved)
+                should_continue, new_screenshot_saved = await self._handle_response(
+                    response, self.message_manager.messages
+                )
+
+                # Update whether an action screenshot was saved this turn
+                action_screenshot_saved = action_screenshot_saved or new_screenshot_saved
+
+                # Parse actions from the raw response
+                raw_response = response["choices"][0]["message"]["content"]
+                parsed_actions = parse_actions(raw_response)
+                
+                # Extract thought content if available
+                thought = ""
+                if "Thought:" in raw_response:
+                    thought_match = re.search(r"Thought: (.*?)(?=\s*Action:|$)", raw_response, re.DOTALL)
+                    if thought_match:
+                        thought = thought_match.group(1).strip()
+                
+                # Create standardized thought response format
+                thought_response = {
+                    "role": "assistant",
+                    "content": thought or raw_response,
+                    "metadata": {
+                        "title": "🧠 UI-TARS Thoughts"
+                    }
+                }
+                
+                # Create action response format
+                action_response = {
+                    "role": "assistant",
+                    "content": str(parsed_actions),
+                    "metadata": {
+                        "title": "🖱️ UI-TARS Actions",
+                    }
+                }
+
+                # Yield both responses to the caller (thoughts first, then actions)
+                yield thought_response
+                if parsed_actions:
+                    yield action_response
+
+                # Check if we should continue this conversation
+                running = should_continue
+
+                # Create a new turn directory if we're continuing
+                if running:
+                    turn_created = False
+
+                # Reset attempt counter on success
+                attempt = 0
+
+            except Exception as e:
+                attempt += 1
+                error_msg = f"Error in run method (attempt {attempt}/{max_attempts}): {str(e)}"
+                logger.error(error_msg)
+
+                # If this is our last attempt, provide more info about the error
+                if attempt >= max_attempts:
+                    logger.error(f"Maximum retry attempts reached. Last error was: {str(e)}")
+
+                yield {
+                    "error": str(e),
+                    "metadata": {"title": "❌ Error"},
+                }
+
+                # Create a brief delay before retrying
+                await asyncio.sleep(1)
+
+    ###########################################
+    # UTILITY METHODS
+    ###########################################
+
+    async def _ensure_tools_initialized(self) -> None:
+        """Ensure the tool manager and tools are initialized before use."""
+        if not hasattr(self.tool_manager, "tools") or self.tool_manager.tools is None:
+            logger.info("Tools not initialized. Initializing now...")
+            await self.tool_manager.initialize()
+            logger.info("Tools initialized successfully.")
+
+    async def process_model_response(self, response_text: str) -> Optional[Dict[str, Any]]:
+        """Process model response to extract tool calls.
+
+        Args:
+            response_text: Model response text
+
+        Returns:
+            Extracted tool information, or None if no tool call was found
+        """
+        # UI-TARS doesn't use the standard tool call format, so we parse its actions differently
+        parsed_actions = parse_actions(response_text)
         
-        return suffix + "\n\n".join(processed_actions)
+        if parsed_actions:
+            return {"actions": parsed_actions}
+        
+        return None

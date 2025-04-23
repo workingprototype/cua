@@ -1,5 +1,7 @@
 """Prompts for UI-TARS agent."""
 
+SYSTEM_PROMPT = "You are a helpful assistant."
+
 COMPUTER_USE = """You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task.
 
 ## Output Format
