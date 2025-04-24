@@ -30,6 +30,7 @@ async def run_agent_example():
                 computer=macos_computer,
                 # loop=AgentLoop.OPENAI,
                 # loop=AgentLoop.ANTHROPIC,
+                # loop=AgentLoop.UITARS,
                 loop=AgentLoop.OMNI,
                 # model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
                 # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4o"),
