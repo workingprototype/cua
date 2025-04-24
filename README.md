@@ -116,7 +116,7 @@ If you want to contribute to the project or need the latest nightly features:
    cd cua
    
    # Open the project in VSCode
-   code ./vscode/py.code-workspace
+   code ./.vscode/py.code-workspace
 
    # Build the project
    ./scripts/build.sh
