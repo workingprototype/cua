@@ -98,5 +98,24 @@ class LoopFactory:
                 parser=OmniParser(),
                 provider_base_url=provider_base_url,
             )
+        elif loop_type == AgentLoop.UITARS:
+            # Lazy import UITARSLoop only when needed
+            try:
+                from ..providers.uitars.loop import UITARSLoop
+            except ImportError:
+                raise ImportError(
+                    "The 'uitars' provider is not installed. "
+                    "Install it with 'pip install cua-agent[all]'"
+                )
+
+            return UITARSLoop(
+                api_key=api_key,
+                model=model_name,
+                computer=computer,
+                save_trajectory=save_trajectory,
+                base_dir=trajectory_dir,
+                only_n_most_recent_images=only_n_most_recent_images,
+                provider_base_url=provider_base_url,
+            )
         else:
             raise ValueError(f"Unsupported loop type: {loop_type}")

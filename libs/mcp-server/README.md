@@ -104,7 +104,7 @@ The server is configured using environment variables (can be set in the Claude D
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CUA_AGENT_LOOP` | Agent loop to use (OPENAI, ANTHROPIC, OMNI) | OMNI |
+| `CUA_AGENT_LOOP` | Agent loop to use (OPENAI, ANTHROPIC, UITARS, OMNI) | OMNI |
 | `CUA_MODEL_PROVIDER` | Model provider (ANTHROPIC, OPENAI, OLLAMA, OAICOMPAT) | ANTHROPIC |
 | `CUA_MODEL_NAME` | Model name to use | None (provider default) |
 | `CUA_PROVIDER_BASE_URL` | Base URL for provider API | None |

@@ -50,6 +50,9 @@ async with Computer() as macos_computer:
       # or
       # loop=AgentLoop.OMNI,
       # model=LLM(provider=LLMProvider.OLLAMA, model="gemma3")
+      # or
+      # loop=AgentLoop.UITARS,
+      # model=LLM(provider=LLMProvider.OAICOMPAT, model="tgi", provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
   )
 
   tasks = [
@@ -124,6 +127,10 @@ The Gradio UI provides:
 - Configuration of agent parameters
 - Chat interface for interacting with the agent
 
+### Using UI-TARS
+
+You can use UI-TARS by first following the [deployment guide](https://github.com/bytedance/UI-TARS/blob/main/README_deploy.md). This will give you a provider URL like this: `https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1` which you can use in the gradio UI.
+
 ## Agent Loops
 
 The `cua-agent` package provides three agent loops variations, based on different CUA models providers and techniques:
@@ -132,6 +139,7 @@ The `cua-agent` package provides three agent loops variations, based on differen
 |:-----------|:-----------------|:------------|:-------------|
 | `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
 | `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
+| `AgentLoop.UITARS` | • `ByteDance-Seed/UI-TARS-1.5-7B` | Uses ByteDance's UI-TARS 1.5 model | Not Required |
 | `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
 
 ## AgentResponse
@@ -171,22 +179,6 @@ async for result in agent.run(task):
       elif output_type == "computer_call":
           print("\nTool Call Output:")
           print(output)
-```
-
-### Gradio UI
-
-You can also interact with the agent using a Gradio interface.
-
-```python
-# Ensure environment variables (e.g., API keys) are loaded
-# You might need a helper function like load_dotenv_files() if using .env
-# from utils import load_dotenv_files
-# load_dotenv_files()
-
-from agent.ui.gradio.app import create_gradio_ui
-
-app = create_gradio_ui()
-app.launch(share=False)
 ```
 
 **Note on Settings Persistence:**

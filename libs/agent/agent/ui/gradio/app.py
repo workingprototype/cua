@@ -162,6 +162,10 @@ MODEL_MAPPINGS = {
         "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
         "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
     },
+    "uitars": {
+        # UI-TARS models default to custom endpoint
+        "default": "ByteDance-Seed/UI-TARS-1.5-7B",
+    },
     "ollama": {
         # For Ollama models, we keep the original name
         "default": "llama3",  # A common default model
@@ -191,6 +195,7 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         "ANTHROPIC": AgentLoop.ANTHROPIC,
         "OMNI": AgentLoop.OMNI,
         "OMNI-OLLAMA": AgentLoop.OMNI,  # Special case for Ollama models with OMNI parser
+        "UITARS": AgentLoop.UITARS,     # UI-TARS implementation
     }
     agent_loop = loop_provider_map.get(loop_provider, AgentLoop.OPENAI)
 
@@ -281,7 +286,9 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         # Assign the determined model name
         model_name_to_use = cleaned_model_name
         # agent_loop remains AgentLoop.OMNI
-
+    elif agent_loop == AgentLoop.UITARS:
+        provider = LLMProvider.OAICOMPAT
+        model_name_to_use = MODEL_MAPPINGS["uitars"]["default"]  # Default 
     else:
         # Default to OpenAI if unrecognized loop
         provider = LLMProvider.OPENAI
@@ -551,6 +558,7 @@ def create_gradio_ui(
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model..."],  # Add custom model option
+        "UITARS": ["Custom model..."],  # UI-TARS options
     }
 
     # --- Apply Saved Settings (override defaults if available) ---
@@ -692,7 +700,7 @@ def create_gradio_ui(
                 with gr.Accordion("Configuration", open=True):
                     # Configuration options
                     agent_loop = gr.Dropdown(
-                        choices=["OPENAI", "ANTHROPIC", "OMNI"],
+                        choices=["OPENAI", "ANTHROPIC", "OMNI", "UITARS"],
                         label="Agent Loop",
                         value=initial_loop,
                         info="Select the agent loop provider",
@@ -807,6 +815,8 @@ def create_gradio_ui(
                         provider, cleaned_model_name_from_func, agent_loop_type = (
                             get_provider_and_model(model_string_to_analyze, agent_loop_choice)
                         )
+                        
+                        print(f"provider={provider} cleaned_model_name_from_func={cleaned_model_name_from_func} agent_loop_type={agent_loop_type} agent_loop_choice={agent_loop_choice}")
 
                         # Determine the final model name to send to the agent
                         # If custom selected, use the custom text box value, otherwise use the cleaned name
