@@ -51,12 +51,13 @@ docs = [
 respect-source-order = true
 
 [tool.pdm.resolution.overrides]
-cua-computer = { path = "libs/computer" }
-cua-omniparser = { path = "libs/omniparser" }
-cua-agent = { path = "libs/agent" }
-pylume = { path = "libs/pylume" }
-cua-computer-server = { path = "libs/computer-server" }
-cua-mcp-server = { path = "libs/mcp-server" }
+cua-computer = {path = "libs/computer"}
+cua-som = {path = "libs/som"}
+cua-agent = {path = "libs/agent"}
+pylume = {path = "libs/pylume"}
+cua-computer-server = {path = "libs/computer-server"}
+cua-mcp-server = {path = "libs/mcp-server"}
+cua-core = {path = "libs/core"}
 
 [tool.black]
 line-length = 100
