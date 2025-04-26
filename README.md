@@ -44,7 +44,7 @@
 If you only need the virtualization capabilities:
 
 ```bash
-sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
 For Lume usage instructions, refer to the [Lume documentation](./libs/lume/README.md).
@@ -54,7 +54,7 @@ If you want to use AI agents with virtualized environments:
 
 1. Install the Lume CLI:
    ```bash
-   sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
    ```
 
 2. Pull the latest macOS CUA image:
