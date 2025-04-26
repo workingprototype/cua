@@ -1,6 +1,6 @@
-## Getting Started
+# Getting Started
 
-### Project Structure
+## Project Structure
 
 The project is organized as a monorepo with these main packages:
 
@@ -14,40 +14,40 @@ The project is organized as a monorepo with these main packages:
 
 Each package has its own virtual environment and dependencies, managed through PDM.
 
-### Local Development Setup
+## Local Development Setup
 
 1. Install Lume CLI:
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-```
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+    ```
 
 2. Clone the repository:
 
-```bash
-git clone https://github.com/trycua/cua.git
-cd cua
-```
+    ```bash
+    git clone https://github.com/trycua/cua.git
+    cd cua
+    ```
 
 3. Create a `.env.local` file in the root directory with your API keys:
 
-```bash
-# Required for Anthropic provider
-ANTHROPIC_API_KEY=your_anthropic_key_here
+    ```bash
+    # Required for Anthropic provider
+    ANTHROPIC_API_KEY=your_anthropic_key_here
 
-# Required for OpenAI provider
-OPENAI_API_KEY=your_openai_key_here
-```
+    # Required for OpenAI provider
+    OPENAI_API_KEY=your_openai_key_here
+    ```
 
 4. Open the workspace in VSCode or Cursor:
 
-```bash
-# For Cua Python development
-code .vscode/py.code-workspace
+    ```bash
+    # For Cua Python development
+    code .vscode/py.code-workspace
 
-# For Lume (Swift) development
-code .vscode/lume.code-workspace
-```
+    # For Lume (Swift) development
+    code .vscode/lume.code-workspace
+    ```
 
 Using the workspace file is strongly recommended as it:
 
@@ -56,15 +56,15 @@ Using the workspace file is strongly recommended as it:
 - Enables debugging configurations
 - Maintains consistent settings across packages
 
-### Lume Development
+## Lume Development
 
 Refer to the [Lume README](../libs/lume/docs/Development.md) for instructions on how to develop the Lume CLI.
 
-### Python Development
+## Python Development
 
 There are two ways to instal Lume:
 
-#### Run the build script
+### Run the build script
 
 Run the build script to set up all packages:
 
@@ -81,7 +81,7 @@ This will:
 - Set up the correct Python path
 - Install development tools
 
-#### Install with PDM
+### Install with PDM
 
 If PDM is not already installed, you can follow the installation instructions [here](https://pdm-project.org/en/latest/#installation).
 
@@ -97,7 +97,7 @@ This installs all the dependencies for development, testing, and building the do
 pdm install -d
 ```
 
-### Running Examples
+## Running Examples
 
 The Python workspace includes launch configurations for all packages:
 
@@ -115,42 +115,42 @@ The workspace also includes compound launch configurations:
 
 - "Run Computer Examples + Server" - Runs both the Computer Examples and Server simultaneously
 
-### Docker Development Environment
+## Docker Development Environment
 
 As an alternative to installing directly on your host machine, you can use Docker for development. This approach has several advantages:
 
-#### Prerequisites
+### Prerequisites
 
 - Docker installed on your machine
 - Lume server running on your host (port 3000): `lume serve`
 
-#### Setup and Usage
+### Setup and Usage
 
 1. Build the development Docker image:
 
-```bash
-./scripts/run-docker-dev.sh build
-```
+    ```bash
+    ./scripts/run-docker-dev.sh build
+    ```
 
 2. Run an example in the container:
 
-```bash
-./scripts/run-docker-dev.sh run computer_examples.py
-```
+    ```bash
+    ./scripts/run-docker-dev.sh run computer_examples.py
+    ```
 
 3. Get an interactive shell in the container:
 
-```bash
-./scripts/run-docker-dev.sh run --interactive
-```
+    ```bash
+    ./scripts/run-docker-dev.sh run --interactive
+    ```
 
 4. Stop any running containers:
 
-```bash
-./scripts/run-docker-dev.sh stop
-```
+    ```bash
+    ./scripts/run-docker-dev.sh stop
+    ```
 
-#### How it Works
+### How it Works
 
 The Docker development environment:
 
@@ -161,7 +161,7 @@ The Docker development environment:
 
 > **Note**: The Docker container doesn't include the macOS-specific Lume executable. Instead, it connects to the Lume server running on your host machine via host.docker.internal:3000. Make sure to start the Lume server on your host before running examples in the container.
 
-### Cleanup and Reset
+## Cleanup and Reset
 
 If you need to clean up the environment (non-docker) and start fresh:
 
