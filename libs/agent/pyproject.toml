@@ -36,6 +36,7 @@ openai = [
 ]
 uitars = [
     "httpx>=0.27.0,<0.29.0",
+    "mlx-vlm>=0.1.25"
 ]
 ui = [
     "gradio>=5.23.3,<6.0.0",
