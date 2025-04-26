@@ -54,6 +54,21 @@ jobs:
         echo "VERSION=$VERSION"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+  validate-version:
+    runs-on: macos-latest
+    needs: determine-version
+    steps:
+    - uses: actions/checkout@v4
+    - name: Validate version
+      id: validate-version
+      run: |
+        CODE_VERSION=$(grep '__version__' libs/pylume/pylume/__init__.py | cut -d'"' -f2)
+        if [ "${{ needs.determine-version.outputs.version }}" != "$CODE_VERSION" ]; then
+          echo "Version mismatch: expected $CODE_VERSION, got ${{ needs.determine-version.outputs.version }}"
+          exit 1
+        fi
+        echo "Version validated: $CODE_VERSION"
+
   publish:
     needs: determine-version
     uses: ./.github/workflows/reusable-publish.yml
