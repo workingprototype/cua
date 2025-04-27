@@ -78,7 +78,13 @@ Refer to these notebooks for step-by-step guides on how to use the Computer-Use 
 
 ## Using the Gradio UI
 
-The agent includes a Gradio-based user interface for easy interaction. To use it:
+The agent includes a Gradio-based user interface for easier interaction.
+
+<div align="center">
+    <img src="../../img/agent_gradio_ui.png"/>
+</div>
+
+To use it:
 
 ```bash
 # Install with Gradio support
