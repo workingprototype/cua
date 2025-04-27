@@ -1,10 +1,12 @@
 """MLX LVM client implementation."""
 
+import io
 import logging
 import base64
 import tempfile
 import os
 from typing import Dict, List, Optional, Any, cast
+from PIL import Image
 
 from .base import BaseUITarsClient
 import mlx.core as mx
@@ -16,18 +18,21 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 logger = logging.getLogger(__name__)
 
 
-class MLXLMVUITarsClient(BaseUITarsClient):
+class MLXVLMUITarsClient(BaseUITarsClient):
     """MLX LVM client implementation class."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "mlx-community/UI-TARS-1.5-7B-4bit"):
+    def __init__(self, model: str = "mlx-community/UI-TARS-1.5-7B-4bit"):
         """Initialize MLX LVM client.
 
         Args:
-            api_key: Optional API key
             model: Model name or path (defaults to mlx-community/UI-TARS-1.5-7B-4bit)
         """
-        self.api_key = api_key
-        self.model = model
+        # Load model and processor
+        model_obj, processor = load(model)
+        self.config = load_config(model)
+        self.model = model_obj
+        self.processor = processor
+
 
     async def run_interleaved(
         self, messages: List[Dict[str, Any]], system: str, max_tokens: Optional[int] = None
@@ -78,39 +83,34 @@ class MLXLMVUITarsClient(BaseUITarsClient):
         
         # Combine all text parts into a single prompt
         combined_prompt = "\n".join(prompt_parts)
+        processed_images = []
+        for img in images:
+            if img.startswith('data:image/'):
+                # Extract base64 data
+                base64_data = img.split(',')[1]
+                
+                # Convert base64 to PIL Image directly
+                image_data = base64.b64decode(base64_data)
+                pil_image = Image.open(io.BytesIO(image_data))
+                processed_images.append(pil_image)
+            else:
+                # Assume it's already a valid URL or path
+                # For file paths or URLs, we'll load them with PIL
+                pil_image = Image.open(img)
+                processed_images.append(pil_image)
         
         try:
-            # Load model and processor
-            model_obj, processor = load(self.model)
-            config = load_config(self.model)
-            
-            # Process images to ensure they're in the right format
-            processed_images = []
-            for img in images:
-                if img.startswith('data:image/'):
-                    # Extract base64 data
-                    img_format = img.split(';')[0].split('/')[1]
-                    base64_data = img.split(',')[1]
-                    
-                    # Create a temporary file to store the image
-                    with tempfile.NamedTemporaryFile(suffix=f'.{img_format}', delete=False) as temp_file:
-                        temp_file.write(base64.b64decode(base64_data))
-                        processed_images.append(temp_file.name)
-                else:
-                    # Assume it's already a valid URL or path
-                    processed_images.append(img)
-            
             # Format prompt according to model requirements
             formatted_prompt = apply_chat_template(
-                processor, config, str(combined_prompt), num_images=len(processed_images)
+                self.processor, self.config, str(combined_prompt), num_images=len(processed_images)
             )
             
             # Cast processor to PreTrainedTokenizer to satisfy type checker
-            tokenizer = cast(PreTrainedTokenizer, processor)
+            tokenizer = cast(PreTrainedTokenizer, self.processor)
             
             # Generate response
             output = generate(
-                model_obj, 
+                self.model, 
                 tokenizer, 
                 str(formatted_prompt), 
                 processed_images, 
@@ -118,13 +118,6 @@ class MLXLMVUITarsClient(BaseUITarsClient):
                 max_tokens=max_tokens
             )
             
-            # Clean up temporary files
-            for img_path in processed_images:
-                if img_path.startswith(tempfile.gettempdir()) and os.path.exists(img_path):
-                    try:
-                        os.unlink(img_path)
-                    except Exception as e:
-                        logger.warning(f"Failed to delete temporary file {img_path}: {e}")
         except Exception as e:
             logger.error(f"Error generating response: {str(e)}")
             return {

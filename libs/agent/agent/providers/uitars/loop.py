@@ -23,7 +23,7 @@ from .tools.computer import ToolResult
 from .prompts import COMPUTER_USE, SYSTEM_PROMPT
 
 from .clients.oaicompat import OAICompatClient
-from .clients.mlxvlm import MLXLMVUITarsClient
+from .clients.mlxvlm import MLXVLMUITarsClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -137,8 +137,7 @@ class UITARSLoop(BaseLoop):
             if self.provider == LLMProvider.MLXVLM:
                 logger.info(f"Initializing MLX VLM client for UI-TARS with model {self.model}...")
                 
-                self.client = MLXLMVUITarsClient(
-                    api_key=self.api_key,
+                self.client = MLXVLMUITarsClient(
                     model=self.model,
                 )
                 
