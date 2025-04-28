@@ -32,6 +32,7 @@ class MLXVLMUITarsClient(BaseUITarsClient):
         self.config = load_config(model)
         self.model = model_obj
         self.processor = processor
+        self.model_name = model
 
 
     async def run_interleaved(
@@ -103,7 +104,7 @@ class MLXVLMUITarsClient(BaseUITarsClient):
                         "finish_reason": "error"
                     }
                 ],
-                "model": self.model,
+                "model": self.model_name,
                 "error": str(e)
             }
         
@@ -118,7 +119,7 @@ class MLXVLMUITarsClient(BaseUITarsClient):
                     "finish_reason": "stop"
                 }
             ],
-            "model": self.model
+            "model": self.model_name
         }
         
         return response
