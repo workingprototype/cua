@@ -136,7 +136,32 @@ The Gradio UI provides:
 
 ### Using UI-TARS
 
-You can use UI-TARS by first following the [deployment guide](https://github.com/bytedance/UI-TARS/blob/main/README_deploy.md). This will give you a provider URL like this: `https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1` which you can use in the gradio UI.
+The UI-TARS models are available in two forms:
+
+1. **MLX UI-TARS models** (Default): These models run locally using MLXVLM provider
+   - `mlx-community/UI-TARS-1.5-7B-4bit` (default) - 4-bit quantized version
+   - `mlx-community/UI-TARS-1.5-7B-6bit` - 6-bit quantized version for higher quality
+
+   ```python
+   agent = ComputerAgent(
+       computer=macos_computer,
+       loop=AgentLoop.UITARS,
+       model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-4bit")
+   )
+   ```
+
+2. **OpenAI-compatible UI-TARS**: For using the original ByteDance model
+   - If you want to use the original ByteDance UI-TARS model via an OpenAI-compatible API, follow the [deployment guide](https://github.com/bytedance/UI-TARS/blob/main/README_deploy.md)
+   - This will give you a provider URL like `https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1` which you can use in the code or Gradio UI:
+
+   ```python 
+   agent = ComputerAgent(
+       computer=macos_computer,
+       loop=AgentLoop.UITARS,
+       model=LLM(provider=LLMProvider.OAICOMPAT, name="tgi", 
+                provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
+   )
+   ```
 
 ## Agent Loops
 
@@ -146,7 +171,7 @@ The `cua-agent` package provides three agent loops variations, based on differen
 |:-----------|:-----------------|:------------|:-------------|
 | `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
 | `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
-| `AgentLoop.UITARS` | • `ByteDance-Seed/UI-TARS-1.5-7B` | Uses ByteDance's UI-TARS 1.5 model | Not Required |
+| `AgentLoop.UITARS` | • `mlx-community/UI-TARS-1.5-7B-4bit` (default)<br>• `mlx-community/UI-TARS-1.5-7B-6bit`<br>• `ByteDance-Seed/UI-TARS-1.5-7B` (via openAI-compatible endpoint) | Uses UI-TARS models with MLXVLM (default) or OAICOMPAT providers | Not Required |
 | `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
 
 ## AgentResponse
