@@ -102,9 +102,9 @@ class MLXVLMUITarsClient(BaseUITarsClient):
         def process_coords(match):
             model_x, model_y = int(match.group(1)), int(match.group(2))
             # Scale coordinates from model space to original image space
-            # Note that model_size is (height, width) while original_size is (width, height)
-            new_x = int(model_x * original_size[0] / model_size[1])  # Width
-            new_y = int(model_y * original_size[1] / model_size[0])  # Height
+            # Both original_size and model_size are in (width, height) format
+            new_x = int(model_x * original_size[0] / model_size[0])  # Width
+            new_y = int(model_y * original_size[1] / model_size[1])  # Height
             return f"<|box_start|>({new_x},{new_y})<|box_end|>"
         
         return re.sub(box_pattern, process_coords, text)
@@ -166,7 +166,8 @@ class MLXVLMUITarsClient(BaseUITarsClient):
                     # Note: smart_resize expects (height, width) but PIL gives (width, height)
                     height, width = original_size[1], original_size[0]
                     new_height, new_width = smart_resize(height, width)
-                    model_sizes[image_index] = (new_height, new_width)
+                    # Store model size in (width, height) format for consistent coordinate processing
+                    model_sizes[image_index] = (new_width, new_height)
                     
                     # Resize the image using the calculated dimensions from smart_resize
                     resized_image = pil_image.resize((new_width, new_height))
@@ -179,6 +180,18 @@ class MLXVLMUITarsClient(BaseUITarsClient):
             # Update the processed message content
             processed_messages[msg_idx] = msg.copy()
             processed_messages[msg_idx]["content"] = processed_content
+        
+        logger.info(f"resized {len(images)} from {original_sizes[0]} to {model_sizes[0]}")
+        
+        # Process user text input with box coordinates after image processing
+        # Swap original_size and model_size arguments for inverse transformation
+        for msg_idx, msg in enumerate(processed_messages):
+            if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                if "<|box_start|>" in msg.get("content") and original_sizes and model_sizes and 0 in original_sizes and 0 in model_sizes:
+                    orig_size = original_sizes[0]
+                    model_size = model_sizes[0]
+                    # Swap arguments to perform inverse transformation for user input
+                    processed_messages[msg_idx]["content"] = self._process_coordinates(msg["content"], model_size, orig_size)
         
         try:
             # Format prompt according to model requirements using the processor directly
