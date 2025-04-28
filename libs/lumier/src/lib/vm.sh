@@ -9,7 +9,7 @@ start_vm() {
 
     # Check if VM exists and its status using JSON format
     VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_NAME" -f json 2>&1)
-    
+
     # Check if VM not found error
     if [[ $VM_INFO == *"Virtual machine not found"* ]]; then
         IMAGE_NAME="${VERSION##*/}"
@@ -17,7 +17,8 @@ start_vm() {
     else
         # Parse the JSON status - check if it contains "status" : "running"
         if [[ $VM_INFO == *'"status" : "running"'* ]]; then
-            lume_stop "$VM_NAME" "$STORAGE_NAME"
+            # lume_stop "$VM_NAME" "$STORAGE_NAME"
+            lume stop "$VM_NAME" --storage "$STORAGE_NAME"
         fi
     fi
 
@@ -38,7 +39,8 @@ start_vm() {
     fi
 
     # Run VM with VNC and shared directory using curl
-    lume_run $SHARED_DIR_ARGS --storage "$STORAGE_NAME" "$VM_NAME" &
+    # lume_run $SHARED_DIR_ARGS --storage "$STORAGE_NAME" "$VM_NAME" &
+    lume run "$VM_NAME" --storage "$STORAGE_NAME" --no-display
 
     # Wait for VM to be running and VNC URL to be available
     vm_ip=""
@@ -69,7 +71,8 @@ start_vm() {
     
     if [ -z "$vm_ip" ] || [ -z "$vnc_url" ]; then
         echo "Timed out waiting for VM to start or VNC URL to become available."
-        lume_stop "$VM_NAME" "$STORAGE_NAME" > /dev/null 2>&1
+        # lume_stop "$VM_NAME" "$STORAGE_NAME" > /dev/null 2>&1
+        lume stop "$VM_NAME" --storage "$STORAGE_NAME" > /dev/null 2>&1
         exit 1
     fi
 
@@ -79,7 +82,7 @@ start_vm() {
     VNC_PORT=$(echo "$vnc_url" | sed -n 's/.*:\([0-9]\+\)$/\1/p')
     
     # Wait for SSH to become available
-        wait_for_ssh "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" 5 20
+    wait_for_ssh "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" 5 20
 
     # Export VNC variables for entry.sh to use
     export VNC_PORT
