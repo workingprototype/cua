@@ -47,73 +47,46 @@ class MLXVLMUITarsClient(BaseUITarsClient):
         Returns:
             Response dict
         """
-        # Extract text and images from messages
-        prompt_parts = []
-        images = []
-        
-        # Add system message first
-        prompt_parts.append(system)
-        
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", [])
+        # Ensure the system message is included
+        if not any(msg.get("role") == "system" for msg in messages):
+            messages = [{"role": "system", "content": system}] + messages
             
-            # Handle different content formats
-            if isinstance(content, str):
-                # If content is a string, just add it as text
-                prompt_parts.append(f"{role}: {content}")
-            elif isinstance(content, list):
-                # If content is a list, process each item
-                text_parts = []
-                
+        # Extract any images from the messages
+        images = []
+        for msg in messages:
+            content = msg.get("content", [])
+            if isinstance(content, list):
                 for item in content:
-                    if item.get("type") == "text":
-                        text_parts.append(item.get("text", ""))
-                    elif item.get("type") == "image_url":
-                        # Extract image URL and add to images list
+                    if item.get("type") == "image_url":
                         image_url = item.get("image_url", {}).get("url", "")
                         if image_url.startswith("data:image/"):
-                            # Extract base64 data and convert to URL or save as temp file
-                            # For now, we'll just store the URL directly
-                            images.append(image_url)
-                
-                # Add text parts to prompt
-                if text_parts:
-                    prompt_parts.append(f"{role}: {''.join(text_parts)}")
-        
-        # Combine all text parts into a single prompt
-        combined_prompt = "\n".join(prompt_parts)
-        processed_images = []
-        for img in images:
-            if img.startswith('data:image/'):
-                # Extract base64 data
-                base64_data = img.split(',')[1]
-                
-                # Convert base64 to PIL Image directly
-                image_data = base64.b64decode(base64_data)
-                pil_image = Image.open(io.BytesIO(image_data))
-                processed_images.append(pil_image)
-            else:
-                # Assume it's already a valid URL or path
-                # For file paths or URLs, we'll load them with PIL
-                pil_image = Image.open(img)
-                processed_images.append(pil_image)
+                            # Extract base64 data
+                            base64_data = image_url.split(',')[1]
+                            
+                            # Convert base64 to PIL Image
+                            image_data = base64.b64decode(base64_data)
+                            pil_image = Image.open(io.BytesIO(image_data))
+                            images.append(pil_image)
+                        else:
+                            # Handle file path or URL
+                            pil_image = Image.open(image_url)
+                            images.append(pil_image)
         
         try:
-            # Format prompt according to model requirements
-            formatted_prompt = apply_chat_template(
-                self.processor, self.config, str(combined_prompt), num_images=len(processed_images)
+            # Format prompt according to model requirements using the processor directly
+            prompt = self.processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
             )
-            
-            # Cast processor to PreTrainedTokenizer to satisfy type checker
             tokenizer = cast(PreTrainedTokenizer, self.processor)
             
             # Generate response
             output = generate(
                 self.model, 
                 tokenizer, 
-                str(formatted_prompt), 
-                processed_images, 
+                str(prompt), 
+                images, 
                 verbose=False,
                 max_tokens=max_tokens
             )
