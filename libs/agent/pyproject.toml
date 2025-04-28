@@ -85,7 +85,8 @@ all = [
     "requests>=2.31.0,<3.0.0",
     "ollama>=0.4.7,<0.5.0",
     "gradio>=5.23.3,<6.0.0",
-    "python-dotenv>=1.0.1,<2.0.0"
+    "python-dotenv>=1.0.1,<2.0.0",
+    "mlx-vlm>=0.1.25"
 ]
 
 [tool.pdm]
