@@ -165,8 +165,8 @@ MODEL_MAPPINGS = {
     "uitars": {
         # UI-TARS models using MLXVLM provider
         "default": "mlx-community/UI-TARS-1.5-7B-4bit",
-        "UI-TARS-1.5-7B-4bit": "mlx-community/UI-TARS-1.5-7B-4bit",
-        "UI-TARS-1.5-7B-6bit": "mlx-community/UI-TARS-1.5-7B-6bit"
+        "mlx-community/UI-TARS-1.5-7B-4bit": "mlx-community/UI-TARS-1.5-7B-4bit",
+        "mlx-community/UI-TARS-1.5-7B-6bit": "mlx-community/UI-TARS-1.5-7B-6bit"
     },
     "ollama": {
         # For Ollama models, we keep the original name
