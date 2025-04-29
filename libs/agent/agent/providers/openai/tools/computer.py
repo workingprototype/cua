@@ -240,11 +240,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
 
             if len(mapped_keys) > 1:
                 # For key combinations (like Ctrl+C)
-                for k in mapped_keys:
-                    await self.computer.interface.press_key(k)
-                await asyncio.sleep(0.1)
-                for k in reversed(mapped_keys):
-                    await self.computer.interface.press_key(k)
+                await self.computer.interface.hotkey(*mapped_keys)
             else:
                 # Single key press
                 await self.computer.interface.press_key(mapped_keys[0])

@@ -8,7 +8,7 @@ NavigationKey = Literal['pagedown', 'pageup', 'home', 'end', 'left', 'right', 'u
 SpecialKey = Literal['enter', 'esc', 'tab', 'space', 'backspace', 'del']
 
 # Modifier key literals
-ModifierKey = Literal['ctrl', 'shift', 'win', 'command', 'option']
+ModifierKey = Literal['ctrl', 'alt', 'shift', 'win', 'command', 'option']
 
 # Function key literals
 FunctionKey = Literal['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12']
@@ -39,6 +39,7 @@ class Key(Enum):
     DELETE = 'del'
     
     # Modifier keys
+    ALT = 'alt'
     CTRL = 'ctrl'
     SHIFT = 'shift'
     WIN = 'win'
@@ -85,6 +86,7 @@ class Key(Enum):
             'delete': cls.DELETE,
             'del': cls.DELETE,
             # Modifier key mappings
+            'alt': cls.ALT,
             'ctrl': cls.CTRL,
             'control': cls.CTRL,
             'shift': cls.SHIFT,
@@ -95,7 +97,6 @@ class Key(Enum):
             'cmd': cls.COMMAND,
             '⌘': cls.COMMAND,
             'option': cls.OPTION,
-            'alt': cls.OPTION,
             '⌥': cls.OPTION,
         }
         
