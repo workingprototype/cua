@@ -94,8 +94,15 @@ class OAICompatClient(BaseUITarsClient):
         """
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
-        final_messages = [{"role": "system", "content": system}]
-
+        final_messages = [
+            {
+                "role": "system", 
+                "content": [
+                    { "type": "text", "text": system }
+                ]
+            }
+        ]
+        
         # Process messages
         for item in messages:
             if isinstance(item, dict):
