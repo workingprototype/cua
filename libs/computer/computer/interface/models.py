@@ -90,6 +90,7 @@ class Key(Enum):
             'shift': cls.SHIFT,
             'win': cls.WIN,
             'windows': cls.WIN,
+            'super': cls.WIN,
             'command': cls.COMMAND,
             'cmd': cls.COMMAND,
             '⌘': cls.COMMAND,
