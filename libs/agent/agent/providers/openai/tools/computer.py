@@ -162,8 +162,8 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
                 y = kwargs.get("y")
                 if x is None or y is None:
                     raise ToolError("x and y coordinates are required for scroll action")
-                scroll_x = kwargs.get("scroll_x", 0) // 20
-                scroll_y = kwargs.get("scroll_y", 0) // 20
+                scroll_x = kwargs.get("scroll_x", 0) // 50
+                scroll_y = kwargs.get("scroll_y", 0) // 50
                 return await self.handle_scroll(x, y, scroll_x, scroll_y)
             elif type == "screenshot":
                 return await self.screenshot()
@@ -240,11 +240,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
 
             if len(mapped_keys) > 1:
                 # For key combinations (like Ctrl+C)
-                for k in mapped_keys:
-                    await self.computer.interface.press_key(k)
-                await asyncio.sleep(0.1)
-                for k in reversed(mapped_keys):
-                    await self.computer.interface.press_key(k)
+                await self.computer.interface.hotkey(*mapped_keys)
             else:
                 # Single key press
                 await self.computer.interface.press_key(mapped_keys[0])
