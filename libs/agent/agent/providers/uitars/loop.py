@@ -20,7 +20,7 @@ from computer import Computer
 from .utils import add_box_token, parse_actions, parse_action_parameters
 from .tools.manager import ToolManager
 from .tools.computer import ToolResult
-from .prompts import COMPUTER_USE, SYSTEM_PROMPT
+from .prompts import COMPUTER_USE, SYSTEM_PROMPT, MAC_SPECIFIC_NOTES
 
 from .clients.oaicompat import OAICompatClient
 
@@ -184,7 +184,7 @@ class UITARSLoop(BaseLoop):
         if first_user_idx is not None and instruction:
             # Create the computer use prompt
             user_prompt = COMPUTER_USE.format(
-                instruction=instruction,
+                instruction='\n'.join([instruction, MAC_SPECIFIC_NOTES]),
                 language="English"
             )
             
