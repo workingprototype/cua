@@ -145,8 +145,13 @@ class OAICompatClient(BaseUITarsClient):
                     message = {"role": "user", "content": [{"type": "text", "text": item}]}
                 final_messages.append(message)
 
-        payload = {"model": self.model, "messages": final_messages, "temperature": self.temperature}
-        payload["max_tokens"] = max_tokens or self.max_tokens
+        payload = {
+            "model": self.model, 
+            "messages": final_messages, 
+            "max_tokens": max_tokens or self.max_tokens,
+            "temperature": self.temperature,
+            "top_p": 0.7,
+        }
 
         try:
             async with aiohttp.ClientSession() as session:
