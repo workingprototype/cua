@@ -232,8 +232,11 @@ class UITARSLoop(BaseLoop):
                     if self.client is None:
                         raise RuntimeError("Failed to initialize client")
 
-                # Convert messages to UI-TARS format
+                # Get messages in standard format from the message manager
+                self.message_manager.messages = messages.copy()
                 prepared_messages = self.message_manager.get_messages()
+                
+                # Convert messages to UI-TARS format
                 uitars_messages = self.to_uitars_format(prepared_messages)
                 
                 # Log request
