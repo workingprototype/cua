@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
 
 start_vm() {
-    # Set up dedicated storage for this VM
-    STORAGE_NAME="storage_${VM_NAME}"
-    if [ -n "$HOST_STORAGE_PATH" ]; then
-        lume config storage add "$STORAGE_NAME" "$HOST_STORAGE_PATH" >/dev/null 2>&1 || true
+    # Determine storage path for VM
+    STORAGE_PATH="$HOST_STORAGE_PATH"
+    if [ -z "$STORAGE_PATH" ]; then
+        STORAGE_PATH="storage_${VM_NAME}"
     fi
 
     # Check if VM exists and its status using JSON format
-    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_NAME" -f json 2>&1)
+    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>&1)
 
     # Check if VM not found error
     if [[ $VM_INFO == *"Virtual machine not found"* ]]; then
         IMAGE_NAME="${VERSION##*/}"
-        lume pull "$IMAGE_NAME" "$VM_NAME" --storage "$STORAGE_NAME"
+        lume pull "$IMAGE_NAME" "$VM_NAME" --storage "$STORAGE_PATH"
     else
         # Parse the JSON status - check if it contains "status" : "running"
         if [[ $VM_INFO == *'"status" : "running"'* ]]; then
-            # lume_stop "$VM_NAME" "$STORAGE_NAME"
-            lume stop "$VM_NAME" --storage "$STORAGE_NAME"
+            lume_stop "$VM_NAME" "$STORAGE_PATH"
+            # lume stop "$VM_NAME" --storage "$STORAGE_PATH"
         fi
     fi
 
     # Set VM parameters
-    lume set "$VM_NAME" --cpu "$CPU_CORES" --memory "${RAM_SIZE}MB" --display "$DISPLAY" --storage "$STORAGE_NAME"
+    lume set "$VM_NAME" --cpu "$CPU_CORES" --memory "${RAM_SIZE}MB" --display "$DISPLAY" --storage "$STORAGE_PATH"
 
     # Fetch VM configuration
-    CONFIG_JSON=$(lume get "$VM_NAME" --storage "$STORAGE_NAME" -f json)
+    CONFIG_JSON=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json)
     
     # Setup data directory args if necessary
     SHARED_DIR_ARGS=""
@@ -39,8 +39,8 @@ start_vm() {
     fi
 
     # Run VM with VNC and shared directory using curl
-    # lume_run $SHARED_DIR_ARGS --storage "$STORAGE_NAME" "$VM_NAME" &
-    lume run "$VM_NAME" --storage "$STORAGE_NAME" --no-display
+    lume_run $SHARED_DIR_ARGS --storage "$STORAGE_PATH" "$VM_NAME" &
+    # lume run "$VM_NAME" --storage "$STORAGE_PATH" --no-display
 
     # Wait for VM to be running and VNC URL to be available
     vm_ip=""
@@ -50,7 +50,7 @@ start_vm() {
     
     while [ $attempt -lt $max_attempts ]; do
         # Get VM info as JSON
-        VM_INFO=$(lume get "$VM_NAME" -f json 2>/dev/null)
+        VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
         
         # Check if VM has status 'running'
         if [[ $VM_INFO == *'"status" : "running"'* ]]; then
@@ -71,8 +71,8 @@ start_vm() {
     
     if [ -z "$vm_ip" ] || [ -z "$vnc_url" ]; then
         echo "Timed out waiting for VM to start or VNC URL to become available."
-        # lume_stop "$VM_NAME" "$STORAGE_NAME" > /dev/null 2>&1
-        lume stop "$VM_NAME" --storage "$STORAGE_NAME" > /dev/null 2>&1
+        lume_stop "$VM_NAME" "$STORAGE_PATH" > /dev/null 2>&1
+        # lume stop "$VM_NAME" --storage "$STORAGE_PATH" > /dev/null 2>&1
         exit 1
     fi
 
@@ -100,13 +100,16 @@ start_vm() {
 
 stop_vm() {
     echo "Stopping VM '$VM_NAME'..."
-    STORAGE_NAME="storage_${VM_NAME}"
+    STORAGE_PATH="$HOST_STORAGE_PATH"
+    if [ -z "$STORAGE_PATH" ]; then
+        STORAGE_PATH="storage_${VM_NAME}"
+    fi
     # Check if the VM exists and is running (use lume get for speed)
-    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_NAME" -f json 2>/dev/null)
+    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
     if [[ -z "$VM_INFO" || $VM_INFO == *"Virtual machine not found"* ]]; then
         echo "VM '$VM_NAME' does not exist."
     elif [[ $VM_INFO == *'"status" : "running"'* ]]; then
-        lume_stop "$VM_NAME" "$STORAGE_NAME"
+        lume_stop "$VM_NAME" "$STORAGE_PATH"
         echo "VM '$VM_NAME' was running and is now stopped."
     elif [[ $VM_INFO == *'"status" : "stopped"'* ]]; then
         echo "VM '$VM_NAME' is already stopped."
