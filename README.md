@@ -47,6 +47,13 @@ If you only need the virtualization capabilities:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
+Optionally, if you don't want Lume to run as a background service:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh) --no-background-service"
+```
+
+**Note:** If you choose this option, you'll need to manually start the Lume API service whenever needed by running `lume serve` in your terminal. This applies to Option 2 after completing step 1.
+
 For Lume usage instructions, refer to the [Lume documentation](./libs/lume/README.md).
 
 ### Option 2: Full Computer-Use Agent Capabilities
@@ -62,17 +69,12 @@ If you want to use AI agents with virtualized environments:
    lume pull macos-sequoia-cua:latest
    ```
 
-3. Start Lume daemon service:
-   ```bash
-   lume serve
-   ```
-
-4. Install the Python libraries:
+3. Install the Python libraries:
    ```bash
    pip install cua-computer cua-agent[all]
    ```
 
-5. Use the libraries in your Python code:
+4. Use the libraries in your Python code:
    ```python
    from computer import Computer
    from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
@@ -95,7 +97,7 @@ If you want to use AI agents with virtualized environments:
    
    Explore the [Agent Notebook](./notebooks/) for a ready-to-run example.
 
-6. Optionally, you can use the Agent with a Gradio UI:
+5. Optionally, you can use the Agent with a Gradio UI:
 
    ```python
    from utils import load_dotenv_files
