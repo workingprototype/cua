@@ -75,6 +75,41 @@ You can then use the script in your MCP configuration like this:
 }
 ```
 
+## Development Guide
+
+If you want to develop with the cua-mcp-server directly without installation, you can use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "cua-agent": {
+      "command": "/Users/YOURUSERNAME/cua/.venv/bin/python",
+      "args": ["-m", "mcp_server.server"],
+      "env": {
+        "PYTHONPATH": "/Users/YOURUSERNAME/cua/libs/mcp-server:/Users/YOURUSERNAME/cua/libs/agent:/Users/YOURUSERNAME/cua/libs/computer:/Users/YOURUSERNAME/cua/libs/core:/Users/YOURUSERNAME/cua/libs/pylume",
+        "CUA_AGENT_LOOP": "UITARS",
+        "CUA_MODEL_PROVIDER": "OAICOMPAT",
+        "CUA_MODEL_NAME": "ByteDance-Seed/UI-TARS-1.5-7B",
+        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1"
+      }
+    }
+  }
+}
+```
+
+To see the logs:
+```
+tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
+```
+
+This configuration:
+- Uses your local Python virtual environment to run the server module directly
+- Sets the Python path to include all necessary library dependencies
+- Works with Claude Desktop, Cursor, or any other MCP client
+- Automatically uses your development code without requiring installation
+
+Just add this to your MCP client's configuration and it will use your local development version of the server.
+
 ## Claude Desktop Integration
 
 To use with Claude Desktop, add an entry to your Claude Desktop configuration (`claude_desktop_config.json`, typically found in `~/.config/claude-desktop/`):
