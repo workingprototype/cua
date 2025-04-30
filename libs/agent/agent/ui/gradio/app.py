@@ -323,63 +323,6 @@ def get_ollama_models() -> List[str]:
         logging.error(f"Error getting Ollama models: {e}")
         return []
 
-
-def extract_synthesized_text(
-    result: Union[AgentResponse, Dict[str, Any]],
-) -> Tuple[str, MetadataDict]:
-    """Extract synthesized text from the agent result."""
-    synthesized_text = ""
-    metadata = MetadataDict()
-
-    if "output" in result and result["output"]:
-        for output in result["output"]:
-            if output.get("type") == "reasoning":
-                metadata["title"] = "🧠 Reasoning"
-                content = output.get("content", "")
-                if content:
-                    synthesized_text += f"{content}\n"
-            elif output.get("type") == "message":
-                # Handle message type outputs - can contain rich content
-                content = output.get("content", [])
-
-                # Content is usually an array of content blocks
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "output_text":
-                            text_value = block.get("text", "")
-                            if text_value:
-                                synthesized_text += f"{text_value}\n"
-
-            elif output.get("type") == "computer_call":
-                action = output.get("action", {})
-                action_type = action.get("type", "")
-
-                # Create a descriptive text about the action
-                if action_type == "click":
-                    button = action.get("button", "")
-                    x = action.get("x", "")
-                    y = action.get("y", "")
-                    synthesized_text += f"Clicked {button} at position ({x}, {y}).\n"
-                elif action_type == "type":
-                    text = action.get("text", "")
-                    synthesized_text += f"Typed: {text}.\n"
-                elif action_type == "keypress":
-                    # Extract key correctly from either keys array or key field
-                    if isinstance(action.get("keys"), list):
-                        key = ", ".join(action.get("keys"))
-                    else:
-                        key = action.get("key", "")
-
-                    synthesized_text += f"Pressed key: {key}\n"
-                else:
-                    synthesized_text += f"Performed {action_type} action.\n"
-
-                metadata["status"] = "done"
-                metadata["title"] = f"🛠️ {synthesized_text.strip().splitlines()[-1]}"
-
-    return synthesized_text.strip(), metadata
-
-
 def create_computer_instance(verbosity: int = logging.INFO) -> Computer:
     """Create or get the global Computer instance."""
     global global_computer
