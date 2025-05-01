@@ -50,10 +50,10 @@ async with Computer() as macos_computer:
       # model=LLM(provider=LLMProvider.ANTHROPIC)
       # or
       # loop=AgentLoop.OMNI,
-      # model=LLM(provider=LLMProvider.OLLAMA, model="gemma3")
+      # model=LLM(provider=LLMProvider.OLLAMA, name="gemma3")
       # or
       # loop=AgentLoop.UITARS,
-      # model=LLM(provider=LLMProvider.OAICOMPAT, model="tgi", provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
+      # model=LLM(provider=LLMProvider.OAICOMPAT, name="name="ByteDance-Seed/UI-TARS-1.5-7B", provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
   )
 
   tasks = [
