@@ -52,7 +52,7 @@ def serve() -> FastMCP:
     @server.tool()
     async def screenshot_cua(ctx: Context) -> Image:
         """
-        Take a screenshot of the current screen and return the image.
+        Take a screenshot of the current MacOS VM screen and return the image. Use this before running a CUA task to get a snapshot of the current state.
 
         Args:
             ctx: The MCP context
@@ -73,7 +73,7 @@ def serve() -> FastMCP:
     @server.tool()
     async def run_cua_task(ctx: Context, task: str) -> Tuple[str, Image]:
         """
-        Run a Computer-Use Agent (CUA) task and return the results.
+        Run a Computer-Use Agent (CUA) task in a MacOS VM and return the results.
 
         Args:
             ctx: The MCP context
@@ -187,7 +187,7 @@ def serve() -> FastMCP:
     @server.tool()
     async def run_multi_cua_tasks(ctx: Context, tasks: List[str]) -> List:
         """
-        Run multiple CUA tasks in sequence and return the combined results.
+        Run multiple CUA tasks in a MacOS VM in sequence and return the combined results.
 
         Args:
             ctx: The MCP context
