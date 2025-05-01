@@ -68,82 +68,148 @@ def load_cursor_images():
 last_known_cursor_position = None
 last_known_thought = None
 
-def extract_thought_from_api_response(filename):
-    """Extract thought from API response for the current frame."""
+def parse_agent_response(filename_or_turn_dir):
+    """Parse agent response JSON file to extract text, actions, and cursor positions."""
+    
+    # Check if we're getting a filename or turn directory
+    if os.path.isdir(filename_or_turn_dir):
+        turn_dir = filename_or_turn_dir
+    else:
+        turn_dir = os.path.dirname(filename_or_turn_dir)
+    
+    # Find agent response files in the turn directory
+    agent_response_files = [f for f in os.listdir(turn_dir) if f.endswith('_agent_response.json')]
+    
+    result = {
+        "text": [],
+        "actions": [],
+        "cursor_positions": []
+    }
+    
+    for agent_file in agent_response_files:
+        try:
+            with open(os.path.join(turn_dir, agent_file), 'r') as f:
+                data = json.load(f)
+                response_data = data.get('response', {})
+                
+                # First check for content field (simple text response)
+                if response_data.get("content"):
+                    result["text"].append(response_data.get("content", ""))
+                
+                # Process outputs array if present
+                outputs = response_data.get("output", [])
+                for output in outputs:
+                    output_type = output.get("type")
+                    
+                    if output_type == "message":
+                        content = output.get("content", [])
+                        for content_part in content:
+                            if content_part.get("text"):
+                                result["text"].append(content_part.get("text", ""))
+                    
+                    elif output_type == "reasoning":
+                        # Handle reasoning (thought) content
+                        summary_content = output.get("summary", [])
+                        if summary_content:
+                            for summary_part in summary_content:
+                                if summary_part.get("type") == "summary_text":
+                                    result["text"].append(summary_part.get("text", ""))
+                        else:
+                            summary_text = output.get("text", "")
+                            if summary_text:
+                                result["text"].append(summary_text)
+                    
+                    elif output_type == "computer_call":
+                        action = output.get("action", {})
+                        if action:
+                            result["actions"].append(action)
+                            # Extract cursor position if available
+                            if action.get("x") is not None and action.get("y") is not None:
+                                result["cursor_positions"].append((action.get("x"), action.get("y")))
+        except Exception as e:
+            print(f"Error processing {agent_file}: {e}")
+    
+    return result
+
+def extract_thought_from_agent_response(filename_or_turn_dir):
+    """Extract thought from agent response for the current frame."""
     global last_known_thought
     
-    turn_dir = os.path.dirname(filename)
-    api_response_files = [f for f in os.listdir(turn_dir) if f.endswith('_response.json')]
+    agent_response = parse_agent_response(filename_or_turn_dir)
     
-    for api_file in api_response_files:
-        try:
-            with open(os.path.join(turn_dir, api_file), 'r') as f:
-                data = json.load(f)
-                # Extract content from response
-                content = data.get('response', {}).get('choices', [{}])[0].get('message', {}).get('content', '')
-                
-                # Extract the Thought section
-                thought_match = re.search(r"Thought: (.*?)(?:\nAction:|$)", content, re.DOTALL)
-                if thought_match:
-                    thought = thought_match.group(1).strip()
-                    if thought:
-                        last_known_thought = thought
-                        return thought
-        except (json.JSONDecodeError, FileNotFoundError, KeyError):
-            pass
+    if agent_response["text"]:
+        # Use the first text entry as the thought
+        last_known_thought = agent_response["text"][0]
+        return last_known_thought
     
     # Return the last known thought if no new thought is found
     return last_known_thought
 
-def extract_cursor_position_from_filename(filename):
-    """Extract cursor position from a filename containing click info."""
+def extract_cursor_position_from_agent_response(filename_or_turn_dir):
+    """Extract cursor position from agent response."""
     global last_known_cursor_position
     
-    # For 'screenshot_NNN_click_TIMESTAMP.png', try to extract coordinates
-    match = re.search(r'click_(\d+)_(\d+)_\d+\.png$', filename)
-    if match:
-        position = (int(match.group(1)), int(match.group(2)))
-        last_known_cursor_position = position
-        return position
+    # Check if we're getting a filename or turn directory
+    if os.path.isdir(filename_or_turn_dir):
+        turn_dir = filename_or_turn_dir
+    else:
+        turn_dir = os.path.dirname(filename_or_turn_dir)
     
-    # Check if we have position info from API response
-    turn_dir = os.path.dirname(filename)
-    api_response_files = [f for f in os.listdir(turn_dir) if f.endswith('_response.json')]
+    # Find agent response files in the turn directory
+    agent_response_files = [f for f in os.listdir(turn_dir) if f.endswith('_agent_response.json')]
     
-    for api_file in api_response_files:
+    for agent_file in agent_response_files:
         try:
-            with open(os.path.join(turn_dir, api_file), 'r') as f:
+            with open(os.path.join(turn_dir, agent_file), 'r') as f:
                 data = json.load(f)
-                # Extract action from response
-                content = data.get('response', {}).get('choices', [{}])[0].get('message', {}).get('content', '')
-                # Look for coordinates in the action
-                # First try the pattern from the example: click(start_box='(28,15)')
-                coord_match = re.search(r"click\(start_box='\((\d+),(\d+)\)'\)", content)
-                if coord_match:
-                    position = (int(coord_match.group(1)), int(coord_match.group(2)))
-                    last_known_cursor_position = position
-                    return position
+                response_data = data.get('response', {})
                 
-                # Try alternative pattern: click(start_box='<|box_start|>(x,y)<|box_end|>')
-                alt_match = re.search(r"click\(start_box='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'\)", content)
-                if alt_match:
-                    position = (int(alt_match.group(1)), int(alt_match.group(2)))
-                    last_known_cursor_position = position
-                    return position
-        except (json.JSONDecodeError, FileNotFoundError, KeyError):
-            pass
+                # Process outputs array if present
+                outputs = response_data.get("output", [])
+                for output in outputs:
+                    if output.get("type") == "computer_call":
+                        action = output.get("action", {})
+                        if action.get("x") is not None and action.get("y") is not None:
+                            position = (action.get("x"), action.get("y"))
+                            last_known_cursor_position = position
+                            return position
+        except Exception as e:
+            print(f"Error processing {agent_file}: {e}")
     
-    # No new position found, return the last known position
+    # No position found in agent response, return the last known position
     return last_known_cursor_position
 
-def extract_action_from_filename(filename):
-    """Determine the action type from the filename pattern."""
-    if 'click' in filename:
-        return "clicking"
-    elif 'type' in filename:
-        return "typing"
+def extract_action_from_agent_response(filename_or_turn_dir):
+    """Determine the action type from agent response."""
+    # Check if we're getting a filename or turn directory
+    if os.path.isdir(filename_or_turn_dir):
+        turn_dir = filename_or_turn_dir
     else:
-        return "normal"
+        turn_dir = os.path.dirname(filename_or_turn_dir)
+    
+    # Find agent response files in the turn directory
+    agent_response_files = [f for f in os.listdir(turn_dir) if f.endswith('_agent_response.json')]
+    
+    for agent_file in agent_response_files:
+        try:
+            with open(os.path.join(turn_dir, agent_file), 'r') as f:
+                data = json.load(f)
+                response_data = data.get('response', {})
+                
+                # Process outputs array if present
+                outputs = response_data.get("output", [])
+                for output in outputs:
+                    if output.get("type") == "computer_call":
+                        action = output.get("action", {})
+                        action_type = action.get("type", "")
+                        if action_type == "click":
+                            return "clicking"
+                        elif action_type == "type" or action_type == "input":
+                            return "typing"
+        except Exception as e:
+            print(f"Error processing {agent_file}: {e}")
+    
+    return "normal"
 
 def create_animated_vignette(image, frame_index):
     """
@@ -451,58 +517,54 @@ def create_cursor_overlay(base_image, position, cursor_images, thought_text=None
     
     return result
 
-def get_screenshot_files(trajectory_dir):
+def get_turns(trajectory_dir):
     """
-    Get all screenshot files from a trajectory directory, sorted by sequence number.
+    Get all turn folders from a trajectory directory and their corresponding files.
     
     Args:
-        trajectory_dir: Path to trajectory directory containing turn_XXX folders
+        trajectory_dir: Path to trajectory directory
         
     Returns:
-        List of tuples (path, sequence_number, action_type, position)
+        List of tuples (turn_dir, agent_response_path, image_file_path)
     """
-    screenshot_files = []
+    turns = []
     
     # List all turn directories in order
     turn_dirs = sorted([d for d in os.listdir(trajectory_dir) if d.startswith('turn_')], 
-                      key=lambda x: int(x.split('_')[1]))
+                     key=lambda x: int(x.split('_')[1]))
     
-    for turn_dir in turn_dirs:
-        turn_path = os.path.join(trajectory_dir, turn_dir)
+    for turn_dir_name in turn_dirs:
+        turn_path = os.path.join(trajectory_dir, turn_dir_name)
         if not os.path.isdir(turn_path):
             continue
-            
-        # Get all screenshot files in this turn
-        files = [f for f in os.listdir(turn_path) if f.startswith('screenshot_') and f.endswith('.png')]
         
-        for file in files:
-            file_path = os.path.join(turn_path, file)
-            
-            # Extract sequence number from filename (e.g., screenshot_003_...)
-            seq_match = re.search(r'screenshot_(\d+)', file)
-            if seq_match:
-                seq_number = int(seq_match.group(1))
-                
-                # Determine action type from filename
-                action_type = extract_action_from_filename(file)
-                
-                # Get cursor position if available
-                position = extract_cursor_position_from_filename(file_path)
-                
-                screenshot_files.append((file_path, seq_number, action_type, position))
+        # Find agent response files (if any)
+        agent_response_files = [f for f in os.listdir(turn_path) if f.endswith('_agent_response.json')]
+        agent_response_path = None
+        if agent_response_files:
+            agent_response_path = os.path.join(turn_path, agent_response_files[0])
+        
+        # Find screenshot files (if any)
+        screenshot_files = [f for f in os.listdir(turn_path) if f.startswith('screenshot_') and f.endswith('.png')]
+        screenshot_path = None
+        if screenshot_files:
+            # Sort by sequence number to get the main one
+            sorted_screenshots = sorted(screenshot_files, 
+                                      key=lambda x: int(re.search(r'screenshot_(\d+)', x).group(1) 
+                                                   if re.search(r'screenshot_(\d+)', x) else 0))
+            screenshot_path = os.path.join(turn_path, sorted_screenshots[0]) if sorted_screenshots else None
+        
+        turns.append((turn_path, agent_response_path, screenshot_path))
     
-    # Sort by sequence number
-    screenshot_files.sort(key=lambda x: x[1])
-    
-    return screenshot_files
+    return turns
 
 def process_trajectory(trajectory_dir, output_dir, cursors):
     """Process a trajectory directory and create output frames."""
-    # Get all screenshot files
-    screenshot_files = get_screenshot_files(trajectory_dir)
+    # Get all turns with their associated files
+    turns = get_turns(trajectory_dir)
     
-    if not screenshot_files:
-        print(f"No screenshot files found in {trajectory_dir}")
+    if not turns:
+        print(f"No turn directories found in {trajectory_dir}")
         return
     
     # Create output directory
@@ -511,20 +573,27 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
     # Track frame index
     frame_index = 0
     
-    # Process each screenshot
+    # Process each turn
     prev_img = None
     prev_cursor_pos = None
     
-    for i, (file_path, seq_number, action_type, position) in enumerate(tqdm(screenshot_files, desc="Processing frames")):
+    for turn_path, agent_response_path, screenshot_path in tqdm(turns, desc="Processing turns"):
+        if not screenshot_path:
+            continue  # Skip turns without screenshots
+        
         # Load the current image
         try:
-            current_img = Image.open(file_path)
+            current_img = Image.open(screenshot_path)
         except Exception as e:
-            print(f"Error loading image {file_path}: {e}")
+            print(f"Error loading image {screenshot_path}: {e}")
             continue
         
-        # Current cursor position
-        current_cursor_pos = position
+        # Extract action and position from agent response
+        action_type = extract_action_from_agent_response(turn_path)
+        current_cursor_pos = extract_cursor_position_from_agent_response(turn_path)
+        
+        # Extract thought from agent response
+        current_thought = extract_thought_from_agent_response(turn_path)
         
         # Check if the current frame has an action (click/typing)
         is_action_frame = action_type in ["clicking", "typing"]
@@ -535,9 +604,6 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
                 half_frames = FRAMES_PER_CLICK // 2
                 # First half of animation uses PREVIOUS image
                 for j in range(half_frames):
-                    # Get the thought from the API response
-                    current_thought = extract_thought_from_api_response(file_path)
-                    
                     output_img = create_cursor_overlay(
                         prev_img, current_cursor_pos, cursors,
                         thought_text=current_thought,
@@ -552,9 +618,6 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
                 
                 # Second half uses CURRENT image
                 for j in range(half_frames, FRAMES_PER_CLICK):
-                    # Get the thought from the API response
-                    current_thought = extract_thought_from_api_response(file_path)
-                    
                     output_img = create_cursor_overlay(
                         current_img, current_cursor_pos, cursors,
                         thought_text=current_thought,
@@ -569,9 +632,6 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
             else:
                 # If no previous frame, use current for full animation
                 for j in range(FRAMES_PER_CLICK):
-                    # Get the thought from the API response
-                    current_thought = extract_thought_from_api_response(file_path)
-                    
                     output_img = create_cursor_overlay(
                         current_img, current_cursor_pos, cursors,
                         thought_text=current_thought,
@@ -585,9 +645,6 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
                     frame_index += 1
         else:
             # Regular frame with normal cursor
-            # Get the thought from the API response
-            current_thought = extract_thought_from_api_response(file_path)
-            
             output_img = create_cursor_overlay(
                 current_img, current_cursor_pos, cursors,
                 thought_text=current_thought,
@@ -599,42 +656,43 @@ def process_trajectory(trajectory_dir, output_dir, cursors):
             output_img.save(os.path.join(output_dir, f"frame_{frame_index:04d}.png"))
             frame_index += 1
         
-        # Add position interpolation frames if we're not at the last frame
-        if i < len(screenshot_files) - 1:
-            # Get next position
-            next_cursor_pos = screenshot_files[i+1][3]
-            
-            # Only interpolate if both positions are valid and different
-            if current_cursor_pos is not None and next_cursor_pos is not None and current_cursor_pos != next_cursor_pos:
-                for j in range(1, FRAMES_PER_MOVE):
-                    progress = j / FRAMES_PER_MOVE
-                    interp_x = current_cursor_pos[0] + (next_cursor_pos[0] - current_cursor_pos[0]) * progress
-                    interp_y = current_cursor_pos[1] + (next_cursor_pos[1] - current_cursor_pos[1]) * progress
-                    interp_pos = (int(interp_x), int(interp_y))
-                    
-                    # Create interpolated movement frame
-                    # Get the thought from the API response
-                    current_thought = extract_thought_from_api_response(file_path)
-                    
-                    output_img = create_cursor_overlay(
-                        current_img, interp_pos, cursors,
-                        thought_text=current_thought,
-                        cursor_type="normal",
-                        frame_index=frame_index
-                    )
-                    # Apply animated vignette effect
-                    output_img = create_animated_vignette(output_img, frame_index)
-                    output_img.save(os.path.join(output_dir, f"frame_{frame_index:04d}.png"))
-                    frame_index += 1
-        
-        # Save current frame as previous for next iteration
+        # Store current frame as previous for next iteration
         prev_img = current_img
         prev_cursor_pos = current_cursor_pos
+        
+        # Add position interpolation frames if we have both current and next turn data
+        current_turn_index = turns.index((turn_path, agent_response_path, screenshot_path))
+        if current_turn_index < len(turns) - 1:
+            # Get next turn data
+            next_turn_path, next_agent_response_path, next_screenshot_path = turns[current_turn_index + 1]
+            if next_screenshot_path:  # Only if next turn has a screenshot
+                # Get next position
+                next_cursor_pos = extract_cursor_position_from_agent_response(next_turn_path)
+                
+                # Only interpolate if both positions are valid and different
+                if current_cursor_pos is not None and next_cursor_pos is not None and current_cursor_pos != next_cursor_pos:
+                    for j in range(1, FRAMES_PER_MOVE):
+                        progress = j / FRAMES_PER_MOVE
+                        interp_x = current_cursor_pos[0] + (next_cursor_pos[0] - current_cursor_pos[0]) * progress
+                        interp_y = current_cursor_pos[1] + (next_cursor_pos[1] - current_cursor_pos[1]) * progress
+                        interp_pos = (int(interp_x), int(interp_y))
+                        
+                        # Create interpolated movement frame
+                        output_img = create_cursor_overlay(
+                            current_img, interp_pos, cursors,
+                            thought_text=current_thought,
+                            cursor_type="normal",
+                            frame_index=frame_index
+                        )
+                        # Apply animated vignette effect
+                        output_img = create_animated_vignette(output_img, frame_index)
+                        output_img.save(os.path.join(output_dir, f"frame_{frame_index:04d}.png"))
+                        frame_index += 1
 
 def main():
     """Main function to process the trajectory and create video frames."""
     parser = argparse.ArgumentParser(description='Create a video from a trajectory folder.')
-    parser.add_argument('trajectory_dir', type=str, help='Path to the trajectory folder')
+    parser.add_argument('trajectory_dir', type=str, nargs='?', help='Path to the trajectory folder')
     parser.add_argument('--output_dir', type=str, default=OUTPUT_DIR, help='Output directory for video frames')
     parser.add_argument('--fps', type=int, default=24, help='Frames per second for the output video')
     parser.add_argument('--output_video', type=str, default='output_video.mp4', help='Path to output video file')
@@ -642,6 +700,28 @@ def main():
     args = parser.parse_args()
     
     trajectory_dir = args.trajectory_dir
+    
+    # If trajectory_dir is not provided, find the latest folder in './trajectories'
+    if trajectory_dir is None:
+        trajectories_base_dir = "./trajectories"
+        if os.path.exists(trajectories_base_dir) and os.path.isdir(trajectories_base_dir):
+            # Get all directories in the trajectories folder
+            trajectory_folders = [os.path.join(trajectories_base_dir, d) for d in os.listdir(trajectories_base_dir) 
+                                 if os.path.isdir(os.path.join(trajectories_base_dir, d))]
+            
+            if trajectory_folders:
+                # Sort folders by modification time, most recent last
+                trajectory_folders.sort(key=lambda x: os.path.getmtime(x))
+                # Use the most recent folder
+                trajectory_dir = trajectory_folders[-1]
+                print(f"No trajectory directory specified, using latest: {trajectory_dir}")
+            else:
+                print(f"No trajectory folders found in {trajectories_base_dir}")
+                return
+        else:
+            print(f"Trajectories directory {trajectories_base_dir} does not exist")
+            return
+    
     output_dir = args.output_dir
     fps = args.fps
     output_video = args.output_video

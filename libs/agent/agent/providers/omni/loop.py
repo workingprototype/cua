@@ -670,6 +670,8 @@ class OmniLoop(BaseLoop):
                     parsed_screen=parsed_screen,
                     parser=self.parser
                 )
+                # Log standardized response for ease of parsing
+                self._log_api_call("agent_response", request=None, response=openai_compatible_response)
 
                 # Yield the response to the caller
                 yield openai_compatible_response
