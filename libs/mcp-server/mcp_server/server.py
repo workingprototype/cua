@@ -94,14 +94,7 @@ def serve() -> FastMCP:
 
             # Determine which loop to use
             loop_str = os.getenv("CUA_AGENT_LOOP", "OMNI")
-            if loop_str == "OPENAI":
-                loop = AgentLoop.OPENAI
-            elif loop_str == "ANTHROPIC":
-                loop = AgentLoop.ANTHROPIC
-            elif loop_str == "UITARS":
-                loop = AgentLoop.UITARS
-            else:
-                loop = AgentLoop.OMNI
+            loop = getattr(AgentLoop, loop_str)
 
             # Determine provider
             provider_str = os.getenv("CUA_MODEL_PROVIDER", "ANTHROPIC")
@@ -113,6 +106,9 @@ def serve() -> FastMCP:
             # Get base URL for provider (if needed)
             provider_base_url = os.getenv("CUA_PROVIDER_BASE_URL", None)
 
+            # Get api key for provider (if needed)
+            api_key = os.getenv("CUA_PROVIDER_API_KEY", None)
+
             # Create agent with the specified configuration
             agent = ComputerAgent(
                 computer=global_computer,
@@ -122,6 +118,7 @@ def serve() -> FastMCP:
                     name=model_name,
                     provider_base_url=provider_base_url,
                 ),
+                api_key=api_key,
                 save_trajectory=False,
                 only_n_most_recent_images=int(os.getenv("CUA_MAX_IMAGES", "3")),
                 verbosity=logging.INFO,

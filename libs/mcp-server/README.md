@@ -68,7 +68,7 @@ You can then use the script in your MCP configuration like this:
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
         "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
-        "ANTHROPIC_API_KEY": "your-api-key"
+        "CUA_PROVIDER_API_KEY": "your-api-key"
       }
     }
   }
@@ -90,7 +90,8 @@ If you want to develop with the cua-mcp-server directly without installation, yo
         "CUA_AGENT_LOOP": "UITARS",
         "CUA_MODEL_PROVIDER": "OAICOMPAT",
         "CUA_MODEL_NAME": "ByteDance-Seed/UI-TARS-1.5-7B",
-        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1"
+        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1",
+        "CUA_PROVIDER_API_KEY": "your-api-key"
       }
     }
   }
