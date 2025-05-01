@@ -44,8 +44,15 @@
 If you only need the virtualization capabilities:
 
 ```bash
-sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
+
+Optionally, if you don't want Lume to run as a background service:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh) --no-background-service"
+```
+
+**Note:** If you choose this option, you'll need to manually start the Lume API service whenever needed by running `lume serve` in your terminal. This applies to Option 2 after completing step 1.
 
 For Lume usage instructions, refer to the [Lume documentation](./libs/lume/README.md).
 
@@ -54,7 +61,7 @@ If you want to use AI agents with virtualized environments:
 
 1. Install the Lume CLI:
    ```bash
-   sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
    ```
 
 2. Pull the latest macOS CUA image:
@@ -62,17 +69,12 @@ If you want to use AI agents with virtualized environments:
    lume pull macos-sequoia-cua:latest
    ```
 
-3. Start Lume daemon service:
-   ```bash
-   lume serve
-   ```
-
-4. Install the Python libraries:
+3. Install the Python libraries:
    ```bash
    pip install cua-computer cua-agent[all]
    ```
 
-5. Use the libraries in your Python code:
+4. Use the libraries in your Python code:
    ```python
    from computer import Computer
    from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
@@ -95,7 +97,7 @@ If you want to use AI agents with virtualized environments:
    
    Explore the [Agent Notebook](./notebooks/) for a ready-to-run example.
 
-6. Optionally, you can use the Agent with a Gradio UI:
+5. Optionally, you can use the Agent with a Gradio UI:
 
    ```python
    from utils import load_dotenv_files
@@ -223,6 +225,12 @@ Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonica
       <td align="center" valign="top" width="14.28%"><a href="https://www.trytruffle.ai/"><img src="https://avatars.githubusercontent.com/u/50844303?v=4?s=100" width="100px;" alt="Rahul Karajgikar"/><br /><sub><b>Rahul Karajgikar</b></sub></a><br /><a href="#code-rahulkarajgikar" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/trospix"><img src="https://avatars.githubusercontent.com/u/81363696?v=4?s=100" width="100px;" alt="trospix"/><br /><sub><b>trospix</b></sub></a><br /><a href="#code-trospix" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://wavee.world/invitation/b96d00e6-b802-4a1b-8a66-2e3854a01ffd"><img src="https://avatars.githubusercontent.com/u/22633385?v=4?s=100" width="100px;" alt="Ikko Eltociear Ashimine"/><br /><sub><b>Ikko Eltociear Ashimine</b></sub></a><br /><a href="#code-eltociear" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/dp221125"><img src="https://avatars.githubusercontent.com/u/10572119?v=4?s=100" width="100px;" alt="한석호(MilKyo)"/><br /><sub><b>한석호(MilKyo)</b></sub></a><br /><a href="#code-dp221125" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://www.encona.com/"><img src="https://avatars.githubusercontent.com/u/891558?v=4?s=100" width="100px;" alt="Rahim Nathwani"/><br /><sub><b>Rahim Nathwani</b></sub></a><br /><a href="#code-rahimnathwani" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://mjspeck.github.io/"><img src="https://avatars.githubusercontent.com/u/20689127?v=4?s=100" width="100px;" alt="Matt Speck"/><br /><sub><b>Matt Speck</b></sub></a><br /><a href="#code-mjspeck" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/FinnBorge"><img src="https://avatars.githubusercontent.com/u/9272726?v=4?s=100" width="100px;" alt="FinnBorge"/><br /><sub><b>FinnBorge</b></sub></a><br /><a href="#code-FinnBorge" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

@@ -31,6 +31,7 @@ pip install "cua-agent[all]"
 # or install specific loop providers
 pip install "cua-agent[openai]" # OpenAI Cua Loop
 pip install "cua-agent[anthropic]" # Anthropic Cua Loop
+pip install "cua-agent[uitars]"    # UI-Tars support
 pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
 pip install "cua-agent[ui]" # Gradio UI for the agent
 ```
@@ -78,7 +79,13 @@ Refer to these notebooks for step-by-step guides on how to use the Computer-Use 
 
 ## Using the Gradio UI
 
-The agent includes a Gradio-based user interface for easy interaction. To use it:
+The agent includes a Gradio-based user interface for easier interaction.
+
+<div align="center">
+    <img src="../../img/agent_gradio_ui.png"/>
+</div>
+
+To use it:
 
 ```bash
 # Install with Gradio support
