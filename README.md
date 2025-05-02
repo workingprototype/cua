@@ -82,7 +82,7 @@ If you want to use AI agents with virtualized environments:
    async with Computer(verbosity=logging.DEBUG) as macos_computer:
      agent = ComputerAgent(
          computer=macos_computer,
-         loop=AgentLoop.OPENAI, # or AgentLoop.ANTHROPIC, or AgentLoop.OMNI
+         loop=AgentLoop.OPENAI, # or AgentLoop.ANTHROPIC, or AgentLoop.UITARS, or AgentLoop.OMNI
          model=LLM(provider=LLMProvider.OPENAI) # or LLM(provider=LLMProvider.ANTHROPIC)
      )
 

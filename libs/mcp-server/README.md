@@ -68,11 +68,49 @@ You can then use the script in your MCP configuration like this:
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
         "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
-        "ANTHROPIC_API_KEY": "your-api-key"
+        "CUA_PROVIDER_API_KEY": "your-api-key"
       }
     }
   }
 }
+```
+
+## Development Guide
+
+If you want to develop with the cua-mcp-server directly without installation, you can use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "cua-agent": {
+      "command": "/bin/bash",
+      "args": ["~/cua/libs/mcp-server/scripts/start_mcp_server.sh"],
+      "env": {
+        "CUA_AGENT_LOOP": "UITARS",
+        "CUA_MODEL_PROVIDER": "OAICOMPAT",
+        "CUA_MODEL_NAME": "ByteDance-Seed/UI-TARS-1.5-7B",
+        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1",
+        "CUA_PROVIDER_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+This configuration:
+- Uses the start_mcp_server.sh script which automatically sets up the Python path and runs the server module
+- Works with Claude Desktop, Cursor, or any other MCP client
+- Automatically uses your development code without requiring installation
+
+Just add this to your MCP client's configuration and it will use your local development version of the server.
+
+### Troubleshooting
+
+If you get a `/bin/bash: ~/cua/libs/mcp-server/scripts/start_mcp_server.sh: No such file or directory` error, try changing the path to the script to be absolute instead of relative.
+
+To see the logs:
+```
+tail -n 20 -f ~/Library/Logs/Claude/mcp*.log
 ```
 
 ## Claude Desktop Integration
