@@ -202,8 +202,10 @@ class MLXVLMUITarsClient(BaseUITarsClient):
             )
             tokenizer = cast(PreTrainedTokenizer, self.processor)
             
+            print("generating response...")
+            
             # Generate response
-            output = generate(
+            text_content, usage = generate(
                 self.model, 
                 tokenizer, 
                 str(prompt), 
@@ -212,6 +214,10 @@ class MLXVLMUITarsClient(BaseUITarsClient):
                 max_tokens=max_tokens
             )
             
+            from pprint import pprint
+            print("DEBUG - AGENT GENERATION --------")
+            pprint(text_content)
+            print("DEBUG - AGENT GENERATION --------")
         except Exception as e:
             logger.error(f"Error generating response: {str(e)}")
             return {
@@ -235,9 +241,9 @@ class MLXVLMUITarsClient(BaseUITarsClient):
             model_size = model_sizes[0]
             
             # Check if output contains box tokens that need processing
-            if "<|box_start|>" in output:
+            if "<|box_start|>" in text_content:
                 # Process coordinates from model space back to original image space
-                output = self._process_coordinates(output, orig_size, model_size)
+                text_content = self._process_coordinates(text_content, orig_size, model_size)
         
         # Format response to match OpenAI format
         response = {
@@ -245,12 +251,13 @@ class MLXVLMUITarsClient(BaseUITarsClient):
                 {
                     "message": {
                         "role": "assistant",
-                        "content": output
+                        "content": text_content
                     },
                     "finish_reason": "stop"
                 }
             ],
-            "model": self.model_name
+            "model": self.model_name,
+            "usage": usage
         }
         
         return response
