@@ -440,7 +440,7 @@ class UITARSLoop(BaseLoop):
     # MAIN LOOP - IMPLEMENTING ABSTRACT METHOD
     ###########################################
 
-    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
         """Run the agent loop with provided messages.
 
         Args:
@@ -513,6 +513,8 @@ class UITARSLoop(BaseLoop):
                     messages,
                     model=self.model,
                 )
+                # Log standardized response for ease of parsing
+                self._log_api_call("agent_response", request=None, response=agent_response)
                 yield agent_response
                 
                 # Check if we should continue this conversation

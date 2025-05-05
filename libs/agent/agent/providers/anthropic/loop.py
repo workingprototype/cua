@@ -279,6 +279,8 @@ class AnthropicLoop(BaseLoop):
                     messages,
                     model=self.model,
                 )
+                # Log standardized response for ease of parsing
+                self._log_api_call("agent_response", request=None, response=openai_compatible_response)
                 await queue.put(openai_compatible_response)
 
                 if not should_continue:
