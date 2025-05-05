@@ -35,9 +35,12 @@ fi
 if mountpoint -q /storage; then
     echo "/storage is mounted"
 fi
-if mountpoint -q /data; then
-    echo "/data is mounted"
+if mountpoint -q /shared; then
+    echo "/shared is mounted"
 fi
+# if mountpoint -q /data; then
+#     echo "/data is mounted"
+# fi
 
 # Log startup info
 echo "Lumier VM is starting..."
@@ -82,16 +85,6 @@ if [ -n "${VNC_PORT:-}" ] && [ -n "${VNC_PASSWORD:-}" ]; then
   NOVNC_PID=$!
   disown $NOVNC_PID
   echo "noVNC interface available at: http://localhost:8006/vnc.html?password=${VNC_PASSWORD}&autoconnect=true&logging=debug"
-fi
-
-# Run any post-startup hooks
-if [ -d "/run/hooks" ]; then
-  for hook in /run/hooks/*; do
-    if [ -x "$hook" ]; then
-      echo "Running hook: $(basename "$hook")"
-      "$hook"
-    fi
-  done
 fi
 
 echo "Lumier is running. Press Ctrl+C to stop."

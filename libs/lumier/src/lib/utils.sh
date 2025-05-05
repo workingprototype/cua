@@ -52,21 +52,42 @@ execute_remote_script() {
 
     echo "VNC password exported to VM: $vnc_password"
 
-    data_folder_path="$VM_SHARED_FILES_PATH/$data_folder"
-    echo "Data folder path in VM: $data_folder_path"
+    # Set a default mount point for data in the VM if data_folder is provided
+    if [ -n "$data_folder" ]; then
+        shared_folder_path="/Volumes/My Shared Files"
+        echo "Data folder path in VM: $shared_folder_path"
+    else
+        shared_folder_path=""
+    fi
 
     # Read the script content and prepend the shebang
     script_content="#!/usr/bin/env bash\n"
-    if [ -n "$data_folder" ]; then
-        script_content+="export VNC_PASSWORD='$vnc_password'\n"
-        script_content+="export DATA_FOLDER_PATH='$data_folder_path'\n"
+    # Always export VNC_PASSWORD
+    script_content+="export VNC_PASSWORD='$vnc_password'\n"
+    # Export SHARED_FOLDER_PATH only if we have a data folder path
+    if [ -n "$shared_folder_path" ]; then
+        script_content+="export SHARED_FOLDER_PATH='$shared_folder_path'\n"
     fi
+    
+    # Add debug message to the script to confirm it's being run
+    script_content+="echo \"[DEBUG] Starting on-logon script execution...\"\n"
+    
+    # Add the original script content
     script_content+="$(<"$script_path")"
-
+    
+    # Add more debug messages after script execution
+    script_content+="\necho \"[DEBUG] Finished executing on-logon script.\"\n"
+    
+    # Print debug info to the docker logs
+    echo "[DEBUG] Executing remote script with content length: $(echo -n "$script_content" | wc -c) bytes"
+    echo "[DEBUG] Script path: $script_path"
+    
     # Use a here-document to send the script content
     sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$user@$host" "bash -s" <<EOF
 $script_content
 EOF
+
+    echo "[DEBUG] Script execution completed."
 
     # Check the exit status of the sshpass command
     if [ $? -ne 0 ]; then
@@ -74,10 +95,6 @@ EOF
         return 1
     fi
 }
-
-# Example usage
-# output = execute_remote_script('192.168.1.100', 'username', 'password', '/path/to/script.sh')
-# print(output)
 
 extract_json_field() {
     local field_name=$1

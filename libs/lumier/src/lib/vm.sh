@@ -8,33 +8,45 @@ start_vm() {
     fi
 
     # Check if VM exists and its status using JSON format
-    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>&1)
+    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
+    echo "VM_INFO: $VM_INFO"
 
     # Check if VM not found error
     if [[ $VM_INFO == *"Virtual machine not found"* ]]; then
         IMAGE_NAME="${VERSION##*/}"
-        lume pull "$IMAGE_NAME" "$VM_NAME" --storage "$STORAGE_PATH"
+        # Parse registry and organization from VERSION
+        REGISTRY=$(echo $VERSION | cut -d'/' -f1)
+        ORGANIZATION=$(echo $VERSION | cut -d'/' -f2)
+        
+        echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Pulling VM image $IMAGE_NAME from $REGISTRY/$ORGANIZATION to $STORAGE_PATH"
+        lume_pull "$IMAGE_NAME" "$VM_NAME" "$STORAGE_PATH" "$REGISTRY" "$ORGANIZATION"
     else
         # Parse the JSON status - check if it contains "status" : "running"
         if [[ $VM_INFO == *'"status" : "running"'* ]]; then
             lume_stop "$VM_NAME" "$STORAGE_PATH"
-            # lume stop "$VM_NAME" --storage "$STORAGE_PATH"
         fi
     fi
 
-    # Set VM parameters
-    lume set "$VM_NAME" --cpu "$CPU_CORES" --memory "${RAM_SIZE}MB" --display "$DISPLAY" --storage "$STORAGE_PATH"
+    # Format memory size for display purposes
+    MEMORY_DISPLAY="$RAM_SIZE"
+    if [[ ! "$RAM_SIZE" == *"GB"* && ! "$RAM_SIZE" == *"MB"* ]]; then
+        MEMORY_DISPLAY="${RAM_SIZE}MB"
+    fi
+    
+    # Set VM parameters using the new wrapper function
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Updating VM settings cpu=$CPU_CORES name=$VM_NAME location=$STORAGE_PATH display=$DISPLAY memory=$MEMORY_DISPLAY disk_size=unchanged"
+    lume_set "$VM_NAME" "$STORAGE_PATH" "$CPU_CORES" "$RAM_SIZE" "$DISPLAY"
 
     # Fetch VM configuration
-    CONFIG_JSON=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json)
+    CONFIG_JSON=$(lume_get "$VM_NAME" "$STORAGE_PATH")
     
-    # Setup data directory args if necessary
+    # Setup shared directory args if necessary
     SHARED_DIR_ARGS=""
-    if [ -d "/data" ]; then
-        if [ -n "$HOST_DATA_PATH" ]; then
-            SHARED_DIR_ARGS="--shared-dir=$HOST_DATA_PATH"
+    if [ -d "/shared" ]; then
+        if [ -n "$HOST_SHARED_PATH" ]; then
+            SHARED_DIR_ARGS="--shared-dir=$HOST_SHARED_PATH"
         else
-            echo "Warning: /data volume exists but HOST_DATA_PATH is not set. Cannot mount volume."
+            echo "Warning: /shared volume exists but HOST_SHARED_PATH is not set. Cannot mount volume."
         fi
     fi
 
@@ -49,8 +61,9 @@ start_vm() {
     attempt=0
     
     while [ $attempt -lt $max_attempts ]; do
-        # Get VM info as JSON
-        VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
+        # Get VM info as JSON using the API function
+        VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
+        # VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
         
         # Check if VM has status 'running'
         if [[ $VM_INFO == *'"status" : "running"'* ]]; then
@@ -76,7 +89,6 @@ start_vm() {
         exit 1
     fi
 
-        
     # Parse VNC URL to extract password and port
     VNC_PASSWORD=$(echo "$vnc_url" | sed -n 's/.*:\(.*\)@.*/\1/p')
     VNC_PORT=$(echo "$vnc_url" | sed -n 's/.*:\([0-9]\+\)$/\1/p')
@@ -90,22 +102,98 @@ start_vm() {
     
     # Execute on-logon.sh if present
     on_logon_script="/run/lifecycle/on-logon.sh"
-    if [ -f "$on_logon_script" ]; then
-        execute_remote_script "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" "$on_logon_script" "$VNC_PASSWORD" "$DATA_FOLDER"
-    fi
+    # Use HOST_SHARED_PATH which is set earlier in the script
+    echo "Executing on-logon.sh on VM..."
+    execute_remote_script "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" "$on_logon_script" "$VNC_PASSWORD" "$HOST_SHARED_PATH"
+}
 
-    # The VM is still running because we never killed lume run.
-    # If you want to stop the VM at some point, you can kill $LUME_PID or use lume_stop.
+# Get VM information using curl
+lume_get() {
+    local vm_name="$1"
+    local storage="$2"
+    local format="${3:-json}"
+    local debug="${4:-false}"
+    
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+    
+    # URL encode the storage path for the query parameter
+    # Replace special characters with their URL encoded equivalents
+    local encoded_storage=$(echo "$storage" | sed 's/\//%2F/g' | sed 's/ /%20/g' | sed 's/:/%3A/g')
+    
+    # Construct API URL with encoded storage parameter
+    local api_url="http://${api_host}:${api_port}/lume/vms/${vm_name}?storage=${encoded_storage}"
+    
+    # Construct the full curl command
+    local curl_cmd="curl --connect-timeout 6000 --max-time 5000 -s '$api_url'"
+    
+    # Print debug info
+    if [[ "$debug" == "true" || "$LUMIER_DEBUG" == "1" ]]; then
+        echo "[DEBUG] Calling API: $api_url"
+        echo "[DEBUG] Full curl command: $curl_cmd"
+    fi
+    
+    # Always log the curl command before sending
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Executing curl request: $api_url"
+    
+    # Make the API call
+    local response=$(curl --connect-timeout 6000 \
+      --max-time 5000 \
+      -s \
+      "$api_url")
+    
+    # Print the response if debugging is enabled
+    if [[ "$debug" == "true" || "$LUMIER_DEBUG" == "1" ]]; then
+        echo "[DEBUG] API Response:"
+        echo "$response" | jq '.' 2>/dev/null || echo "$response"
+    fi
+    
+    # Output the response
+    echo "$response"
+}
+
+# Set VM properties using curl
+lume_set() {
+    local vm_name="$1"
+    local storage="$2"
+    local cpu="${3:-4}"
+    local memory="${4:-8192}"
+    local display="${5:-1024x768}"
+    
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+    
+    # Handle memory format for the API
+    if [[ "$memory" == *"GB"* ]]; then
+        # Already in GB format, keep as is
+        :  # No-op
+    elif [[ "$memory" =~ ^[0-9]+$ ]]; then
+        # If memory is a simple number, assume MB and convert to GB
+        memory="$(awk "BEGIN { printf \"%.1f\", $memory/1024 }")GB"
+    fi
+    
+    echo "[DEBUG] Formatted memory value: $memory"
+    
+    curl --connect-timeout 6000 \
+      --max-time 5000 \
+      -s \
+      -X PATCH \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"cpu\": $cpu,
+        \"memory\": \"$memory\",
+        \"display\": \"$display\",
+        \"storage\": \"$storage\"
+      }" \
+      "http://${api_host}:${api_port}/lume/vms/${vm_name}"
 }
 
 stop_vm() {
     echo "Stopping VM '$VM_NAME'..."
     STORAGE_PATH="$HOST_STORAGE_PATH"
-    if [ -z "$STORAGE_PATH" ]; then
-        STORAGE_PATH="storage_${VM_NAME}"
-    fi
-    # Check if the VM exists and is running (use lume get for speed)
-    VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
+    # Check if the VM exists and is running
+    echo "STORAGE_PATH: $STORAGE_PATH"
+    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
     if [[ -z "$VM_INFO" || $VM_INFO == *"Virtual machine not found"* ]]; then
         echo "VM '$VM_NAME' does not exist."
     elif [[ $VM_INFO == *'"status" : "running"'* ]]; then
@@ -119,7 +207,15 @@ stop_vm() {
 }
 
 is_vm_running() {
-    lume ls | grep -q "$VM_NAME"
+    # Check VM status using the API function
+    local vm_info
+    vm_info=$(lume_get "$VM_NAME" "$HOST_STORAGE_PATH")
+    if [[ $vm_info == *'"status" : "running"'* ]]; then
+        return 0 # Running
+    else
+        return 1 # Not running or doesn't exist
+    fi
+    # lume ls | grep -q "$VM_NAME" # Old CLI check
 }
 
 # Stop VM with storage location specified using curl
@@ -133,6 +229,36 @@ lume_stop() {
       -d '{"storage":"'$storage'"}' \
       "http://host.docker.internal:3000/lume/vms/${vm_name}/stop"
 }
+
+# Pull a VM image using curl
+lume_pull() {
+    local image="$1"      # Image name with tag
+    local vm_name="$2"    # Name for the new VM
+    local storage="$3"    # Storage location
+    local registry="${4:-ghcr.io}"  # Registry, default is ghcr.io
+    local organization="${5:-trycua}" # Organization, default is trycua
+    
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+    
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Pulling image $image from $registry/$organization to $storage"
+    
+    # Pull image via API
+    curl --connect-timeout 6000 \
+      --max-time 5000 \
+      -s \
+      -X POST \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"image\": \"$image\",
+        \"name\": \"$vm_name\",
+        \"registry\": \"$registry\",
+        \"organization\": \"$organization\",
+        \"storage\": \"$storage\"
+      }" \
+      "http://${api_host}:${api_port}/lume/pull"
+}
+
 
 # Run VM with VNC client started and shared directory using curl
 lume_run() {
@@ -175,7 +301,5 @@ lume_run() {
       -H 'Content-Type: application/json' \
       -d '$json_body' \
       http://host.docker.internal:3000/lume/vms/$vm_name/run"
-    echo "[lume_run] Running:"
-    echo "$curl_cmd"
     eval "$curl_cmd"
 }

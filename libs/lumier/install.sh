@@ -111,21 +111,11 @@ check_dependencies() {
     exit 1
   fi
   
-  # Check if socat is installed
-  if ! command -v socat &> /dev/null; then
-    echo "${YELLOW}Warning: socat is required but not installed.${NORMAL}"
-    echo "Installing socat with Homebrew..."
-    
-    # Check if Homebrew is installed
-    if ! command -v brew &> /dev/null; then
-      echo "${RED}Error: Homebrew is required to install socat.${NORMAL}"
-      echo "Please install Homebrew first: https://brew.sh/"
-      echo "Or install socat manually, then run this script again."
-      exit 1
-    fi
-    
-    # Install socat
-    brew install socat
+  # Check if netcat (nc) is installed - should be pre-installed on macOS
+  if ! command -v nc &> /dev/null; then
+    echo "${RED}Error: netcat (nc) is required but not found.${NORMAL}"
+    echo "This should be pre-installed on macOS. Please check your system installation."
+    exit 1
   fi
   
   # Check if Docker is installed

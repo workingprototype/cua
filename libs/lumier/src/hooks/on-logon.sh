@@ -1,8 +1,9 @@
-setup_script="$DATA_FOLDER_PATH/setup.sh"
+lifecycle_folder="$SHARED_FOLDER_PATH/lifecycle"
+on_logon_script="$lifecycle_folder/on-logon.sh"
 
-if [ -f "$setup_script" ]; then
-    chmod +x "$setup_script"
-    source "$setup_script"
+if [ -f "$on_logon_script" ]; then
+    chmod +x "$on_logon_script"
+    source "$on_logon_script"
 else
-    echo "Setup script not found at: $setup_script"
+    echo "No on-logon script found in $lifecycle_folder"
 fi

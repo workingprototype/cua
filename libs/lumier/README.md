@@ -15,19 +15,55 @@
 </h1>
 </div>
 
-**Lumier** provides a Docker-based interface for the `lume` CLI, allowing you to easily run macOS virtual machines inside a container with VNC access. It creates a secure tunnel to execute lume commands on your host machine while providing a containerized environment for your applications.
+**Lumier** provides a Docker-based interface for the `lume` CLI, allowing you to easily run macOS virtual machines inside a container with VNC access. It interacts directly with the `lume serve` API running on your host machine to manage VMs.
 
 ## Requirements
 
 Before using Lumier, make sure you have:
 
-1. Install [lume](https://github.com/trycua/cua/blob/main/libs/lume/README.md) on your host machine
+1. Install [lume](https://github.com/trycua/cua/blob/main/libs/lume/README.md) on your host machine and ensure `lume serve` is running (typically on port 3000).
 2. Docker installed on your host machine
-3. `socat` installed for the tunnel (install with Homebrew: `brew install socat`)
 
-## Installation
+## Usage (Direct Docker Commands - Recommended)
 
-You can use Lumier directly from its directory or install it to your system:
+The primary way to use Lumier is directly through Docker commands. This gives you full control over the container environment.
+
+Ensure `lume serve` is running on your host machine before starting the container.
+
+```bash
+# 1. Build the Docker image (if not already built or pulled)
+docker build -t lumier:latest .
+
+# 2. Run the container
+docker run -it --rm \
+    --name lumier-vm \
+    -p 8006:8006 \
+    -v $(pwd)/storage:/storage \
+    -v $(pwd)/shared:/shared \
+    -e VM_NAME=lumier-vm \
+    -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
+    -e CPU_CORES=4 \
+    -e RAM_SIZE=8192 \
+    -e HOST_STORAGE_PATH=$(pwd)/storage \
+    -e HOST_SHARED_PATH=$(pwd)/shared \
+    lumier:latest
+```
+
+Note that when using Docker directly, you're responsible for:
+- Ensuring `lume serve` is running on the host.
+- Building the Docker image (or pulling `trycua/lumier:latest`).
+- Providing all necessary environment variables (`-e`) and volume mounts (`-v`).
+- Mapping the VNC port (`-p 8006:8006`).
+
+See "Available Environment Variables" below for customization options.
+
+## Optional Helper Script (`lumier`)
+
+For convenience, an optional helper script `lumier` is provided. It simplifies some common tasks like building the image and passing arguments to `docker run`.
+
+### Installation (Optional, for `lumier` script)
+
+If you want to use the `lumier` helper script system-wide, you can install it:
 
 ```bash
 # Option 1: Install to your user's bin directory (recommended)
@@ -40,32 +76,15 @@ You can use Lumier directly from its directory or install it to your system:
 ./install.sh --help
 ```
 
-After installation, you can run `lumier` from anywhere in your terminal.
+### Using the Lumier Script
 
-If you get a "command not found" error, make sure the installation directory is in your PATH. The installer will warn you if it isn't and provide instructions to add it.
-
-## Usage
-
-There are two ways to use Lumier: with the provided script or directly with Docker.
-
-### Option 1: Using the Lumier Script
-
-Lumier provides a simple CLI interface to manage VMs in Docker with full Docker compatibility:
+If you installed the script, you can use it as a wrapper around Docker commands:
 
 ```bash
-# Show help and available commands
+# Show help for the script
 lumier help
 
-# Start the tunnel to connect to lume 
-lumier start
-
-# Check if the tunnel is running
-lumier status
-
-# Stop the tunnel
-lumier stop
-
-# Build the Docker image (optional, happens automatically on first run)
+# Build the Docker image (optional, happens automatically on first run if not pulled)
 lumier build
 
 # Run a VM with default settings
@@ -73,62 +92,24 @@ lumier run -it --rm
 
 # Run a VM with custom settings using Docker's -e flag
 lumier run -it --rm \
-    --name lumier-vm \
+    --name lumier1-vm \
     -p 8006:8006 \
-    -v $(pwd)/storage:/storage \
-    -v $(pwd)/shared:/data \
+    -v $(pwd)/storage1:/storage \
+    -v $(pwd)/shared1:/shared \
     -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
-    -e CPU_CORES=4 \
-    -e RAM_SIZE=8192
+    -e CPU_CORES=8 \
+    -e RAM_SIZE=16GB
     
 # Note:
-# The lumier script now automatically detects the real host paths for ./storage and ./shared
-# and passes them to the container as HOST_STORAGE_PATH and HOST_DATA_PATH.
-# You do NOT need to specify these environment variables manually.
-# The VM name is always set from the container name.
+# The lumier script will automatically:
+# 1. Detect user-provided volume paths for /storage and /shared and use those exact paths
+# 2. If not specified, default to ./storage and ./shared in the current directory
+# 3. Pass the resolved paths to the container as HOST_STORAGE_PATH and HOST_SHARED_PATH
+# 4. Create any non-existent directories automatically via Docker's volume mounting
+# 5. Set the VM name from the container name
+#
+# You do NOT need to specify HOST_STORAGE_PATH or HOST_SHARED_PATH environment variables manually.
 ```
-
-### Option 2: Using Docker Directly
-
-You can also use Docker commands directly without the lumier utility:
-
-```bash
-# 1. Start the tunnel manually
-cd libs/lumier
-socat TCP-LISTEN:8080,reuseaddr,fork EXEC:"$PWD/src/bin/tunnel.sh" &
-TUNNEL_PID=$!
-
-# 2. Build the Docker image
-docker build -t lumier:latest .
-
-# 3. Run the container
-docker run -it --rm \
-    --name lumier-vm \
-    -p 8006:8006 \
-    -v $(pwd)/storage:/storage \
-    -v $(pwd)/shared:/data \
-    -e VM_NAME=lumier-vm \
-    -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
-    -e CPU_CORES=4 \
-    -e RAM_SIZE=8192 \
-    -e HOST_STORAGE_PATH=$(pwd)/storage \
-    -e HOST_DATA_PATH=$(pwd)/shared \
-    lumier:latest
-    
-# 4. Stop the tunnel when you're done
-kill $TUNNEL_PID
-
-# Alternatively, find and kill the tunnel process
-# First, find the process
-lsof -i TCP:8080
-# Then kill it by PID
-kill <PID>
-```
-
-Note that when using Docker directly, you're responsible for:
-- Starting and managing the tunnel
-- Building the Docker image
-- Providing the correct environment variables 
 
 ## Available Environment Variables
 
@@ -139,7 +120,7 @@ These variables can be set using Docker's `-e` flag:
 - `CPU_CORES`: Set the number of CPU cores (default: 4)
 - `RAM_SIZE`: Set the memory size in MB (default: 8192)
 - `DISPLAY`: Set the display resolution (default: 1024x768)
-- `HOST_DATA_PATH`: Path on the host to share with the VM
+- `HOST_SHARED_PATH`: Path on the host to share with the VM
 - `LUMIER_DEBUG`: Enable debug mode (set to 1)
 
 ## Project Structure
@@ -155,14 +136,12 @@ lumier/
 ├── src/                  # Source code
 │   ├── bin/              # Executable scripts
 │   │   ├── entry.sh      # Docker entrypoint
-│   │   ├── server.sh     # Tunnel server manager
-│   │   └── tunnel.sh     # Tunnel request handler
+│   │   └── utils.sh      # Utility functions
 │   ├── config/           # Configuration
 │   │   └── constants.sh  # Shared constants
 │   ├── hooks/            # Lifecycle hooks
 │   │   └── on-logon.sh   # Run after VM boots
 │   └── lib/              # Shared library code
-│       ├── utils.sh      # Utility functions
 │       └── vm.sh         # VM management functions
 └── mount/                # Default shared directory
 ```
