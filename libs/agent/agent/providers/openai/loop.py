@@ -276,6 +276,10 @@ class OpenAILoop(BaseLoop):
                     )
                     # Don't reset last_response_id to None - keep the previous value if available
 
+
+                # Log standardized response for ease of parsing
+                # Since this is the openAI responses format, we don't need to convert it to agent response format
+                self._log_api_call("agent_response", request=None, response=response)
                 # Process API response
                 await queue.put(response)
 
