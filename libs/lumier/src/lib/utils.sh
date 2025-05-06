@@ -83,7 +83,7 @@ execute_remote_script() {
     echo "[DEBUG] Script path: $script_path"
     
     # Use a here-document to send the script content
-    sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$user@$host" "bash -s" <<EOF
+    sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" <<EOF
 $script_content
 EOF
 

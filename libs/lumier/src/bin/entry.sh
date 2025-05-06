@@ -50,7 +50,7 @@ cleanup() {
   set +e  # Don't exit on error in cleanup
   echo "[cleanup] Caught signal, shutting down..."
   echo "[cleanup] Stopping VM..."
-  stop_vm
+  stop_vm true
   # Now gently stop noVNC proxy if running
   # if [ -n "${NOVNC_PID:-}" ] && kill -0 "$NOVNC_PID" 2>/dev/null; then
   #   echo "[cleanup] Stopping noVNC proxy (PID $NOVNC_PID)..."

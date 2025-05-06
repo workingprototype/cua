@@ -54,6 +54,8 @@ start_vm() {
     lume_run $SHARED_DIR_ARGS --storage "$STORAGE_PATH" "$VM_NAME" &
     # lume run "$VM_NAME" --storage "$STORAGE_PATH" --no-display
 
+    # sleep 10000000
+
     # Wait for VM to be running and VNC URL to be available
     vm_ip=""
     vnc_url=""
@@ -64,18 +66,16 @@ start_vm() {
         # Get VM info as JSON using the API function
         VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
         # VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
+        echo "VM_INFO: $VM_INFO"
         
-        # Check if VM has status 'running'
-        if [[ $VM_INFO == *'"status" : "running"'* ]]; then
-            # Extract IP address using the existing function from utils.sh
-            vm_ip=$(extract_json_field "ipAddress" "$VM_INFO")
-            # Extract VNC URL using the existing function from utils.sh
-            vnc_url=$(extract_json_field "vncUrl" "$VM_INFO")
-            
-            # If we have both IP and VNC URL, break the loop
-            if [ -n "$vm_ip" ] && [ -n "$vnc_url" ]; then
-                break
-            fi
+        # Extract status, IP address, and VNC URL using the helper function
+        vm_status=$(extract_json_field "status" "$VM_INFO")
+        vm_ip=$(extract_json_field "ipAddress" "$VM_INFO")
+        vnc_url=$(extract_json_field "vncUrl" "$VM_INFO")
+
+        # Check if VM status is 'running' and we have IP and VNC URL
+        if [ "$vm_status" = "running" ] && [ -n "$vm_ip" ] && [ -n "$vnc_url" ]; then
+            break
         fi
         
         sleep 2
@@ -134,7 +134,7 @@ lume_get() {
     fi
     
     # Always log the curl command before sending
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Executing curl request: $api_url"
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Executing curl request: $api_url" >&2
     
     # Make the API call
     local response=$(curl --connect-timeout 6000 \
@@ -189,20 +189,29 @@ lume_set() {
 }
 
 stop_vm() {
+    local in_cleanup=${1:-false} # Optional first argument to indicate if called from cleanup trap
     echo "Stopping VM '$VM_NAME'..."
     STORAGE_PATH="$HOST_STORAGE_PATH"
-    # Check if the VM exists and is running
     echo "STORAGE_PATH: $STORAGE_PATH"
+    
     VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
-    if [[ -z "$VM_INFO" || $VM_INFO == *"Virtual machine not found"* ]]; then
-        echo "VM '$VM_NAME' does not exist."
-    elif [[ $VM_INFO == *'"status" : "running"'* ]]; then
+    vm_status=$(extract_json_field "status" "$VM_INFO")
+
+    if [ "$vm_status" == "running" ]; then
+        echo "VM '$VM_NAME' status is 'running'. Attempting stop."
         lume_stop "$VM_NAME" "$STORAGE_PATH"
-        echo "VM '$VM_NAME' was running and is now stopped."
-    elif [[ $VM_INFO == *'"status" : "stopped"'* ]]; then
+        echo "VM '$VM_NAME' stop command issued."
+    elif [ "$vm_status" == "stopped" ]; then
         echo "VM '$VM_NAME' is already stopped."
+    elif [ "$in_cleanup" = true ]; then
+        # If we are in the cleanup trap and status is unknown or VM not found, 
+        # still attempt a stop just in case.
+        echo "VM status is unknown ('$vm_status') or VM not found during cleanup. Attempting stop anyway."
+        lume_stop "$VM_NAME" "$STORAGE_PATH"
+        sleep 5000
+        echo "VM '$VM_NAME' stop command issued as a precaution."
     else
-        echo "Unknown VM status for '$VM_NAME'."
+        echo "VM status is unknown ('$vm_status') or VM not found. Not attempting stop."
     fi
 }
 
