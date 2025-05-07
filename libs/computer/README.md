@@ -26,7 +26,7 @@
 ```python
 from computer import Computer
 
-computer = Computer(os="macos", display="1024x768", memory="8GB", cpu="4")
+computer = Computer(os_type="macos", display="1024x768", memory="8GB", cpu="4")
 try:
     await computer.run()
     
