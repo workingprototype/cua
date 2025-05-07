@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Initialize global flags
+export PULL_IN_PROGRESS=0
+
 start_vm() {
     # Determine storage path for VM
     STORAGE_PATH="$HOST_STORAGE_PATH"
@@ -7,9 +10,8 @@ start_vm() {
         STORAGE_PATH="storage_${VM_NAME}"
     fi
 
-    # Check if VM exists and its status using JSON format
-    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
-    echo "VM_INFO: $VM_INFO"
+    # Check if VM exists and its status using JSON format - quietly
+    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH" "json" "${LUMIER_DEBUG:-0}")
 
     # Check if VM not found error
     if [[ $VM_INFO == *"Virtual machine not found"* ]]; then
@@ -18,7 +20,7 @@ start_vm() {
         REGISTRY=$(echo $VERSION | cut -d'/' -f1)
         ORGANIZATION=$(echo $VERSION | cut -d'/' -f2)
         
-        echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Pulling VM image $IMAGE_NAME from $REGISTRY/$ORGANIZATION to $STORAGE_PATH"
+        echo "Pulling VM image $IMAGE_NAME..."
         lume_pull "$IMAGE_NAME" "$VM_NAME" "$STORAGE_PATH" "$REGISTRY" "$ORGANIZATION"
     else
         # Parse the JSON status - check if it contains "status" : "running"
@@ -33,12 +35,14 @@ start_vm() {
         MEMORY_DISPLAY="${RAM_SIZE}MB"
     fi
     
-    # Set VM parameters using the new wrapper function
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Updating VM settings cpu=$CPU_CORES name=$VM_NAME location=$STORAGE_PATH display=$DISPLAY memory=$MEMORY_DISPLAY disk_size=unchanged"
+    # Set VM parameters using the wrapper function
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "Updating VM settings: cpu=$CPU_CORES memory=$MEMORY_DISPLAY display=$DISPLAY"
+    fi
     lume_set "$VM_NAME" "$STORAGE_PATH" "$CPU_CORES" "$RAM_SIZE" "$DISPLAY"
 
-    # Fetch VM configuration
-    CONFIG_JSON=$(lume_get "$VM_NAME" "$STORAGE_PATH")
+    # Fetch VM configuration - quietly (don't display to console)
+    CONFIG_JSON=$(lume_get "$VM_NAME" "$STORAGE_PATH" "json" "${LUMIER_DEBUG:-0}")
     
     # Setup shared directory args if necessary
     SHARED_DIR_ARGS=""
@@ -63,10 +67,8 @@ start_vm() {
     attempt=0
     
     while [ $attempt -lt $max_attempts ]; do
-        # Get VM info as JSON using the API function
-        VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
-        # VM_INFO=$(lume get "$VM_NAME" --storage "$STORAGE_PATH" -f json 2>/dev/null)
-        echo "VM_INFO: $VM_INFO"
+            # Get VM info as JSON using the API function - pass debug flag
+        VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH" "json" "${LUMIER_DEBUG:-0}")
         
         # Extract status, IP address, and VNC URL using the helper function
         vm_status=$(extract_json_field "status" "$VM_INFO")
@@ -103,7 +105,9 @@ start_vm() {
     # Execute on-logon.sh if present
     on_logon_script="/run/lifecycle/on-logon.sh"
     # Use HOST_SHARED_PATH which is set earlier in the script
-    echo "Executing on-logon.sh on VM..."
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        echo "Executing on-logon.sh on VM..."
+    fi
     execute_remote_script "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" "$on_logon_script" "$VNC_PASSWORD" "$HOST_SHARED_PATH"
 }
 
@@ -133,8 +137,10 @@ lume_get() {
         echo "[DEBUG] Full curl command: $curl_cmd"
     fi
     
-    # Always log the curl command before sending
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Executing curl request: $api_url" >&2
+    # Log curl commands only when in debug mode
+    if [[ "$debug" == "true" || "$LUMIER_DEBUG" == "1" ]]; then
+        echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] DEBUG: Executing curl request: $api_url" >&2
+    fi
     
     # Make the API call
     local response=$(curl --connect-timeout 6000 \
@@ -143,12 +149,12 @@ lume_get() {
       "$api_url")
     
     # Print the response if debugging is enabled
-    if [[ "$debug" == "true" || "$LUMIER_DEBUG" == "1" ]]; then
+    if [[ "$debug" == "true" || "${LUMIER_DEBUG:-0}" == "1" ]]; then
         echo "[DEBUG] API Response:"
         echo "$response" | jq '.' 2>/dev/null || echo "$response"
     fi
     
-    # Output the response
+    # Output the response so callers can capture it
     echo "$response"
 }
 
@@ -172,9 +178,13 @@ lume_set() {
         memory="$(awk "BEGIN { printf \"%.1f\", $memory/1024 }")GB"
     fi
     
-    echo "[DEBUG] Formatted memory value: $memory"
+    # Only show memory formatting debug in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "[DEBUG] Formatted memory value: $memory"
+    fi
     
-    curl --connect-timeout 6000 \
+    # Store response to conditionally show based on debug mode
+    local response=$(curl --connect-timeout 6000 \
       --max-time 5000 \
       -s \
       -X PATCH \
@@ -185,22 +195,29 @@ lume_set() {
         \"display\": \"$display\",
         \"storage\": \"$storage\"
       }" \
-      "http://${api_host}:${api_port}/lume/vms/${vm_name}"
+      "http://${api_host}:${api_port}/lume/vms/${vm_name}")
+      
+    # Only show response in debug mode
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        echo "$response"
+    fi
 }
 
 stop_vm() {
     local in_cleanup=${1:-false} # Optional first argument to indicate if called from cleanup trap
     echo "Stopping VM '$VM_NAME'..."
     STORAGE_PATH="$HOST_STORAGE_PATH"
-    echo "STORAGE_PATH: $STORAGE_PATH"
     
-    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH")
+    # Only show storage path in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "STORAGE_PATH: $STORAGE_PATH"
+    fi
+    
+    VM_INFO=$(lume_get "$VM_NAME" "$STORAGE_PATH" "json" "${LUMIER_DEBUG:-0}")
     vm_status=$(extract_json_field "status" "$VM_INFO")
 
     if [ "$vm_status" == "running" ]; then
-        echo "VM '$VM_NAME' status is 'running'. Attempting stop."
         lume_stop "$VM_NAME" "$STORAGE_PATH"
-        echo "VM '$VM_NAME' stop command issued."
     elif [ "$vm_status" == "stopped" ]; then
         echo "VM '$VM_NAME' is already stopped."
     elif [ "$in_cleanup" = true ]; then
@@ -231,12 +248,36 @@ is_vm_running() {
 lume_stop() {
     local vm_name="$1"
     local storage="$2"
-    curl --connect-timeout 6000 \
-      --max-time 5000 \
-      -X POST \
-      -H "Content-Type: application/json" \
-      -d '{"storage":"'$storage'"}' \
-      "http://host.docker.internal:3000/lume/vms/${vm_name}/stop"
+    
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+    
+    # Only log in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "Stopping VM $vm_name..."
+    fi
+    
+    # Execute command and capture response
+    local response
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        # Show output in debug mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d '{"storage":"'$storage'"}' \
+          "http://${api_host}:${api_port}/lume/vms/${vm_name}/stop")
+        echo "$response"
+    else
+        # Run silently in normal mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -s \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d '{"storage":"'$storage'"}' \
+          "http://${api_host}:${api_port}/lume/vms/${vm_name}/stop")
+    fi
 }
 
 # Pull a VM image using curl
@@ -250,22 +291,53 @@ lume_pull() {
     local api_host="${LUME_API_HOST:-host.docker.internal}"
     local api_port="${LUME_API_PORT:-3000}"
     
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] INFO: Pulling image $image from $registry/$organization to $storage"
+    # Mark that pull is in progress for interrupt handling
+    export PULL_IN_PROGRESS=1
     
-    # Pull image via API
-    curl --connect-timeout 6000 \
-      --max-time 5000 \
-      -s \
-      -X POST \
-      -H "Content-Type: application/json" \
-      -d "{
-        \"image\": \"$image\",
-        \"name\": \"$vm_name\",
-        \"registry\": \"$registry\",
-        \"organization\": \"$organization\",
-        \"storage\": \"$storage\"
-      }" \
-      "http://${api_host}:${api_port}/lume/pull"
+    # Only log full details in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "Pulling image $image from $registry/$organization..."
+    else
+        echo "Pulling image $image..."
+    fi
+    
+    # Inform users how to check pull progress
+    echo "You can check the pull progress using: lume logs -f"
+    
+    # Pull image via API and capture response
+    local response
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        # Show full response in debug mode - no timeout limits
+        response=$(curl \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"image\": \"$image\",
+            \"name\": \"$vm_name\",
+            \"registry\": \"$registry\",
+            \"organization\": \"$organization\",
+            \"storage\": \"$storage\"
+          }" \
+          "http://${api_host}:${api_port}/lume/pull")
+        echo "$response"
+    else
+        # Run silently in normal mode - no timeout limits
+        response=$(curl \
+          -s \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"image\": \"$image\",
+            \"name\": \"$vm_name\",
+            \"registry\": \"$registry\",
+            \"organization\": \"$organization\",
+            \"storage\": \"$storage\"
+          }" \
+          "http://${api_host}:${api_port}/lume/pull")
+    fi
+    
+    # Unset pull in progress flag
+    export PULL_IN_PROGRESS=0
 }
 
 
@@ -273,7 +345,7 @@ lume_pull() {
 lume_run() {
     # Parse args
     local shared_dir=""
-    local storage="ssd"
+    local storage=""
     local vm_name="lume_vm"
     local no_display=true
     while [[ $# -gt 0 ]]; do
@@ -298,17 +370,88 @@ lume_run() {
         esac
     done
     
-    # Default to ~/Projects if not provided
-    if [[ -z "$shared_dir" ]]; then
-        shared_dir="~/Projects"
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+
+    # Only log in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "Running VM $vm_name..."
     fi
     
-    local json_body="{\"noDisplay\": true, \"sharedDirectories\": [{\"hostPath\": \"$shared_dir\", \"readOnly\": false}], \"storage\": \"$storage\", \"recoveryMode\": false}"
-    local curl_cmd="curl --connect-timeout 6000 \
-      --max-time 5000 \
-      -X POST \
-      -H 'Content-Type: application/json' \
-      -d '$json_body' \
-      http://host.docker.internal:3000/lume/vms/$vm_name/run"
-    eval "$curl_cmd"
+    # Build the JSON body dynamically based on what's provided
+    local json_body="{\"noDisplay\": true"
+    
+    # Only include shared directories if shared_dir is provided
+    if [[ -n "$shared_dir" ]]; then
+        json_body+=", \"sharedDirectories\": [{\"hostPath\": \"$shared_dir\", \"readOnly\": false}]"
+    fi
+    
+    # Only include storage if it's provided
+    if [[ -n "$storage" ]]; then
+        json_body+=", \"storage\": \"$storage\""
+    fi
+    
+    # Add recovery mode (always false)
+    json_body+=", \"recoveryMode\": false}"
+
+    # Execute the command and store the response
+    local response
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        # Show response in debug mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -X POST \
+          -H 'Content-Type: application/json' \
+          -d "$json_body" \
+          http://${api_host}:${api_port}/lume/vms/$vm_name/run)
+        echo "$response"
+    else
+        # Run silently in normal mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -s \
+          -X POST \
+          -H 'Content-Type: application/json' \
+          -d "$json_body" \
+          http://${api_host}:${api_port}/lume/vms/$vm_name/run)
+    fi
+}
+
+# Delete a VM using curl
+lume_delete() {
+    local vm_name="$1"
+    local storage="$2"
+    
+    local api_host="${LUME_API_HOST:-host.docker.internal}"
+    local api_port="${LUME_API_PORT:-3000}"
+    
+    # URL encode the storage path for the query parameter
+    # Replace special characters with their URL encoded equivalents
+    local encoded_storage=$(echo "$storage" | sed 's/\//%2F/g' | sed 's/ /%20/g' | sed 's/:/%3A/g')
+    
+    # Construct API URL with encoded storage parameter
+    local api_url="http://${api_host}:${api_port}/lume/vms/${vm_name}?storage=${encoded_storage}"
+    
+    # Only log in debug mode
+    if [[ "$LUMIER_DEBUG" == "1" ]]; then
+        echo "Deleting VM $vm_name from storage $storage..."
+    fi
+    
+    # Execute command and capture response
+    local response
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        # Show output in debug mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -X DELETE \
+          "$api_url")
+        echo "$response"
+    else
+        # Run silently in normal mode
+        response=$(curl --connect-timeout 6000 \
+          --max-time 5000 \
+          -s \
+          -X DELETE \
+          "$api_url")
+    fi
 }

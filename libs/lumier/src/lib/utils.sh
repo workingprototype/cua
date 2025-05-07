@@ -8,12 +8,16 @@ wait_for_ssh() {
     local retry_interval=${4:-5}   # Default retry interval is 5 seconds
     local max_retries=${5:-20}    # Default maximum retries is 20 (0 for infinite)
 
-    echo "Waiting for SSH to become available on $host_ip..."
+    # Only show waiting message in debug mode
+    if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
+        echo "Waiting for SSH to become available on $host_ip..."
+    fi
 
     local retry_count=0
     while true; do
         # Try to connect via SSH
-        sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$user@$host_ip" "exit"
+        # Add -q for completely silent operation, redirect stderr to /dev/null
+        sshpass -p "$password" ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@$host_ip" "exit" 2>/dev/null
 
         # Check the exit status of the SSH command
         if [ $? -eq 0 ]; then
@@ -30,7 +34,10 @@ wait_for_ssh() {
             return 1
         fi
 
-        echo "SSH not ready. Retrying in $retry_interval seconds... (Attempt $retry_count)"
+        # Only show retry messages in debug mode
+        if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
+            echo "SSH not ready. Retrying in $retry_interval seconds... (Attempt $retry_count)"
+        fi
         sleep $retry_interval
     done
 }
@@ -50,12 +57,18 @@ execute_remote_script() {
         return 1
     fi
 
-    echo "VNC password exported to VM: $vnc_password"
+    # Only show VNC info in debug mode
+    if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
+        echo "VNC password exported to VM: $vnc_password"
+    fi
 
     # Set a default mount point for data in the VM if data_folder is provided
     if [ -n "$data_folder" ]; then
         shared_folder_path="/Volumes/My Shared Files"
-        echo "Data folder path in VM: $shared_folder_path"
+        # Only show path in debug mode
+        if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
+            echo "Data folder path in VM: $shared_folder_path"
+        fi
     else
         shared_folder_path=""
     fi
@@ -68,26 +81,38 @@ execute_remote_script() {
     if [ -n "$shared_folder_path" ]; then
         script_content+="export SHARED_FOLDER_PATH='$shared_folder_path'\n"
     fi
+    # Pass debug setting to the VM
+    script_content+="export VNC_DEBUG='${LUMIER_DEBUG:-0}'\n"
     
-    # Add debug message to the script to confirm it's being run
-    script_content+="echo \"[DEBUG] Starting on-logon script execution...\"\n"
+    # Add debug messages only if debug mode is enabled
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        script_content+="echo \"[DEBUG] Starting on-logon script execution...\"\n"
+    fi
     
     # Add the original script content
     script_content+="$(<"$script_path")"
     
-    # Add more debug messages after script execution
-    script_content+="\necho \"[DEBUG] Finished executing on-logon script.\"\n"
+    # Add debug messages only if debug mode is enabled
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        script_content+="\necho \"[DEBUG] Finished executing on-logon script.\"\n"
+    fi
     
-    # Print debug info to the docker logs
-    echo "[DEBUG] Executing remote script with content length: $(echo -n "$script_content" | wc -c) bytes"
-    echo "[DEBUG] Script path: $script_path"
+    # Print debug info only when debug mode is enabled
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        echo "[DEBUG] Executing remote script with content length: $(echo -n "$script_content" | wc -c) bytes"
+        echo "[DEBUG] Script path: $script_path"
+    fi
     
     # Use a here-document to send the script content
-    sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" <<EOF
+    # Add -q for completely silent operation, redirect stderr to /dev/null
+    sshpass -p "$password" ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" 2>/dev/null <<EOF
 $script_content
 EOF
 
-    echo "[DEBUG] Script execution completed."
+    # Print completion message only in debug mode
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        echo "[DEBUG] Script execution completed."
+    fi
 
     # Check the exit status of the sshpass command
     if [ $? -ne 0 ]; then
