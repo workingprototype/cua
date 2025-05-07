@@ -532,7 +532,7 @@ async def handle_init_computer():
     """Initialize the computer instance and tools"""
     global computer, tool_call_logs, tools
     
-    computer = Computer(os="macos", display="1024x768", memory="8GB", cpu="4")
+    computer = Computer(os_type="macos", display="1024x768", memory="8GB", cpu="4")
     await computer.run()
     
     # Log computer initialization as a tool call

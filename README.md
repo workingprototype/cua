@@ -79,7 +79,7 @@ If you want to use AI agents with virtualized environments:
    from computer import Computer
    from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
-   async with Computer(verbosity=logging.DEBUG) as macos_computer:
+   async with Computer(os_type="macos", display="1024x768") as macos_computer:
      agent = ComputerAgent(
          computer=macos_computer,
          loop=AgentLoop.OPENAI, # or AgentLoop.ANTHROPIC, or AgentLoop.UITARS, or AgentLoop.OMNI
