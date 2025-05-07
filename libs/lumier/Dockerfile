@@ -30,10 +30,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Download and install noVNC without caching
-RUN wget https://github.com/trycua/noVNC/archive/refs/heads/master.zip -O master.zip && \
-    unzip master.zip && \
+RUN wget https://github.com/trycua/noVNC/archive/refs/heads/master.zip -O master1.zip && \
+    unzip master1.zip && \
     mv noVNC-master /opt/noVNC && \
-    rm master.zip
+    rm master1.zip
 
 # Set environment variables for noVNC
 ENV NOVNC_PATH="/opt/noVNC"

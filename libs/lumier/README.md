@@ -55,10 +55,7 @@ Here's what's happening behind the scenes:
 # 1. Navigate to the Lumier directory
 cd libs/lumier
 
-# 2. Build the Docker image (first-time setup)
-docker build -t lumier:latest .
-
-# 3. Run the container with temporary storage
+# 2. Run the container with temporary storage (using pre-built image from Docker Hub)
 docker run -it --rm \
     --name lumier-vm \
     -p 8006:8006 \
@@ -66,7 +63,7 @@ docker run -it --rm \
     -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
     -e CPU_CORES=4 \
     -e RAM_SIZE=8192 \
-    lumier:latest
+    trycua/lumier:latest
 ```
 
 After running the command above, you can access your macOS VM through a web browser (e.g., http://localhost:8006).
@@ -91,7 +88,7 @@ docker run -it --rm \
     -e CPU_CORES=4 \
     -e RAM_SIZE=8192 \
     -e HOST_STORAGE_PATH=$(pwd)/storage \
-    lumier:latest
+    trycua/lumier:latest
 ```
 
 This command creates a connection between a folder on your Mac (`$(pwd)/storage`) and a folder inside the Docker container (`/storage`). The `-v` flag (volume mount) and the `HOST_STORAGE_PATH` variable work together to ensure your VM data is saved on your host Mac.
@@ -116,10 +113,95 @@ docker run -it --rm \
     -e RAM_SIZE=8192 \
     -e HOST_STORAGE_PATH=$(pwd)/storage \
     -e HOST_SHARED_PATH=$(pwd)/shared \
-    lumier:latest
+    trycua/lumier:latest
 ```
 
 With this setup, any files you place in the `shared` folder on your Mac will be accessible from within the macOS VM, and vice versa.
+
+## Using Docker Compose
+
+You can also use Docker Compose to run Lumier with a simple configuration file. Create a `docker-compose.yml` file with the following content:
+
+```yaml
+version: '3'
+
+services:
+  lumier:
+    image: trycua/lumier:latest
+    container_name: lumier-vm
+    restart: unless-stopped
+    ports:
+      - "8006:8006"  # Port for VNC access
+    volumes:
+      - ./storage:/storage  # VM persistent storage
+      - ./shared:/shared    # Shared folder accessible in the VM
+    environment:
+      - VM_NAME=lumier-vm
+      - VERSION=ghcr.io/trycua/macos-sequoia-cua:latest
+      - CPU_CORES=4
+      - RAM_SIZE=8192
+      - HOST_STORAGE_PATH=${PWD}/storage
+      - HOST_SHARED_PATH=${PWD}/shared
+    stop_signal: SIGINT
+    stop_grace_period: 2m
+```
+
+Then run Lumier using:
+
+```bash
+# First create the required directories
+mkdir -p storage shared
+
+# Start the container
+docker-compose up -d
+
+# View the logs
+docker-compose logs -f
+
+# Stop the container when done
+docker-compose down
+```
+
+## Building and Customizing Lumier
+
+If you want to customize the Lumier container or build it from source, you can follow these steps:
+
+```bash
+# 1. Navigate to the Lumier directory
+cd libs/lumier
+
+# 2. Build the Docker image locally
+docker build -t lumier-custom:latest .
+
+# 3. Run your custom build
+docker run -it --rm \
+    --name lumier-vm \
+    -p 8006:8006 \
+    -e VM_NAME=lumier-vm \
+    -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
+    -e CPU_CORES=4 \
+    -e RAM_SIZE=8192 \
+    lumier-custom:latest
+```
+
+### Customization Options
+
+The Dockerfile provides several customization points:
+
+1. **Base image**: The container uses Debian Bullseye Slim as the base. You can modify this if needed.
+2. **Installed packages**: You can add or remove packages in the apt-get install list.
+3. **Hooks**: Check the `/run/hooks/` directory for scripts that run at specific points during VM lifecycle.
+4. **Configuration**: Review `/run/config/constants.sh` for default settings.
+
+After making your modifications, you can build and push your custom image to your own Docker Hub repository:
+
+```bash
+# Build with a custom tag
+docker build -t yourusername/lumier:custom .
+
+# Push to Docker Hub (after docker login)
+docker push yourusername/lumier:custom
+```
 
 ## Configuration Options
 
