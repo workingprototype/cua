@@ -29,9 +29,9 @@ macOS and Linux virtual machines in a Docker container.
 
 Before using Lumier, make sure you have:
 
-1. **Docker for Apple Silicon** - If you're not familiar with Docker, it's a platform that packages applications with their dependencies. Download it [here](https://desktop.docker.com/mac/main/arm64/Docker.dmg) and follow the installation instructions.
+1. **Docker for Apple Silicon** - download it [here](https://desktop.docker.com/mac/main/arm64/Docker.dmg) and follow the installation instructions.
 
-2. **Lume** - This is the virtualization engine that powers Lumier. Install it with this command:
+2. **Lume** - This is the virtualization CLI that powers Lumier. Install it with this command:
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
@@ -40,7 +40,7 @@ After installation, Lume runs as a background service and listens on port 3000. 
 
 ## How It Works
 
-> **Note:** We're using Docker primarily as a convenient delivery mechanism, not as an isolation layer. Unlike traditional Docker containers, Lumier leverages the Apple Virtualization Framework (Vz) through the `lume` CLI to create true virtual machines.
+> **Note:** We're using Docker primarily as a convenient delivery mechanism, not as an isolation layer. Unlike traditional Docker containers, Lumier leverages the Apple Virtualization Framework (Apple Vz) through the `lume` CLI to create true virtual machines.
 
 Here's what's happening behind the scenes:
 
