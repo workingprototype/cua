@@ -118,6 +118,41 @@ docker run -it --rm \
 
 With this setup, any files you place in the `shared` folder on your Mac will be accessible from within the macOS VM, and vice versa.
 
+## Automating VM Startup with on-logon.sh
+
+You can automatically run scripts when the VM starts up by placing an `on-logon.sh` script in the shared folder's lifecycle directory. This is useful for setting up your VM environment each time it starts.
+
+```bash
+# Create the lifecycle directory in your shared folder
+mkdir -p shared/lifecycle
+
+# Create a sample on-logon.sh script
+cat > shared/lifecycle/on-logon.sh << 'EOF'
+#!/usr/bin/env bash
+
+# Create a file on the desktop
+echo "Hello from Lumier!" > /Users/lume/Desktop/hello_lume.txt
+
+# You can add more commands to execute at VM startup
+# For example:
+# - Configure environment variables
+# - Start applications
+# - Mount network drives
+# - Set up development environments
+EOF
+
+# Make the script executable
+chmod +x shared/lifecycle/on-logon.sh
+```
+
+The script will be automatically executed when the VM starts up. It runs in the VM context and has access to:
+
+- The `/Users/lume` user directory (home directory in the VM)
+- The shared folder at `/Volumes/My Shared Files` inside the VM
+- Any resources available to the VM
+
+This feature enables automation of VM setup without modifying the base VM image.
+
 ## Using Docker Compose
 
 You can also use Docker Compose to run Lumier with a simple configuration file. Create a `docker-compose.yml` file with the following content:

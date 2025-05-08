@@ -62,9 +62,11 @@ execute_remote_script() {
         echo "VNC password exported to VM: $vnc_password"
     fi
 
-    # Set a default mount point for data in the VM if data_folder is provided
+    # Set the shared folder path for the VM
     if [ -n "$data_folder" ]; then
+        # VM always sees shared folders at this path, regardless of container path
         shared_folder_path="/Volumes/My Shared Files"
+        
         # Only show path in debug mode
         if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
             echo "Data folder path in VM: $shared_folder_path"
@@ -104,10 +106,18 @@ execute_remote_script() {
     fi
     
     # Use a here-document to send the script content
-    # Add -q for completely silent operation, redirect stderr to /dev/null
-    sshpass -p "$password" ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" 2>/dev/null <<EOF
+    # We'll capture both stdout and stderr when debug is enabled
+    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
+        echo "[DEBUG] Connecting to $user@$host to execute script..."
+        sshpass -p "$password" ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" 2>&1 <<EOF
 $script_content
 EOF
+    else
+        # Otherwise run quietly
+        sshpass -p "$password" ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@$host" "bash -s -- '$vnc_password' '$data_folder'" 2>/dev/null <<EOF
+$script_content
+EOF
+    fi
 
     # Print completion message only in debug mode
     if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then

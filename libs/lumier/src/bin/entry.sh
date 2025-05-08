@@ -112,7 +112,7 @@ if [ -n "${VNC_PORT:-}" ] && [ -n "${VNC_PASSWORD:-}" ]; then
   ${NOVNC_PATH}/utils/novnc_proxy --vnc host.docker.internal:${VNC_PORT} --listen 8006 --web ${NOVNC_PATH} > /dev/null 2>&1 &
   NOVNC_PID=$!
   disown $NOVNC_PID
-  echo "noVNC interface available at: http://localhost:PORT/vnc.html?password=${VNC_PASSWORD}&autoconnect=true (replace PORT with the port you forwarded to 8006)"
+  echo "noVNC interface available at: http://localhost:8006/vnc.html?password=${VNC_PASSWORD}&autoconnect=true (replace PORT with the port you forwarded to 8006)"
 fi
 
 echo "Lumier is running. Press Ctrl+C to stop."

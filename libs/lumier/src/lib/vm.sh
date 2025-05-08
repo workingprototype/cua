@@ -104,11 +104,19 @@ start_vm() {
     
     # Execute on-logon.sh if present
     on_logon_script="/run/lifecycle/on-logon.sh"
-    # Use HOST_SHARED_PATH which is set earlier in the script
-    if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
-        echo "Executing on-logon.sh on VM..."
+    
+    # Only show detailed logs in debug mode
+    if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
+        echo "Running on-logon.sh hook script on VM..."
     fi
-    execute_remote_script "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" "$on_logon_script" "$VNC_PASSWORD" "$HOST_SHARED_PATH"
+    
+    # Check if script exists
+    if [ ! -f "$on_logon_script" ]; then
+        echo "Warning: on-logon.sh hook script not found at $on_logon_script"
+    else
+        # Execute the remote script
+        execute_remote_script "$vm_ip" "$HOST_USER" "$HOST_PASSWORD" "$on_logon_script" "$VNC_PASSWORD" "$HOST_SHARED_PATH"
+    fi
 }
 
 # Get VM information using curl
