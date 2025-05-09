@@ -91,9 +91,6 @@ echo "📦 Installing CUA packages..."
 pip install -U pip
 pip install cua-computer cua-agent[all]
 
-# Setup environment for MCP server
-echo "🔧 Setting up MCP server..."
-
 # Create a simple demo script
 DEMO_DIR="$HOME/.cua-demo"
 mkdir -p "$DEMO_DIR"
@@ -110,9 +107,9 @@ api_key = os.environ.get("OPENAI_API_KEY", "")
 if not api_key:
     print("\n⚠️  No OpenAI API key found. You'll need to provide one in the UI.")
 
-# Launch the Gradio UI
+# Launch the Gradio UI and open it in the browser
 app = create_gradio_ui()
-app.launch(share=False)
+app.launch(share=False, inbrowser=True)
 EOF
 
 # Create a convenience script to run the demo
@@ -124,34 +121,26 @@ python run_demo.py
 EOF
 chmod +x "$DEMO_DIR/start_demo.sh"
 
-# Create a script to run the MCP server with the correct PYTHONPATH
-cat > "$DEMO_DIR/start_mcp_server.sh" << EOF
-#!/bin/bash
-source "$VENV_DIR/bin/activate"
-
-# Set PYTHONPATH to include all necessary libraries
-export PYTHONPATH="$PYTHONPATH:$(pip show cua-computer-server | grep Location | cut -d' ' -f2)"
-
-# Run the MCP server using the Python module approach
-python -m computer_server.mcp_server
-EOF
-chmod +x "$DEMO_DIR/start_mcp_server.sh"
-
-# Create a desktop shortcut for the demo
-cat > "$HOME/Desktop/CUA Playground.command" << EOF
-#!/bin/bash
-"$DEMO_DIR/start_demo.sh"
-EOF
-chmod +x "$HOME/Desktop/CUA Playground.command"
-
 echo "✅ Setup complete!"
 echo "🖥️  You can start the CUA playground by running: $DEMO_DIR/start_demo.sh"
-echo "🖱️  Or double-click the 'CUA Playground' shortcut on your desktop"
-echo "🤖  To run the MCP server: $DEMO_DIR/start_mcp_server.sh"
+
+# Check if the VM is running
+echo "🔍 Checking if the macOS CUA VM is running..."
+VM_RUNNING=$(lume ls | grep "macos-sequoia-cua" | grep "running" || echo "")
+
+if [ -z "$VM_RUNNING" ]; then
+  echo "🚀 Starting the macOS CUA VM..."
+  lume start macos-sequoia-cua:latest
+  echo "✅ VM started successfully."
+else
+  echo "✅ macOS CUA VM is already running."
+fi
 
 # Ask if the user wants to start the demo now
 read -p "Would you like to start the CUA playground now? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
+  echo "🚀 Starting the CUA playground..."
+  echo ""
   "$DEMO_DIR/start_demo.sh"
 fi
