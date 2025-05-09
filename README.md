@@ -55,7 +55,7 @@ Lume CLI manages high-performance macOS/Linux VMs with near-native speed on Appl
 lume pull macos-sequoia-cua:latest
 ```
 
-The macOS image contains the default Mac apps and the Computer Server for seamless interaction.
+The macOS CUA image contains the default Mac apps and the Computer Server for easy automation.
 
 ### Step 3: Install Python SDK
 
