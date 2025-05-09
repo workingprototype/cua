@@ -176,11 +176,11 @@ await computer.interface.get_accessibility_tree() # Get accessibility tree
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
 # Agent Loops
-ComputerAgent(loop=AgentLoop.UITARS)     # UI-TARS loop for local execution with MLX
-ComputerAgent(loop=AgentLoop.OPENAI)     # OpenAI Computer-Use model using OpenAI provider
-ComputerAgent(loop=AgentLoop.ANTHROPIC)  # Anthropic Claude model using Anthropic provider
+ComputerAgent(loop=AgentLoop.UITARS)     # UI-TARS-1.5 agent for local execution with MLX
+ComputerAgent(loop=AgentLoop.OPENAI)     # OpenAI Computer-Use agent using OPENAI_API_KEY
+ComputerAgent(loop=AgentLoop.ANTHROPIC)  # Anthropic Claude agent using ANTHROPIC_API_KEY
 
-# OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision model
+# OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision LLM
 ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))       
 
 # OpenRouter example using OAICOMPAT provider
@@ -190,7 +190,8 @@ ComputerAgent(
         provider=LLMProvider.OAICOMPAT, 
         name="openai/gpt-4.1",
         provider_base_url="https://openrouter.ai/api/v1"
-    )
+    ),
+    api_key="your-openrouter-api-key"
 )
 ```
 
