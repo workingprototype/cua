@@ -81,11 +81,11 @@ from computer import Computer
 
 async with Computer(os_type="macos") as computer:
     # Take a screenshot
-    screenshot = await computer.screenshot()
+    screenshot = await computer.interface.screenshot()
     # Click on an element
-    await computer.mouse.click(x=100, y=200)
+    await computer.interface.left_click(100, 200)
     # Type text
-    await computer.keyboard.type("Hello, world!")
+    await computer.interface.type_text("Hello, world!")
 ```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
