@@ -73,8 +73,8 @@ Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building
 from agent import ComputerAgent
 
 # Create and run an agent locally using UI-TARS and MLX
-agent = ComputerAgent(computer=my_computer, loop="uitars")
-agent.run("Search for information about CUA on GitHub")
+agent = ComputerAgent(computer=my_computer, loop="UITARS")
+await agent.run("Search for information about CUA on GitHub")
 
 # Example: Direct control of a macOS VM with Computer
 from computer import Computer
