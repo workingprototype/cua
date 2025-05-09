@@ -117,6 +117,7 @@ lume delete my-vm
 
 ## Resources
 
+- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/mcp-server/README.md) - One of the easiest ways to get started with C/ua
 - [When and how to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/agent/README.md)
 - [How to use Lume CLI for managing desktops](./libs/lume/README.md)
 - [Training Computer-Use Models: Collecting Human Trajectories with C/ua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
@@ -129,6 +130,7 @@ lume delete my-vm
 | [**Lume**](./libs/lume/README.md) | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
 | [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install cua-computer` |
 | [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install cua-agent` |
+| [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
 | [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
 | [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` |
 | [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
