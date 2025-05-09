@@ -14,8 +14,7 @@
 **c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
 
 <div align="center">
-    <video src="demo-ui.mp4" width="800" controls></video>
-</div>
+<video src="https://github.com/user-attachments/assets/06e1974f-8f73-477d-b18a-715d83148e45" width="800" controls></video></div>
 
 # 🚀 Quick Start
 
@@ -25,6 +24,8 @@ Get started with a Computer-Use Agent UI and a VM with a single command:
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
+
+
 This script will:
 - Install Lume CLI for VM management
 - Pull the latest macOS CUA image
