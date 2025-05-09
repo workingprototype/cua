@@ -480,6 +480,83 @@ def create_gradio_ui(
         "Open Safari, search for 'macOS automation tools', and save the first three results as bookmarks",
         "Configure SSH keys and set up a connection to a remote server",
     ]
+    
+    # Function to generate Python code based on configuration and tasks
+    def generate_python_code(agent_loop_choice, provider, model_name, tasks, provider_url, recent_images=3, save_trajectory=True):
+        """Generate Python code for the current configuration and tasks.
+        
+        Args:
+            agent_loop_choice: The agent loop type (e.g., UITARS, OPENAI, ANTHROPIC, OMNI)
+            provider: The provider type (e.g., OPENAI, ANTHROPIC, OLLAMA, OAICOMPAT)
+            model_name: The model name
+            tasks: List of tasks to execute
+            provider_url: The provider base URL for OAICOMPAT providers
+            recent_images: Number of recent images to keep in context
+            save_trajectory: Whether to save the agent trajectory
+            
+        Returns:
+            Formatted Python code as a string
+        """
+        # Format the tasks as a Python list
+        tasks_str = ""
+        for task in tasks:
+            if task and task.strip():
+                tasks_str += f'            "{task}",\n'
+        
+        # Create the Python code template
+        code = f'''import asyncio
+from computer import Computer
+from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+
+async def main():
+    async with Computer() as macos_computer:
+        agent = ComputerAgent(
+            computer=macos_computer,
+            loop=AgentLoop.{agent_loop_choice},
+            only_n_most_recent_images={recent_images},
+            save_trajectory={save_trajectory},'''
+        
+        # Add the model configuration based on provider
+        if provider == LLMProvider.OAICOMPAT:
+            code += f'''
+            model=LLM(
+                provider=LLMProvider.OAICOMPAT, 
+                name="{model_name}",
+                provider_base_url="{provider_url}"
+            )'''
+            
+        code += """
+        )
+        """
+        
+        # Add tasks section if there are tasks
+        if tasks_str:
+            code += f'''
+        # Prompts for the computer-use agent
+        tasks = [
+{tasks_str.rstrip()}
+        ]
+
+        for task in tasks:
+            print(f"Executing task: {{task}}")
+            async for result in agent.run(task):
+                print(result)'''
+        else:
+            # If no tasks, just add a placeholder for a single task
+            code += f'''
+        # Execute a single task
+        task = "Search for information about CUA on GitHub"
+        print(f"Executing task: {{task}}")
+        async for result in agent.run(task):
+            print(result)'''
+        
+        # Add the main block
+        code += '''
+
+if __name__ == "__main__":
+    asyncio.run(main())'''
+        
+        return code
 
     # Function to update model choices based on agent loop selection
     def update_model_choices(loop):
@@ -537,50 +614,20 @@ def create_gradio_ui(
                     """
                 )
 
-                # Add installation prerequisites as a collapsible section
-                with gr.Accordion("Prerequisites & Installation", open=False):
-                    gr.Markdown(
-                        """
-                    ## Prerequisites
-                    
-                    Before using the Computer-Use Agent, you need to set up the Lume daemon and pull the macOS VM image.
-                    
-                    ### 1. Install Lume daemon
-                    
-                    While a lume binary is included with Computer, we recommend installing the standalone version with brew, and starting the lume daemon service:
-                    
-                    ```bash
-                    sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-                    ```
-                    
-                    ### 2. Start the Lume daemon service
-                    
-                    In a separate terminal:
-                    
-                    ```bash
-                    lume serve
-                    ```
-                    
-                    ### 3. Pull the pre-built macOS image
-                    
-                    ```bash
-                    lume pull macos-sequoia-cua:latest
-                    ```
-                    
-                    Initial download requires 80GB storage, but reduces to ~30GB after first run due to macOS's sparse file system.
-                    
-                    VMs are stored in `~/.lume`, and locally cached images are stored in `~/.lume/cache`.
-                    
-                    ### 4. Test the sandbox
-                    
-                    ```bash
-                    lume run macos-sequoia-cua:latest
-                    ```
-                    
-                    For more detailed instructions, visit the [CUA GitHub repository](https://github.com/trycua/cua).
-                    """
+                # Add accordion for Python code
+                with gr.Accordion("Python Code", open=False):
+                    code_display = gr.Code(
+                        language="python",
+                        value=generate_python_code(
+                            initial_loop, 
+                            LLMProvider.OPENAI, 
+                            "gpt-4o", 
+                            [],
+                            "https://openrouter.ai/api/v1"
+                        ),
+                        interactive=False,
                     )
-
+                    
                 with gr.Accordion("Configuration", open=True):
                     # Configuration options
                     agent_loop = gr.Dropdown(
@@ -643,6 +690,7 @@ def create_gradio_ui(
                         info="Number of recent images to keep in context",
                         interactive=True,
                     )
+                    
 
             # Right column for chat interface
             with gr.Column(scale=2):
@@ -898,6 +946,62 @@ def create_gradio_ui(
                     inputs=[model_choice],
                     outputs=[custom_model, provider_base_url, provider_api_key],
                     queue=False,  # Process immediately without queueing
+                )
+
+                # Function to update the code display based on configuration and chat history
+                def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val):
+                    # Extract messages from chat history
+                    messages = []
+                    if chat_history:
+                        for msg in chat_history:
+                            if msg.get("role") == "user":
+                                messages.append(msg.get("content", ""))
+                    
+                    # Determine provider and model name based on selection
+                    model_string = custom_model_val if model_choice_val == "Custom model..." else model_choice_val
+                    provider, model_name, _ = get_provider_and_model(model_string, agent_loop)
+                    
+                    # Generate and return the code
+                    return generate_python_code(
+                        agent_loop, 
+                        provider, 
+                        model_name, 
+                        messages, 
+                        provider_base_url,
+                        recent_images_val,
+                        save_trajectory_val
+                    )
+                
+                # Update code display when configuration changes
+                agent_loop.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
+                )
+                model_choice.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
+                )
+                custom_model.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
+                )
+                chatbot_history.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
+                )
+                recent_images.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
+                )
+                save_trajectory.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    outputs=[code_display]
                 )
 
     return demo
