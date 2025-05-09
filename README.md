@@ -49,7 +49,15 @@ This script will:
 
 Lume CLI manages high-performance macOS/Linux VMs with near-native speed on Apple Silicon.
 
-### Step 2: Install Python SDK
+### Step 2: Pull the macOS CUA Image
+
+```bash
+lume pull macos-sequoia-cua:latest
+```
+
+The macOS image contains the default Mac apps and the Computer Server for seamless interaction.
+
+### Step 3: Install Python SDK
 
 ```bash
 pip install cua-computer "cua-agent[all]"
@@ -57,7 +65,7 @@ pip install cua-computer "cua-agent[all]"
 
 Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
-### Step 3: Use in Your Code
+### Step 4: Use in Your Code
 
 ```python
 # Example: Using the Computer-Use Agent
