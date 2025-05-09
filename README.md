@@ -71,7 +71,7 @@ Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building
 # Example: Using the Computer-Use Agent
 from agent import ComputerAgent
 
-# Create and run an agent locally using UI-TARS and MLX
+# Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit (default)
 agent = ComputerAgent(computer=my_computer, loop="UITARS")
 await agent.run("Search for information about CUA on GitHub")
 
