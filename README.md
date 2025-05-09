@@ -96,17 +96,17 @@ For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
 # Install Lume CLI
 curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
 
-# List available VM images
-lume list
+# List all VMs
+lume ls
 
 # Pull a VM image
 lume pull macos-sequoia-cua:latest
 
 # Create a new VM
-lume create my-vm --image macos-sequoia-cua:latest
+lume create my-vm --os macos --cpu 4 --memory 8GB --disk-size 50GB
 
-# Start a VM
-lume start my-vm
+# Run a VM (creates and starts if it doesn't exist)
+lume run macos-sequoia-cua:latest
 
 # Stop a VM
 lume stop my-vm
@@ -114,6 +114,8 @@ lume stop my-vm
 # Delete a VM
 lume delete my-vm
 ```
+
+For advanced container-based virtualization, check out [Lumier](./libs/lumier/README.md) - a Docker interface for macOS and Linux VMs.
 
 ## Resources
 
