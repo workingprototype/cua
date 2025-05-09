@@ -27,9 +27,9 @@ Get started with a Computer-Use Agent UI and a VM with a single command:
 
 
 This script will:
-- Install Lume CLI for VM management
-- Pull the latest macOS CUA image
-- Set up Python environment and install required packages
+- Install Lume CLI for VM management (if needed)
+- Pull the latest macOS CUA image (if needed)
+- Set up Python environment and install/update required packages
 - Launch the Computer-Use Agent UI
 
 ### System Requirements
