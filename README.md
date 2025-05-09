@@ -138,6 +138,8 @@ lume delete my-vm
 
 ## Computer Interface Reference
 
+For complete examples, see [computer_examples.py](./examples/computer_examples.py) or [computer_nb.ipynb](./notebooks/computer_nb.ipynb)
+
 ```python
 # Mouse Actions
 await computer.interface.left_click(x, y)       # Left click at coordinates
@@ -170,6 +172,8 @@ await computer.interface.get_accessibility_tree() # Get accessibility tree
 ```
 
 ## ComputerAgent Reference
+
+For complete examples, see [agent_examples.py](./examples/agent_examples.py) or [agent_nb.ipynb](./notebooks/agent_nb.ipynb)
 
 ```python
 # Import necessary components
