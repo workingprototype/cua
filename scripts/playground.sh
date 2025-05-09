@@ -129,14 +129,17 @@ echo "🔍 Checking if the macOS CUA VM is running..."
 VM_RUNNING=$(lume ls | grep "macos-sequoia-cua" | grep "running" || echo "")
 
 if [ -z "$VM_RUNNING" ]; then
-  echo "🚀 Starting the macOS CUA VM..."
-  lume start macos-sequoia-cua:latest
+  echo "🚀 Starting the macOS CUA VM in the background..."
+  lume run macos-sequoia-cua:latest &
+  # Wait a moment for the VM to initialize
+  sleep 5
   echo "✅ VM started successfully."
 else
   echo "✅ macOS CUA VM is already running."
 fi
 
 # Ask if the user wants to start the demo now
+echo
 read -p "Would you like to start the CUA playground now? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
