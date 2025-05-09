@@ -30,7 +30,6 @@ This script will:
 - Install Lume CLI for VM management
 - Pull the latest macOS CUA image
 - Set up Python environment and install required packages
-- Create a desktop shortcut for easy access
 - Launch the Computer-Use Agent UI
 
 ### System Requirements
