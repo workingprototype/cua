@@ -134,6 +134,62 @@ lume delete my-vm
 | [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
 | [**Core**](./libs/core/README.md) | Core utilities | `pip install cua-core` |
 
+## Computer Interface Reference
+
+```python
+# Mouse Actions
+await computer.interface.left_click(x, y)       # Left click at coordinates
+await computer.interface.right_click(x, y)      # Right click at coordinates
+await computer.interface.double_click(x, y)     # Double click at coordinates
+await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
+await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
+await computer.interface.get_cursor_position()  # Get current cursor position
+
+# Keyboard Actions
+await computer.interface.type_text("Hello")     # Type text
+await computer.interface.press_key("enter")     # Press a single key
+await computer.interface.hotkey("command", "c") # Press key combination
+
+# Screen Actions
+await computer.interface.screenshot()           # Take a screenshot
+await computer.interface.get_screen_size()      # Get screen dimensions
+
+# Clipboard Actions
+await computer.interface.set_clipboard(text)    # Set clipboard content
+await computer.interface.copy_to_clipboard()    # Get clipboard content
+
+# File System Operations
+await computer.interface.file_exists(path)      # Check if file exists
+await computer.interface.directory_exists(path) # Check if directory exists
+await computer.interface.run_command(cmd)       # Run shell command
+
+# Accessibility
+await computer.interface.get_accessibility_tree() # Get accessibility tree
+```
+
+## ComputerAgent Reference
+
+```python
+# Import necessary components
+from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+
+# Agent Loops
+ComputerAgent(loop=AgentLoop.UITARS)     # UI-TARS loop for local execution with MLX
+ComputerAgent(loop=AgentLoop.OPENAI)     # OpenAI Computer-Use model using OpenAI provider
+ComputerAgent(loop=AgentLoop.ANTHROPIC)  # Anthropic Claude model using Anthropic provider
+ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))       # OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision model
+
+# OpenRouter example using OAICOMPAT provider
+ComputerAgent(
+    loop=AgentLoop.OMNI,
+    model=LLM(
+        provider=LLMProvider.OAICOMPAT, 
+        name="openai/gpt-4.1",
+        provider_base_url="https://openrouter.ai/api/v1"
+    )
+)
+```
+
 ## Demos
 
 Check out these demos of the Computer-Use Agent in action:
