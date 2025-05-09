@@ -109,13 +109,13 @@ lume create my-vm --os macos --cpu 4 --memory 8GB --disk-size 50GB
 lume run macos-sequoia-cua:latest
 
 # Stop a VM
-lume stop my-vm
+lume stop macos-sequoia-cua_latest
 
 # Delete a VM
-lume delete my-vm
+lume delete macos-sequoia-cua_latest
 ```
 
-For advanced container-based virtualization, check out [Lumier](./libs/lumier/README.md) - a Docker interface for macOS and Linux VMs.
+For advanced container-like virtualization, check out [Lumier](./libs/lumier/README.md) - a Docker interface for macOS and Linux VMs.
 
 ## Resources
 
