@@ -119,7 +119,7 @@ For advanced container-like virtualization, check out [Lumier](./libs/lumier/REA
 ## Resources
 
 - [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/mcp-server/README.md) - One of the easiest ways to get started with C/ua
-- [When and how to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/agent/README.md)
+- [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/agent/README.md)
 - [How to use Lume CLI for managing desktops](./libs/lume/README.md)
 - [Training Computer-Use Models: Collecting Human Trajectories with C/ua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
 - [Build Your Own Operator on macOS (Part 1)](https://www.trycua.com/blog/build-your-own-operator-on-macos-1)
