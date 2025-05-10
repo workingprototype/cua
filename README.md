@@ -34,11 +34,11 @@ This script will:
 - Set up Python environment and install/update required packages
 - Launch the Computer-Use Agent UI
 
-#### Supported Agent Loops
-- [UITARS-1.5](https://github.com/mlx-community/UI-TARS-1.5) - Run locally on Apple Silicon with MLX, or use cloud providers
-- [OpenAI CUA](https://platform.openai.com/docs/models/computer-use-preview) - Use OpenAI's Computer-Use Preview model
-- [Anthropic CUA](https://docs.anthropic.com/claude/docs/computer-use) - Use Anthropic's Computer-Use capabilities
-- Any vision model through [OmniParser](https://github.com/microsoft/OmniParser) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/)
+#### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
+- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
+- [OmniParser](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 ### System Requirements
 
