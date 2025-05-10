@@ -201,16 +201,7 @@ class OpenAILoop(BaseLoop):
 
                 # Emit screenshot callbacks
                 await self.handle_screenshot(screenshot_base64, action_type="initial_state")
-
-                # Save screenshot if requested
-                if self.save_trajectory:
-                    # Ensure screenshot_base64 is a string
-                    if not isinstance(screenshot_base64, str):
-                        logger.warning(
-                            "Converting non-string screenshot_base64 to string for _save_screenshot"
-                        )
-                    self._save_screenshot(screenshot_base64, action_type="state")
-                    logger.info("Screenshot saved to trajectory")
+                self._save_screenshot(screenshot_base64, action_type="state")
 
                 # First add any existing user messages that were passed to run()
                 user_query = None
@@ -351,6 +342,7 @@ class OpenAILoop(BaseLoop):
                         # Process screenshot through hooks
                         action_type = f"after_{action.get('type', 'action')}"
                         await self.handle_screenshot(screenshot_base64, action_type=action_type)
+                        self._save_screenshot(screenshot_base64, action_type=action_type)
 
                         # Create computer_call_output
                         computer_call_output = {
@@ -397,6 +389,7 @@ class OpenAILoop(BaseLoop):
 
                         # Process the response
                         # await self.response_handler.process_response(response, queue)
+                        self._log_api_call("agent_response", request=None, response=response)
                         await queue.put(response)
                     except Exception as e:
                         logger.error(f"Error executing computer action: {str(e)}")
