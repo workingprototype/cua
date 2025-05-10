@@ -36,6 +36,8 @@ openai = [
 ]
 uitars = [
     "httpx>=0.27.0,<0.29.0",
+]
+uitars-mlx = [
     "mlx-vlm @ git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id"
 ]
 ui = [
