@@ -23,6 +23,7 @@ class LLMProvider(StrEnum):
     OPENAI = "openai"
     OLLAMA = "ollama"
     OAICOMPAT = "oaicompat"
+    MLXVLM= "mlxvlm"
 
 
 @dataclass

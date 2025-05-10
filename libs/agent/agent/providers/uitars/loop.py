@@ -23,6 +23,7 @@ from .tools.computer import ToolResult
 from .prompts import COMPUTER_USE, SYSTEM_PROMPT, MAC_SPECIFIC_NOTES
 
 from .clients.oaicompat import OAICompatClient
+from .clients.mlxvlm import MLXVLMUITarsClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class UITARSLoop(BaseLoop):
         computer: Computer,
         api_key: str,
         model: str,
+        provider: Optional[LLMProvider] = None,
         provider_base_url: Optional[str] = "http://localhost:8000/v1",
         only_n_most_recent_images: Optional[int] = 2,
         base_dir: Optional[str] = "trajectories",
@@ -64,9 +66,10 @@ class UITARSLoop(BaseLoop):
             max_retries: Maximum number of retries for API calls
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
+            provider: The LLM provider to use (defaults to OAICOMPAT if not specified)
         """
         # Set provider before initializing base class
-        self.provider = LLMProvider.OAICOMPAT
+        self.provider = provider or LLMProvider.OAICOMPAT
         self.provider_base_url = provider_base_url
 
         # Initialize message manager with image retention config
@@ -113,7 +116,7 @@ class UITARSLoop(BaseLoop):
             logger.error(f"Error initializing tool manager: {str(e)}")
             logger.warning("Will attempt to initialize tools on first use.")
 
-        # Initialize client for the OAICompat provider
+        # Initialize client for the selected provider
         try:
             await self.initialize_client()
         except Exception as e:
@@ -128,18 +131,28 @@ class UITARSLoop(BaseLoop):
         """Initialize the appropriate client.
 
         Implements abstract method from BaseLoop to set up the specific
-        provider client (OAICompat for UI-TARS).
+        provider client based on the configured provider.
         """
         try:
-            logger.info(f"Initializing OAICompat client for UI-TARS with model {self.model}...")
-
-            self.client = OAICompatClient(
-                api_key=self.api_key or "EMPTY",  # Local endpoints typically don't require an API key
-                model=self.model,
-                provider_base_url=self.provider_base_url,
-            )
-
-            logger.info(f"Initialized OAICompat client with model {self.model}")
+            if self.provider == LLMProvider.MLXVLM:
+                logger.info(f"Initializing MLX VLM client for UI-TARS with model {self.model}...")
+                
+                self.client = MLXVLMUITarsClient(
+                    model=self.model,
+                )
+                
+                logger.info(f"Initialized MLX VLM client with model {self.model}")
+            else:
+                # Default to OAICompat client for other providers
+                logger.info(f"Initializing OAICompat client for UI-TARS with model {self.model}...")
+                
+                self.client = OAICompatClient(
+                    api_key=self.api_key or "EMPTY",  # Local endpoints typically don't require an API key
+                    model=self.model,
+                    provider_base_url=self.provider_base_url,
+                )
+                
+                logger.info(f"Initialized OAICompat client with model {self.model}")
         except Exception as e:
             logger.error(f"Error initializing client: {str(e)}")
             self.client = None
