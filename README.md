@@ -5,188 +5,245 @@
     <img alt="Cua logo" height="150" src="img/logo_black.png">
   </picture>
 
-  <!-- <h1>Cua</h1> -->
-
   [![Python](https://img.shields.io/badge/Python-333333?logo=python&logoColor=white&labelColor=333333)](#)
   [![Swift](https://img.shields.io/badge/Swift-F05138?logo=swift&logoColor=white)](#)
   [![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0)](#)
   [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.com/invite/mVnXXpdE85)
 </div>
 
-**TL;DR**: **c/ua** (pronounced "koo-ah", short for Computer-Use Agent) is a framework that enables AI agents to control full operating systems within high-performance, lightweight virtual containers. It delivers up to 97% native speed on Apple Silicon and works with any vision language models.
+**c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
 
-## What is c/ua?
 
-**c/ua** offers two primary capabilities in a single integrated framework:
 
-1. **High-Performance Virtualization** - Create and run macOS/Linux virtual machines on Apple Silicon with near-native performance (up to 97% of native speed) using the **Lume CLI** with `Apple's Virtualization.Framework`.
+<div align="center">
+<video src="https://github.com/user-attachments/assets/06e1974f-8f73-477d-b18a-715d83148e45" width="800" controls></video></div>
 
-2. **Computer-Use Interface & Agent** - A framework that allows AI systems to observe and control these virtual environments - interacting with applications, browsing the web, writing code, and performing complex workflows.
+# 🚀 Quick Start
 
-## Why Use c/ua?
+Get started with a Computer-Use Agent UI and a VM with a single command:
 
-- **Security & Isolation**: Run AI agents in fully isolated virtual environments instead of giving them access to your main system
-- **Performance**: [Near-native performance](https://browser.geekbench.com/v6/cpu/compare/11283746?baseline=11102709) on Apple Silicon
-- **Flexibility**: Run macOS or Linux environments with the same framework
-- **Reproducibility**: Create consistent, deterministic environments for AI agent workflows
-- **LLM Integration**: Built-in support for connecting to various LLM providers
 
-## System Requirements
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
+```
+
+
+This script will:
+- Install Lume CLI for VM management (if needed)
+- Pull the latest macOS CUA image (if needed)
+- Set up Python environment and install/update required packages
+- Launch the Computer-Use Agent UI
+
+#### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
+- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
+- [OmniParser](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
+
+### System Requirements
 
 - Mac with Apple Silicon (M1/M2/M3/M4 series)
 - macOS 15 (Sequoia) or newer
-- Python 3.10+ (required for the Computer, Agent, and MCP libraries). We recommend using Conda (or Anaconda) to create an ad hoc Python environment.
 - Disk space for VM images (30GB+ recommended)
 
-## Quick Start
 
-### Option 1: Lume CLI Only (VM Management)
-If you only need the virtualization capabilities:
+# 💻 For Developers
+
+### Step 1: Install Lume CLI
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
-Optionally, if you don't want Lume to run as a background service:
+Lume CLI manages high-performance macOS/Linux VMs with near-native speed on Apple Silicon.
+
+### Step 2: Pull the macOS CUA Image
+
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh) --no-background-service"
+lume pull macos-sequoia-cua:latest
 ```
 
-**Note:** If you choose this option, you'll need to manually start the Lume API service whenever needed by running `lume serve` in your terminal. This applies to Option 2 after completing step 1.
+The macOS CUA image contains the default Mac apps and the Computer Server for easy automation.
 
-For Lume usage instructions, refer to the [Lume documentation](./libs/lume/README.md).
+### Step 3: Install Python SDK
 
-### Option 2: Full Computer-Use Agent Capabilities
-If you want to use AI agents with virtualized environments:
+```bash
+pip install cua-computer "cua-agent[all]"
+```
 
-1. Install the Lume CLI:
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-   ```
+Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
-2. Pull the latest macOS CUA image:
-   ```bash
-   lume pull macos-sequoia-cua:latest
-   ```
+### Step 4: Use in Your Code
 
-3. Install the Python libraries:
-   ```bash
-   pip install cua-computer cua-agent[all]
-   ```
+```python
+from computer import Computer
+from agent import ComputerAgent, LLM
 
-4. Use the libraries in your Python code:
-   ```python
-   from computer import Computer
-   from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+async def main():
+    # Start a local macOS VM with a 1024x768 display
+    async with Computer(os_type="macos", display="1024x768") as computer:
 
-   async with Computer(os_type="macos", display="1024x768") as macos_computer:
-     agent = ComputerAgent(
-         computer=macos_computer,
-         loop=AgentLoop.OPENAI, # or AgentLoop.UITARS, AgentLoop.OMNI, or AgentLoop.UITARS, or AgentLoop.ANTHROPIC
-         model=LLM(provider=LLMProvider.OPENAI) # or LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-4bit")
-     )
+        # Example: Direct control of a macOS VM with Computer
+        await computer.interface.left_click(100, 200)
+        await computer.interface.type_text("Hello, world!")
+        screenshot_bytes = await computer.interface.screenshot()
+        
+        # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
+        agent = ComputerAgent(
+          computer=computer,
+          loop="UITARS",
+          model=LLM(provider="MLX", name="mlx-community/UI-TARS-1.5-7B-6bit")
+        )
+        await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
-     tasks = [
-         "Look for a repository named trycua/cua on GitHub.",
-     ]
+main()
+```
 
-     for task in tasks:
-       async for result in agent.run(task):
-         print(result)
-   ```
-   
-   Explore the [Agent Notebook](./notebooks/) for a ready-to-run example.
+For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
 
-5. Optionally, you can use the Agent with a Gradio UI:
+### Lume CLI Reference
 
-   ```python
-   from utils import load_dotenv_files
-   load_dotenv_files()
-    
-   from agent.ui.gradio.app import create_gradio_ui
-   
-   app = create_gradio_ui()
-   app.launch(share=False)
-   ```
+```bash
+# Install Lume CLI
+curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
 
-### Option 3: Build from Source (Nightly)
-If you want to contribute to the project or need the latest nightly features:
+# List all VMs
+lume ls
 
-   ```bash
-   # Clone the repository
-   git clone https://github.com/trycua/cua.git
-   cd cua
-   
-   # Open the project in VSCode
-   code ./.vscode/py.code-workspace
+# Pull a VM image
+lume pull macos-sequoia-cua:latest
 
-   # Build the project
-   ./scripts/build.sh
-   ```
-   
-   See our [Developer-Guide](./docs/Developer-Guide.md) for more information.
+# Create a new VM
+lume create my-vm --os macos --cpu 4 --memory 8GB --disk-size 50GB
 
-## Monorepo Libraries
+# Run a VM (creates and starts if it doesn't exist)
+lume run macos-sequoia-cua:latest
 
-| Library | Description | Installation | Version |
-|---------|-------------|--------------|---------|
-| [**Lume**](./libs/lume/README.md) | CLI for running macOS/Linux VMs with near-native performance using Apple's `Virtualization.Framework`. | [![Download](https://img.shields.io/badge/Download-333333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/trycua/cua/releases/latest/download/lume.pkg.tar.gz) | [![GitHub release](https://img.shields.io/github/v/release/trycua/cua?color=333333)](https://github.com/trycua/cua/releases) |
-| [**Computer**](./libs/computer/README.md) | Computer-Use Interface (CUI) framework for interacting with macOS/Linux sandboxes | `pip install cua-computer` | [![PyPI](https://img.shields.io/pypi/v/cua-computer?color=333333)](https://pypi.org/project/cua-computer/) |
-| [**Agent**](./libs/agent/README.md) | Computer-Use Agent (CUA) framework for running agentic workflows in macOS/Linux dedicated sandboxes | `pip install cua-agent` | [![PyPI](https://img.shields.io/pypi/v/cua-agent?color=333333)](https://pypi.org/project/cua-agent/) |
+# Stop a VM
+lume stop macos-sequoia-cua_latest
 
-## Docs
+# Delete a VM
+lume delete macos-sequoia-cua_latest
+```
 
-For the best onboarding experience with the packages in this monorepo, we recommend starting with the [Computer](./libs/computer/README.md) documentation to cover the core functionality of the Computer sandbox, then exploring the [Agent](./libs/agent/README.md) documentation to understand Cua's AI agent capabilities, and finally working through the Notebook examples.
+For advanced container-like virtualization, check out [Lumier](./libs/lumier/README.md) - a Docker interface for macOS and Linux VMs.
 
-- [Lume](./libs/lume/README.md)
-- [Computer](./libs/computer/README.md)
-- [Agent](./libs/agent/README.md)
-- [Notebooks](./notebooks/)
+## Resources
+
+- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/mcp-server/README.md) - One of the easiest ways to get started with C/ua
+- [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/agent/README.md)
+- [How to use Lume CLI for managing desktops](./libs/lume/README.md)
+- [Training Computer-Use Models: Collecting Human Trajectories with C/ua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
+- [Build Your Own Operator on macOS (Part 1)](https://www.trycua.com/blog/build-your-own-operator-on-macos-1)
+
+## Modules
+
+| Module | Description | Installation |
+|--------|-------------|---------------|
+| [**Lume**](./libs/lume/README.md) | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
+| [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install cua-computer` |
+| [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install cua-agent` |
+| [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
+| [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
+| [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` |
+| [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
+| [**Core**](./libs/core/README.md) | Core utilities | `pip install cua-core` |
+
+## Computer Interface Reference
+
+For complete examples, see [computer_examples.py](./examples/computer_examples.py) or [computer_nb.ipynb](./notebooks/computer_nb.ipynb)
+
+```python
+# Mouse Actions
+await computer.interface.left_click(x, y)       # Left click at coordinates
+await computer.interface.right_click(x, y)      # Right click at coordinates
+await computer.interface.double_click(x, y)     # Double click at coordinates
+await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
+await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
+await computer.interface.get_cursor_position()  # Get current cursor position
+
+# Keyboard Actions
+await computer.interface.type_text("Hello")     # Type text
+await computer.interface.press_key("enter")     # Press a single key
+await computer.interface.hotkey("command", "c") # Press key combination
+
+# Screen Actions
+await computer.interface.screenshot()           # Take a screenshot
+await computer.interface.get_screen_size()      # Get screen dimensions
+
+# Clipboard Actions
+await computer.interface.set_clipboard(text)    # Set clipboard content
+await computer.interface.copy_to_clipboard()    # Get clipboard content
+
+# File System Operations
+await computer.interface.file_exists(path)      # Check if file exists
+await computer.interface.directory_exists(path) # Check if directory exists
+await computer.interface.run_command(cmd)       # Run shell command
+
+# Accessibility
+await computer.interface.get_accessibility_tree() # Get accessibility tree
+```
+
+## ComputerAgent Reference
+
+For complete examples, see [agent_examples.py](./examples/agent_examples.py) or [agent_nb.ipynb](./notebooks/agent_nb.ipynb)
+
+```python
+# Import necessary components
+from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+
+# UI-TARS-1.5 agent for local execution with MLX
+ComputerAgent(loop=AgentLoop.UITARS, model=LLM(provider=LLMProvider.MLX, name="mlx-community/UI-TARS-1.5-7B-6bit"))   
+# OpenAI Computer-Use agent using OPENAI_API_KEY  
+ComputerAgent(loop=AgentLoop.OPENAI, model=LLM(provider=LLMProvider.OPENAI, name="computer-use-preview"))
+# Anthropic Claude agent using ANTHROPIC_API_KEY
+ComputerAgent(loop=AgentLoop.ANTHROPIC, model=LLM(provider=LLMProvider.ANTHROPIC))
+
+# OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision LLM
+ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))      
+# OpenRouter example using OAICOMPAT provider
+ComputerAgent(
+    loop=AgentLoop.OMNI,
+    model=LLM(
+        provider=LLMProvider.OAICOMPAT, 
+        name="openai/gpt-4o-mini",
+        provider_base_url="https://openrouter.ai/api/v1"
+    ),
+    api_key="your-openrouter-api-key"
+)
+```
 
 ## Demos
 
-Demos of the Computer-Use Agent in action. Share your most impressive demos in Cua's [Discord community](https://discord.com/invite/mVnXXpdE85)!
+Check out these demos of the Computer-Use Agent in action:
 
 <details open>
-<summary><b>MCP Server: Work with Claude Desktop and Tableau </b></summary>
+<summary><b>MCP Server: Work with Claude Desktop and Tableau</b></summary>
 <br>
 <div align="center">
-    <video src="https://github.com/user-attachments/assets/9f573547-5149-493e-9a72-396f3cff29df
-" width="800" controls></video>
+    <video src="https://github.com/user-attachments/assets/9f573547-5149-493e-9a72-396f3cff29df" width="800" controls></video>
 </div>
+</details>
 
-<details open>
-<summary><b>AI-Gradio: multi-app workflow requiring browser, VS Code and terminal access</b></summary>
+<details>
+<summary><b>AI-Gradio: Multi-app workflow with browser, VS Code and terminal</b></summary>
 <br>
 <div align="center">
     <video src="https://github.com/user-attachments/assets/723a115d-1a07-4c8e-b517-88fbdf53ed0f" width="800" controls></video>
 </div>
-
 </details>
 
-<details open>
+<details>
 <summary><b>Notebook: Fix GitHub issue in Cursor</b></summary>
 <br>
 <div align="center">
     <video src="https://github.com/user-attachments/assets/f67f0107-a1e1-46dc-aa9f-0146eb077077" width="800" controls></video>
 </div>
-
 </details>
 
-## Accessory Libraries
+## Community
 
-| Library | Description | Installation | Version |
-|---------|-------------|--------------|---------|
-| [**Core**](./libs/core/README.md) | Core functionality and utilities used by other Cua packages | `pip install cua-core` | [![PyPI](https://img.shields.io/pypi/v/cua-core?color=333333)](https://pypi.org/project/cua-core/) |
-| [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` | [![PyPI](https://img.shields.io/pypi/v/pylume?color=333333)](https://pypi.org/project/pylume/) |
-| [**Computer Server**](./libs/computer-server/README.md) | Server component for the Computer-Use Interface (CUI) framework | `pip install cua-computer-server` | [![PyPI](https://img.shields.io/pypi/v/cua-computer-server?color=333333)](https://pypi.org/project/cua-computer-server/) |
-| [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` | [![PyPI](https://img.shields.io/pypi/v/cua-som?color=333333)](https://pypi.org/project/cua-som/) |
-
-## Contributing
-
-We welcome and greatly appreciate contributions to Cua! Whether you're improving documentation, adding new features, fixing bugs, or adding new VM images, your efforts help make lume better for everyone. For detailed instructions on how to contribute, please refer to our [Contributing Guidelines](CONTRIBUTING.md).
-
-Join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas or get assistance.
+Join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas, get assistance, or share your demos!
 
 ## License
 
@@ -194,11 +251,17 @@ Cua is open-sourced under the MIT License - see the [LICENSE](LICENSE) file for 
 
 Microsoft's OmniParser, which is used in this project, is licensed under the Creative Commons Attribution 4.0 International License (CC-BY-4.0) - see the [OmniParser LICENSE](https://github.com/microsoft/OmniParser/blob/master/LICENSE) file for details.
 
+## Contributing
+
+We welcome contributions to CUA! Please refer to our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
 ## Trademarks
 
 Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonical are registered trademarks of Canonical Ltd. Microsoft is a registered trademark of Microsoft Corporation. This project is not affiliated with, endorsed by, or sponsored by Apple Inc., Canonical Ltd., or Microsoft Corporation.
 
-## Stargazers over time
+## Stargazers
+
+Thank you to all our supporters!
 
 [![Stargazers over time](https://starchart.cc/trycua/cua.svg?variant=adaptive)](https://starchart.cc/trycua/cua)
 
