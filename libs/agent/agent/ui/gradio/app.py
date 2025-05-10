@@ -422,25 +422,23 @@ def create_gradio_ui(
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Prepare model choices based on available API keys
-    openai_models = []
-    anthropic_models = []
-    omni_models = []
-
-    if openai_api_key:
-        openai_models = ["OpenAI: Computer-Use Preview"]
-        omni_models += [
-            "OMNI: OpenAI GPT-4o",
-            "OMNI: OpenAI GPT-4o mini",
-            "OMNI: OpenAI GPT-4.5-preview",
-        ]
-
-    if anthropic_api_key:
-        anthropic_models = [
-            "Anthropic: Claude 3.7 Sonnet (20250219)",
-            "Anthropic: Claude 3.5 Sonnet (20240620)",
-        ]
-        omni_models += ["OMNI: Claude 3.7 Sonnet (20250219)", "OMNI: Claude 3.5 Sonnet (20240620)"]
+    # Always show models regardless of API key availability
+    openai_models = ["OpenAI: Computer-Use Preview"]
+    anthropic_models = [
+        "Anthropic: Claude 3.7 Sonnet (20250219)",
+        "Anthropic: Claude 3.5 Sonnet (20240620)",
+    ]
+    omni_models = [
+        "OMNI: OpenAI GPT-4o",
+        "OMNI: OpenAI GPT-4o mini",
+        "OMNI: OpenAI GPT-4.5-preview",
+        "OMNI: Claude 3.7 Sonnet (20250219)", 
+        "OMNI: Claude 3.5 Sonnet (20240620)"
+    ]
+    
+    # Check if API keys are available
+    has_openai_key = bool(openai_api_key)
+    has_anthropic_key = bool(anthropic_api_key)
 
     # Get Ollama models for OMNI
     ollama_models = get_ollama_models()
@@ -582,16 +580,51 @@ if __name__ == "__main__":
             elif "Custom model..." not in models:
                 models.append("Custom model...")
 
-            return gr.update(
-                choices=models, value=models[0] if models else "Custom model...", interactive=True
-            )
-        else:
-            # For other providers, use standard dropdown without custom option
+            # Show both OpenAI and Anthropic key inputs for OMNI if keys aren't set
+            return [
+                gr.update(choices=models, value=models[0] if models else "Custom model...", interactive=True),
+                gr.update(visible=not has_openai_key),
+                gr.update(visible=not has_anthropic_key)
+            ]
+        elif loop == "OPENAI":
+            # Show only OpenAI key input for OPENAI loop if key isn't set
             if not models:
-                return gr.update(
-                    choices=["No models available"], value="No models available", interactive=True
-                )
-            return gr.update(choices=models, value=models[0] if models else None, interactive=True)
+                return [
+                    gr.update(choices=["No models available"], value="No models available", interactive=True),
+                    gr.update(visible=not has_openai_key),
+                    gr.update(visible=False)
+                ]
+            return [
+                gr.update(choices=models, value=models[0] if models else None, interactive=True),
+                gr.update(visible=not has_openai_key),
+                gr.update(visible=False)
+            ]
+        elif loop == "ANTHROPIC":
+            # Show only Anthropic key input for ANTHROPIC loop if key isn't set
+            if not models:
+                return [
+                    gr.update(choices=["No models available"], value="No models available", interactive=True),
+                    gr.update(visible=False),
+                    gr.update(visible=not has_anthropic_key)
+                ]
+            return [
+                gr.update(choices=models, value=models[0] if models else None, interactive=True),
+                gr.update(visible=False),
+                gr.update(visible=not has_anthropic_key)
+            ]
+        else:
+            # For other providers (like UITARS), don't show API key inputs
+            if not models:
+                return [
+                    gr.update(choices=["No models available"], value="No models available", interactive=True),
+                    gr.update(visible=False),
+                    gr.update(visible=False)
+                ]
+            return [
+                gr.update(choices=models, value=models[0] if models else None, interactive=True),
+                gr.update(visible=False),
+                gr.update(visible=False)
+            ]
 
     # Create the Gradio interface with advanced UI
     with gr.Blocks(title="Computer-Use Agent") as demo:
@@ -659,6 +692,27 @@ if __name__ == "__main__":
                         info="Select model or choose 'Custom model...' to enter a custom name",
                         interactive=True,
                     )
+
+                    # Add API key inputs for OpenAI and Anthropic
+                    with gr.Group(visible=not has_openai_key and (initial_loop == "OPENAI" or initial_loop == "OMNI")) as openai_key_group:
+                        openai_api_key_input = gr.Textbox(
+                            label="OpenAI API Key",
+                            placeholder="Enter your OpenAI API key",
+                            value="",
+                            interactive=True,
+                            type="password",
+                            info="Required for OpenAI models"
+                        )
+                    
+                    with gr.Group(visible=not has_anthropic_key and (initial_loop == "ANTHROPIC" or initial_loop == "OMNI")) as anthropic_key_group:
+                        anthropic_api_key_input = gr.Textbox(
+                            label="Anthropic API Key",
+                            placeholder="Enter your Anthropic API key",
+                            value="",
+                            interactive=True,
+                            type="password",
+                            info="Required for Anthropic models"
+                        )
 
                     # Add custom model textbox (only visible when "Custom model..." is selected)
                     custom_model = gr.Textbox(
@@ -738,6 +792,8 @@ if __name__ == "__main__":
                     recent_imgs,
                     custom_url_value=None,
                     custom_api_key=None,
+                    openai_key_input=None,
+                    anthropic_key_input=None,
                 ):
                     if not history:
                         yield history
@@ -783,9 +839,15 @@ if __name__ == "__main__":
                                 f"DEBUG - Using custom API key for model: {final_model_name_to_send}"
                             )
                         elif provider == LLMProvider.OPENAI:
-                            api_key = openai_api_key or os.environ.get("OPENAI_API_KEY", "")
+                            # Use OpenAI key from input if provided, otherwise use environment variable
+                            api_key = openai_key_input if openai_key_input else (openai_api_key or os.environ.get("OPENAI_API_KEY", ""))
+                            if openai_key_input:
+                                print(f"DEBUG - Using provided OpenAI API key from UI")
                         elif provider == LLMProvider.ANTHROPIC:
-                            api_key = anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+                            # Use Anthropic key from input if provided, otherwise use environment variable
+                            api_key = anthropic_key_input if anthropic_key_input else (anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", ""))
+                            if anthropic_key_input:
+                                print(f"DEBUG - Using provided Anthropic API key from UI")
                         else:
                             # For Ollama or default OAICOMPAT (without custom key), no key needed/expected
                             api_key = ""
@@ -931,6 +993,8 @@ if __name__ == "__main__":
                         recent_images,
                         provider_base_url,
                         provider_api_key,
+                        openai_api_key_input,
+                        anthropic_api_key_input,
                     ],
                     [chatbot_history],
                 )
@@ -959,6 +1023,14 @@ if __name__ == "__main__":
                     fn=update_custom_model_visibility,
                     inputs=[model_choice],
                     outputs=[custom_model, provider_base_url, provider_api_key],
+                    queue=False,  # Process immediately without queueing
+                )
+                
+                # Connect agent_loop changes to model selection and API key visibility
+                agent_loop.change(
+                    fn=update_model_choices,
+                    inputs=[agent_loop],
+                    outputs=[model_choice, openai_key_group, anthropic_key_group],
                     queue=False,  # Process immediately without queueing
                 )
 

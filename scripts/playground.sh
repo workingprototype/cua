@@ -87,9 +87,9 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Install required packages
-echo "📦 Installing CUA packages..."
+echo "📦 Updating CUA packages..."
 pip install -U pip
-pip install cua-computer cua-agent[all]
+pip install -U cua-computer "cua-agent[all]"
 
 # Create a simple demo script
 DEMO_DIR="$HOME/.cua-demo"
