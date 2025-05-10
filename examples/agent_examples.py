@@ -36,6 +36,7 @@ async def run_agent_example():
                 # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4o"),
                 # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
                 # model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:4b-it-q4_K_M"),
+                # model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-4bit"),
                 model=LLM(
                     provider=LLMProvider.OAICOMPAT,
                     name="gemma-3-12b-it",

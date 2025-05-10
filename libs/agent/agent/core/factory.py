@@ -116,6 +116,7 @@ class LoopFactory:
                 base_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
                 provider_base_url=provider_base_url,
+                provider=provider,
             )
         else:
             raise ValueError(f"Unsupported loop type: {loop_type}")

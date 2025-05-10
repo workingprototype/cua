@@ -164,8 +164,10 @@ MODEL_MAPPINGS = {
         "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
     },
     "uitars": {
-        # UI-TARS models default to custom endpoint
-        "default": "ByteDance-Seed/UI-TARS-1.5-7B",
+        # UI-TARS models using MLXVLM provider
+        "default": "mlx-community/UI-TARS-1.5-7B-4bit",
+        "mlx-community/UI-TARS-1.5-7B-4bit": "mlx-community/UI-TARS-1.5-7B-4bit",
+        "mlx-community/UI-TARS-1.5-7B-6bit": "mlx-community/UI-TARS-1.5-7B-6bit"
     },
     "ollama": {
         # For Ollama models, we keep the original name
@@ -288,8 +290,16 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         model_name_to_use = cleaned_model_name
         # agent_loop remains AgentLoop.OMNI
     elif agent_loop == AgentLoop.UITARS:
-        provider = LLMProvider.OAICOMPAT
-        model_name_to_use = MODEL_MAPPINGS["uitars"]["default"]  # Default 
+        # For UITARS, use MLXVLM provider for the MLX models, OAICOMPAT for custom
+        if model_name == "Custom model...":
+            provider = LLMProvider.OAICOMPAT
+            model_name_to_use = "tgi"
+        else:
+            provider = LLMProvider.MLXVLM
+            # Get the model name from the mappings or use as-is if not found
+            model_name_to_use = MODEL_MAPPINGS["uitars"].get(
+                model_name, model_name if model_name else MODEL_MAPPINGS["uitars"]["default"]
+            )
     else:
         # Default to OpenAI if unrecognized loop
         provider = LLMProvider.OPENAI
@@ -440,7 +450,11 @@ def create_gradio_ui(
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model..."],  # Add custom model option
-        "UITARS": ["Custom model..."],  # UI-TARS options
+        "UITARS": [
+            "mlx-community/UI-TARS-1.5-7B-4bit",
+            "mlx-community/UI-TARS-1.5-7B-6bit",
+            "Custom model..."
+        ],  # UI-TARS options with MLX models
     }
 
     # --- Apply Saved Settings (override defaults if available) ---

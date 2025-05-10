@@ -92,7 +92,7 @@ async def main():
         agent = ComputerAgent(
           computer=computer,
           loop="UITARS",
-          model=LLM(provider="MLX", name="mlx-community/UI-TARS-1.5-7B-6bit")
+          model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
         )
         await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
@@ -193,7 +193,7 @@ For complete examples, see [agent_examples.py](./examples/agent_examples.py) or 
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
 # UI-TARS-1.5 agent for local execution with MLX
-ComputerAgent(loop=AgentLoop.UITARS, model=LLM(provider=LLMProvider.MLX, name="mlx-community/UI-TARS-1.5-7B-6bit"))   
+ComputerAgent(loop=AgentLoop.UITARS, model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-6bit"))   
 # OpenAI Computer-Use agent using OPENAI_API_KEY  
 ComputerAgent(loop=AgentLoop.OPENAI, model=LLM(provider=LLMProvider.OPENAI, name="computer-use-preview"))
 # Anthropic Claude agent using ANTHROPIC_API_KEY
