@@ -523,7 +523,7 @@ class MacOSComputerInterface(BaseComputerInterface):
         result = await self._send_command("get_accessibility_tree")
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to get accessibility tree"))
-        return result.get("tree", {})
+        return result
 
     async def get_active_window_bounds(self) -> Dict[str, int]:
         """Get the bounds of the currently active window."""
