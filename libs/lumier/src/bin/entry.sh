@@ -31,14 +31,12 @@ if [ -z "${VM_NAME:-}" ]; then
     export VM_NAME
 fi
 
-# Set HOST_STORAGE_PATH to a macOS ephemeral path if not set
+# Set HOST_STORAGE_PATH to a lume ephemeral storage if not set
 if [ -z "${HOST_STORAGE_PATH:-}" ]; then
-    # Use macOS /private/tmp directory which gets automatically cleaned
-    # This is the proper temporary directory on macOS that's regularly purged
-    HOST_STORAGE_PATH="/private/tmp/lumier_storage"
+    HOST_STORAGE_PATH="ephemeral"
     
     # Tell user that ephemeral storage is being used
-    echo "Using ephemeral storage at ${HOST_STORAGE_PATH}. VM state will be lost when macOS cleans up temporary files."
+    echo "Using ephemeral storage. VM state will be lost when macOS cleans up temporary files."
     
     export HOST_STORAGE_PATH
 fi
@@ -54,6 +52,12 @@ if [ "${LUMIER_DEBUG:-0}" == "1" ]; then
     # if mountpoint -q /data; then
     #     echo "/data is mounted"
     # fi
+fi
+
+# Check if we're running as PID 1 (important for Docker signal handling)
+if [ $$ -ne 1 ]; then
+    echo "Warning: This script is not running as PID 1 (current PID: $$)."
+    echo "Docker signal handling may not work properly when stopped from Docker Desktop."
 fi
 
 # Log startup info
@@ -73,43 +77,21 @@ cleanup() {
   fi
   
   # Attempt to clean up ephemeral storage if it's in the /private/tmp directory
-  if [[ "$HOST_STORAGE_PATH" == "/private/tmp/lumier_"* ]]; then
-    echo "[cleanup] Checking if VM exists before cleanup..."
-    
+  if [[ "$HOST_STORAGE_PATH" == "ephemeral" ]]; then
     # First check if VM actually exists
     VM_INFO=$(lume_get "$VM_NAME" "$HOST_STORAGE_PATH" "json" "false")
     
     # Only try VM deletion if VM exists and not in the middle of a pull
     if [[ "$PULL_IN_PROGRESS" != "1" && $VM_INFO != *"Virtual machine not found"* ]]; then
-      echo "[cleanup] Removing VM and storage using API: $HOST_STORAGE_PATH"
+      echo "[cleanup] Cleaning up VM..."
       lume_delete "$VM_NAME" "$HOST_STORAGE_PATH" > /dev/null 2>&1
-    else
-      echo "[cleanup] No VM found or pull was interrupted, skipping API deletion"
     fi
   fi
   
-  # Now gently stop noVNC proxy if running
-  # if [ -n "${NOVNC_PID:-}" ] && kill -0 "$NOVNC_PID" 2>/dev/null; then
-  #   echo "[cleanup] Stopping noVNC proxy (PID $NOVNC_PID)..."
-  #   kill -TERM "$NOVNC_PID"
-  #   # Wait up to 5s for noVNC to exit
-  #   for i in {1..5}; do
-  #     if ! kill -0 "$NOVNC_PID" 2>/dev/null; then
-  #       echo "[cleanup] noVNC proxy stopped."
-  #       break
-  #     fi
-  #     sleep 1
-  #   done
-  #   # Escalate if still running
-  #   if kill -0 "$NOVNC_PID" 2>/dev/null; then
-  #     echo "[cleanup] noVNC proxy did not exit, killing..."
-  #     kill -KILL "$NOVNC_PID" 2>/dev/null
-  #   fi
-  # fi
-  echo "[cleanup] Done. Exiting."
   exit 0
 }
-trap cleanup SIGTERM SIGINT
+# Ensure we catch all typical container termination signals
+trap cleanup SIGTERM SIGINT SIGHUP
 
 # Now enable strict error handling after initialization
 set -euo pipefail
@@ -130,7 +112,7 @@ if [ -n "${VNC_PORT:-}" ] && [ -n "${VNC_PASSWORD:-}" ]; then
   ${NOVNC_PATH}/utils/novnc_proxy --vnc host.docker.internal:${VNC_PORT} --listen 8006 --web ${NOVNC_PATH} > /dev/null 2>&1 &
   NOVNC_PID=$!
   disown $NOVNC_PID
-  echo "noVNC interface available at: http://localhost:PORT/vnc.html?password=${VNC_PASSWORD}&autoconnect=true (replace PORT with the port you forwarded to 8006)"
+  echo "noVNC interface available at: http://localhost:8006/vnc.html?password=${VNC_PASSWORD}&autoconnect=true (replace PORT with the port you forwarded to 8006)"
 fi
 
 echo "Lumier is running. Press Ctrl+C to stop."
