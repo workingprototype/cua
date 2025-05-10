@@ -241,13 +241,15 @@ Join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss i
 
 Cua is open-sourced under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+Microsoft's OmniParser, which is used in this project, is licensed under the Creative Commons Attribution 4.0 International License (CC-BY-4.0) - see the [OmniParser LICENSE](https://github.com/microsoft/OmniParser/blob/master/LICENSE) file for details.
+
 ## Contributing
 
 We welcome contributions to CUA! Please refer to our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ## Trademarks
 
-Apple, macOS, and Apple Silicon are trademarks of Apple Inc. This project is not affiliated with, endorsed by, or sponsored by Apple Inc.
+Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonical are registered trademarks of Canonical Ltd. Microsoft is a registered trademark of Microsoft Corporation. This project is not affiliated with, endorsed by, or sponsored by Apple Inc., Canonical Ltd., or Microsoft Corporation.
 
 ## Stargazers
 
