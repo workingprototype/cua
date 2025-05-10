@@ -91,6 +91,9 @@ echo "📦 Updating CUA packages..."
 pip install -U pip
 pip install -U cua-computer "cua-agent[all]"
 
+# Temporary fix for mlx-vlm, see https://github.com/Blaizzy/mlx-vlm/pull/349
+pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
+
 # Create a simple demo script
 DEMO_DIR="$HOME/.cua-demo"
 mkdir -p "$DEMO_DIR"
