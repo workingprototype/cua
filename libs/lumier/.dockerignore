@@ -22,3 +22,4 @@ venv/
 test-results/
 
 # Ignore anything else you don't want in the Docker build context
+./examples
