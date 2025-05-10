@@ -68,23 +68,27 @@ Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building
 ### Step 4: Use in Your Code
 
 ```python
-# Example: Using the Computer-Use Agent
-from agent import ComputerAgent
-
-# Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit (default)
-agent = ComputerAgent(computer=my_computer, loop="UITARS")
-await agent.run("Search for information about CUA on GitHub")
-
-# Example: Direct control of a macOS VM with Computer
 from computer import Computer
+from agent import ComputerAgent, LLM
 
-async with Computer(os_type="macos") as computer:
-    # Take a screenshot
-    screenshot = await computer.interface.screenshot()
-    # Click on an element
-    await computer.interface.left_click(100, 200)
-    # Type text
-    await computer.interface.type_text("Hello, world!")
+async def main():
+    # Start a local macOS VM with a 1024x768 display
+    async with Computer(os_type="macos", display="1024x768") as computer:
+
+        # Example: Direct control of a macOS VM with Computer
+        await computer.interface.left_click(100, 200)
+        await computer.interface.type_text("Hello, world!")
+        screenshot_bytes = await computer.interface.screenshot()
+        
+        # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
+        agent = ComputerAgent(
+          computer=computer,
+          loop="UITARS",
+          model=LLM(provider="MLX", name="mlx-community/UI-TARS-1.5-7B-6bit")
+        )
+        await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+
+main()
 ```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
@@ -180,20 +184,21 @@ For complete examples, see [agent_examples.py](./examples/agent_examples.py) or 
 # Import necessary components
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
-# Agent Loops
-ComputerAgent(loop=AgentLoop.UITARS)     # UI-TARS-1.5 agent for local execution with MLX
-ComputerAgent(loop=AgentLoop.OPENAI)     # OpenAI Computer-Use agent using OPENAI_API_KEY
-ComputerAgent(loop=AgentLoop.ANTHROPIC)  # Anthropic Claude agent using ANTHROPIC_API_KEY
+# UI-TARS-1.5 agent for local execution with MLX
+ComputerAgent(loop=AgentLoop.UITARS, model=LLM(provider=LLMProvider.MLX, name="mlx-community/UI-TARS-1.5-7B-6bit"))   
+# OpenAI Computer-Use agent using OPENAI_API_KEY  
+ComputerAgent(loop=AgentLoop.OPENAI, model=LLM(provider=LLMProvider.OPENAI, name="computer-use-preview"))
+# Anthropic Claude agent using ANTHROPIC_API_KEY
+ComputerAgent(loop=AgentLoop.ANTHROPIC, model=LLM(provider=LLMProvider.ANTHROPIC))
 
 # OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision LLM
-ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))       
-
+ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))      
 # OpenRouter example using OAICOMPAT provider
 ComputerAgent(
     loop=AgentLoop.OMNI,
     model=LLM(
         provider=LLMProvider.OAICOMPAT, 
-        name="openai/gpt-4.1",
+        name="openai/gpt-4o-mini",
         provider_base_url="https://openrouter.ai/api/v1"
     ),
     api_key="your-openrouter-api-key"
