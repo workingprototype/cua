@@ -13,6 +13,8 @@
 
 **c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
 
+
+
 <div align="center">
 <video src="https://github.com/user-attachments/assets/06e1974f-8f73-477d-b18a-715d83148e45" width="800" controls></video></div>
 
@@ -31,6 +33,12 @@ This script will:
 - Pull the latest macOS CUA image (if needed)
 - Set up Python environment and install/update required packages
 - Launch the Computer-Use Agent UI
+
+#### Supported Agent Loops
+- [UITARS-1.5](https://github.com/mlx-community/UI-TARS-1.5) - Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://platform.openai.com/docs/models/computer-use-preview) - Use OpenAI's Computer-Use Preview model
+- [Anthropic CUA](https://docs.anthropic.com/claude/docs/computer-use) - Use Anthropic's Computer-Use capabilities
+- Any vision model through [OmniParser](https://github.com/microsoft/OmniParser) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/)
 
 ### System Requirements
 
