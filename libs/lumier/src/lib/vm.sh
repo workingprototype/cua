@@ -233,7 +233,7 @@ stop_vm() {
         # still attempt a stop just in case.
         echo "VM status is unknown ('$vm_status') or VM not found during cleanup. Attempting stop anyway."
         lume_stop "$VM_NAME" "$STORAGE_PATH"
-        sleep 5000
+        sleep 5
         echo "VM '$VM_NAME' stop command issued as a precaution."
     else
         echo "VM status is unknown ('$vm_status') or VM not found. Not attempting stop."
