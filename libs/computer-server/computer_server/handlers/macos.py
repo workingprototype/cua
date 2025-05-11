@@ -492,6 +492,7 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
                             window_trees.append(window_element.to_dict())
                         except Exception as e:
                             logger.error(f"Failed to process window {window}: {e}")
+                            window_trees.append({"error": str(e)})
                             continue
 
                     processed_windows.append(
