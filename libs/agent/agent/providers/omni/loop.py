@@ -105,6 +105,7 @@ class OmniLoop(BaseLoop):
         # Set API client attributes
         self.client = None
         self.retry_count = 0
+        self.loop_task = None  # Store the loop task for cancellation
 
         # Initialize handlers
         self.api_handler = OmniAPIHandler(loop=self)
@@ -583,7 +584,31 @@ class OmniLoop(BaseLoop):
         # Initialize the message manager with the provided messages
         self.message_manager.messages = messages.copy()
         logger.info(f"Starting OmniLoop run with {len(self.message_manager.messages)} messages")
+        
+        # Create a task to run the loop
+        self.loop_task = asyncio.create_task(self._run_loop(messages))
 
+        # Yield from the loop task
+        try:
+            async for response in self.loop_task:
+                yield response
+        except Exception as e:
+            logger.error(f"Error in run method: {str(e)}")
+            yield {
+                "role": "assistant",
+                "content": f"Error: {str(e)}",
+                "metadata": {"title": "❌ Error"},
+            }
+            
+    async def _run_loop(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
+        """Internal method to run the agent loop with provided messages.
+        
+        Args:
+            messages: List of messages in standard OpenAI format
+            
+        Yields:
+            Agent response format
+        """
         # Continue running until explicitly told to stop
         running = True
         turn_created = False
@@ -688,7 +713,7 @@ class OmniLoop(BaseLoop):
 
             except Exception as e:
                 attempt += 1
-                error_msg = f"Error in run method (attempt {attempt}/{max_attempts}): {str(e)}"
+                error_msg = f"Error in _run_loop method (attempt {attempt}/{max_attempts}): {str(e)}"
                 logger.error(error_msg)
 
                 # If this is our last attempt, provide more info about the error
@@ -696,12 +721,36 @@ class OmniLoop(BaseLoop):
                     logger.error(f"Maximum retry attempts reached. Last error was: {str(e)}")
 
                 yield {
-                    "error": str(e),
+                    "role": "assistant",
+                    "content": f"Error: {str(e)}",
                     "metadata": {"title": "❌ Error"},
                 }
 
                 # Create a brief delay before retrying
                 await asyncio.sleep(1)
+                
+    async def cancel(self) -> None:
+        """Cancel the currently running agent loop task.
+        
+        This method stops the ongoing processing in the agent loop
+        by cancelling the loop_task if it exists and is running.
+        """
+        if self.loop_task and not self.loop_task.done():
+            logger.info("Cancelling Omni loop task")
+            self.loop_task.cancel()
+            try:
+                # Wait for the task to be cancelled with a timeout
+                await asyncio.wait_for(self.loop_task, timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning("Timeout while waiting for loop task to cancel")
+            except asyncio.CancelledError:
+                logger.info("Loop task cancelled successfully")
+            except Exception as e:
+                logger.error(f"Error while cancelling loop task: {str(e)}")
+            finally:
+                logger.info("Omni loop task cancelled")
+        else:
+            logger.info("No active Omni loop task to cancel")
 
     async def process_model_response(self, response_text: str) -> Optional[Dict[str, Any]]:
         """Process model response to extract tool calls.

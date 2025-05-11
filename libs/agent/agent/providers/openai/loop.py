@@ -87,6 +87,7 @@ class OpenAILoop(BaseLoop):
         self.acknowledge_safety_check_callback = acknowledge_safety_check_callback
         self.queue = asyncio.Queue()  # Initialize queue
         self.last_response_id = None  # Store the last response ID across runs
+        self.loop_task = None  # Store the loop task for cancellation
 
         # Initialize handlers
         self.api_handler = OpenAIAPIHandler(self)
@@ -138,7 +139,7 @@ class OpenAILoop(BaseLoop):
             await self.tool_manager.initialize()
 
             # Start loop in background task
-            loop_task = asyncio.create_task(self._run_loop(queue, messages))
+            self.loop_task = asyncio.create_task(self._run_loop(queue, messages))
 
             # Process and yield messages as they arrive
             while True:
@@ -153,7 +154,7 @@ class OpenAILoop(BaseLoop):
                     continue
 
             # Wait for loop to complete
-            await loop_task
+            await self.loop_task
 
             # Send completion message
             yield {
@@ -169,6 +170,31 @@ class OpenAILoop(BaseLoop):
                 "content": f"Error: {str(e)}",
                 "metadata": {"title": "❌ Error"},
             }
+            
+    async def cancel(self) -> None:
+        """Cancel the currently running agent loop task.
+        
+        This method stops the ongoing processing in the agent loop
+        by cancelling the loop_task if it exists and is running.
+        """
+        if self.loop_task and not self.loop_task.done():
+            logger.info("Cancelling OpenAI loop task")
+            self.loop_task.cancel()
+            try:
+                # Wait for the task to be cancelled with a timeout
+                await asyncio.wait_for(self.loop_task, timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning("Timeout while waiting for loop task to cancel")
+            except asyncio.CancelledError:
+                logger.info("Loop task cancelled successfully")
+            except Exception as e:
+                logger.error(f"Error while cancelling loop task: {str(e)}")
+            finally:
+                # Put None in the queue to signal any waiting consumers to stop
+                await self.queue.put(None)
+                logger.info("OpenAI loop task cancelled")
+        else:
+            logger.info("No active OpenAI loop task to cancel")
 
     ###########################################
     # AGENT LOOP IMPLEMENTATION

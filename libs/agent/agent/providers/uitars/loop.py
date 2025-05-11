@@ -93,6 +93,7 @@ class UITARSLoop(BaseLoop):
         # Set API client attributes
         self.client = None
         self.retry_count = 0
+        self.loop_task = None  # Store the loop task for cancellation
 
         # Initialize visualization helper
         self.viz_helper = VisualizationHelper(agent=self)
@@ -465,7 +466,31 @@ class UITARSLoop(BaseLoop):
         # Initialize the message manager with the provided messages
         self.message_manager.messages = messages.copy()
         logger.info(f"Starting UITARSLoop run with {len(self.message_manager.messages)} messages")
+        
+        # Create a task to run the loop
+        self.loop_task = asyncio.create_task(self._run_loop(messages))
 
+        # Yield from the loop task
+        try:
+            async for response in self.loop_task:
+                yield response
+        except Exception as e:
+            logger.error(f"Error in run method: {str(e)}")
+            yield {
+                "role": "assistant",
+                "content": f"Error: {str(e)}",
+                "metadata": {"title": "❌ Error"},
+            }
+            
+    async def _run_loop(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[AgentResponse, None]:
+        """Internal method to run the agent loop with provided messages.
+        
+        Args:
+            messages: List of messages in standard OpenAI format
+            
+        Yields:
+            Agent response format
+        """
         # Continue running until explicitly told to stop
         running = True
         turn_created = False
@@ -557,6 +582,29 @@ class UITARSLoop(BaseLoop):
 
                 # Create a brief delay before retrying
                 await asyncio.sleep(1)
+
+    async def cancel(self) -> None:
+        """Cancel the currently running agent loop task.
+        
+        This method stops the ongoing processing in the agent loop
+        by cancelling the loop_task if it exists and is running.
+        """
+        if self.loop_task and not self.loop_task.done():
+            logger.info("Cancelling UITARS loop task")
+            self.loop_task.cancel()
+            try:
+                # Wait for the task to be cancelled with a timeout
+                await asyncio.wait_for(self.loop_task, timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning("Timeout while waiting for loop task to cancel")
+            except asyncio.CancelledError:
+                logger.info("Loop task cancelled successfully")
+            except Exception as e:
+                logger.error(f"Error while cancelling loop task: {str(e)}")
+            finally:
+                logger.info("UITARS loop task cancelled")
+        else:
+            logger.info("No active UITARS loop task to cancel")
 
     ###########################################
     # UTILITY METHODS
