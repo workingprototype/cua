@@ -173,6 +173,11 @@ class BaseComputerInterface(ABC):
     async def get_accessibility_tree(self) -> Dict:
         """Get the accessibility tree of the current screen."""
         pass
+    
+    @abstractmethod
+    async def get_keyboard_focus(self) -> Dict:
+        """Get the currently focused UI element."""
+        pass
 
     @abstractmethod
     async def to_screen_coordinates(self, x: float, y: float) -> tuple[float, float]:

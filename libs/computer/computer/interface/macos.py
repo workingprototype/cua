@@ -532,6 +532,13 @@ class MacOSComputerInterface(BaseComputerInterface):
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to get accessibility tree"))
         return result
+    
+    async def get_keyboard_focus(self) -> Dict[str, Any]:
+        """Get the currently focused UI element."""
+        result = await self._send_command("get_keyboard_focus")
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to get keyboard focus"))
+        return result
 
     async def get_active_window_bounds(self) -> Dict[str, int]:
         """Get the bounds of the currently active window."""

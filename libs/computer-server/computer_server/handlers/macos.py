@@ -33,6 +33,8 @@ from ApplicationServices import (
     AXValueGetValue,  # type: ignore
     kAXVisibleChildrenAttribute,  # type: ignore
     kAXRoleDescriptionAttribute,  # type: ignore
+    kAXFocusedApplicationAttribute,  # type: ignore
+    kAXFocusedUIElementAttribute,  # type: ignore
 )
 import objc
 import re
@@ -512,6 +514,68 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
             element = search_tree(system)
             return {"success": True, "element": element}
 
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+            
+    async def get_keyboard_focus(self) -> Dict[str, Any]:
+        """Get the coordinates of the currently focused UI element.
+        
+        Returns:
+            A dictionary with success status and coordinates if found.
+        """
+        try:
+            # Create system-wide accessibility object
+            system = AXUIElementCreateSystemWide()
+            
+            # Get focused application
+            err, focused_app = AXUIElementCopyAttributeValue(system, kAXFocusedApplicationAttribute, None)
+            if err != kAXErrorSuccess or not focused_app:
+                return {"success": False, "error": "Could not get focused application"}
+            
+            # Get focused UI element
+            err, focused_element = AXUIElementCopyAttributeValue(focused_app, kAXFocusedUIElementAttribute, None)
+            if err != kAXErrorSuccess or not focused_element:
+                return {"success": False, "error": "Could not get focused UI element"}
+            
+            # Get position of focused element
+            position = self.get_ax_attribute(focused_element, kAXPositionAttribute)
+            if not position:
+                return {"success": False, "error": "Could not get position of focused element"}
+            
+            # Get size of focused element
+            size = self.get_ax_attribute(focused_element, kAXSizeAttribute)
+            if not size:
+                return {"success": False, "error": "Could not get size of focused element"}
+                
+            # Convert position to point
+            position_point = element_value(position, kAXValueCGPointType)
+            if not position_point:
+                return {"success": False, "error": "Could not convert position to point"}
+                
+            # Convert size to CGSize
+            size_value = element_value(size, kAXValueCGSizeType)
+            if not size_value:
+                return {"success": False, "error": "Could not convert size to CGSize"}
+            
+            # Calculate center point of the element
+            center_x = position_point.x + (size_value.width / 2)
+            center_y = position_point.y + (size_value.height / 2)
+            
+            # Get additional information about the focused element
+            role = self.get_ax_attribute(focused_element, kAXRoleAttribute)
+            title = self.get_ax_attribute(focused_element, kAXTitleAttribute)
+            value = self.get_ax_attribute(focused_element, kAXValueAttribute)
+            
+            return {
+                "success": True,
+                "position": {"x": position_point.x, "y": position_point.y},
+                "size": {"width": size_value.width, "height": size_value.height},
+                "center": {"x": center_x, "y": center_y},
+                "role": role,
+                "title": title,
+                "value": value
+            }
+            
         except Exception as e:
             return {"success": False, "error": str(e)}
 
