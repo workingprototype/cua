@@ -6,7 +6,7 @@ with an advanced UI for model selection and configuration.
 
 Supported Agent Loops and Models:
 - AgentLoop.OPENAI: Uses OpenAI Operator CUA model
-  • computer_use_preview
+  • computer-use-preview
 
 - AgentLoop.ANTHROPIC: Uses Anthropic Computer-Use models
   • claude-3-5-sonnet-20240620
@@ -133,12 +133,12 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
 MODEL_MAPPINGS = {
     "openai": {
         # Default to operator CUA model
-        "default": "computer_use_preview",
+        "default": "computer-use-preview",
         # Map standard OpenAI model names to CUA-specific model names
-        "gpt-4-turbo": "computer_use_preview",
-        "gpt-4o": "computer_use_preview",
-        "gpt-4": "computer_use_preview",
-        "gpt-4.5-preview": "computer_use_preview",
+        "gpt-4-turbo": "computer-use-preview",
+        "gpt-4o": "computer-use-preview",
+        "gpt-4": "computer-use-preview",
+        "gpt-4.5-preview": "computer-use-preview",
         "gpt-4o-mini": "gpt-4o-mini",
     },
     "anthropic": {
@@ -217,7 +217,7 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         # Determine provider and clean model name based on the full string from UI
         cleaned_model_name = model_name  # Default to using the name as-is (for custom)
 
-        if model_name == "Custom model...":
+        if model_name == "Custom model (OpenAI compatible API)":
             # Actual model name comes from custom_model_value via model_to_use.
             # Assume OAICOMPAT for custom models unless overridden by URL/key later?
             # get_provider_and_model determines the *initial* provider/model.
@@ -278,8 +278,8 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
                     break
             # Note: No fallback needed here as we explicitly check against omni keys
 
-        else:  # Handles unexpected formats or the raw custom name if "Custom model..." selected
-            # Should only happen if user selected "Custom model..."
+        else:  # Handles unexpected formats or the raw custom name if "Custom model (OpenAI compatible API)" selected
+            # Should only happen if user selected "Custom model (OpenAI compatible API)"
             # Or if a model name format isn't caught above
             provider = LLMProvider.OAICOMPAT
             cleaned_model_name = (
@@ -291,7 +291,7 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         # agent_loop remains AgentLoop.OMNI
     elif agent_loop == AgentLoop.UITARS:
         # For UITARS, use MLXVLM provider for the MLX models, OAICOMPAT for custom
-        if model_name == "Custom model...":
+        if model_name == "Custom model (OpenAI compatible API)":
             provider = LLMProvider.OAICOMPAT
             model_name_to_use = "tgi"
         else:
@@ -449,11 +449,11 @@ def create_gradio_ui(
     provider_to_models = {
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
-        "OMNI": omni_models + ["Custom model..."],  # Add custom model option
+        "OMNI": omni_models + ["Custom model (OpenAI compatible API)", "Custom model (ollama)"],  # Add custom model options
         "UITARS": [
             "mlx-community/UI-TARS-1.5-7B-4bit",
             "mlx-community/UI-TARS-1.5-7B-6bit",
-            "Custom model..."
+            "Custom model (OpenAI compatible API)"
         ],  # UI-TARS options with MLX models
     }
 
@@ -474,9 +474,9 @@ def create_gradio_ui(
             initial_model = anthropic_models[0] if anthropic_models else "No models available"
         else:  # OMNI
             initial_model = omni_models[0] if omni_models else "No models available"
-            if "Custom model..." in available_models_for_loop:
+            if "Custom model (OpenAI compatible API)" in available_models_for_loop:
                 initial_model = (
-                    "Custom model..."  # Default to custom if available and no other default fits
+                    "Custom model (OpenAI compatible API)"  # Default to custom if available and no other default fits
                 )
 
     initial_custom_model = saved_settings.get("custom_model", "Qwen2.5-VL-7B-Instruct")
@@ -499,7 +499,7 @@ def create_gradio_ui(
         
         Args:
             agent_loop_choice: The agent loop type (e.g., UITARS, OPENAI, ANTHROPIC, OMNI)
-            provider: The provider type (e.g., OPENAI, ANTHROPIC, OLLAMA, OAICOMPAT)
+            provider: The provider type (e.g., OPENAI, ANTHROPIC, OLLAMA, OAICOMPAT, MLXVLM)
             model_name: The model name
             tasks: List of tasks to execute
             provider_url: The provider base URL for OAICOMPAT providers
@@ -528,13 +528,57 @@ async def main():
             only_n_most_recent_images={recent_images},
             save_trajectory={save_trajectory},'''
         
-        # Add the model configuration based on provider
-        if provider == LLMProvider.OAICOMPAT:
+        # Add the model configuration based on provider and agent loop
+        if agent_loop_choice == "OPENAI":
+            # For OPENAI loop, always use OPENAI provider with computer-use-preview
             code += f'''
+            model=LLM(
+                provider=LLMProvider.OPENAI, 
+                name="computer-use-preview"
+            )'''
+        elif agent_loop_choice == "ANTHROPIC":
+            # For ANTHROPIC loop, always use ANTHROPIC provider
+            code += f'''
+            model=LLM(
+                provider=LLMProvider.ANTHROPIC, 
+                name="{model_name}"
+            )'''
+        elif agent_loop_choice == "UITARS":
+            # For UITARS, use MLXVLM for mlx-community models, OAICOMPAT for others
+            if provider == LLMProvider.MLXVLM:
+                code += f'''
+            model=LLM(
+                provider=LLMProvider.MLXVLM, 
+                name="{model_name}"
+            )'''
+            else:  # OAICOMPAT
+                code += f'''
             model=LLM(
                 provider=LLMProvider.OAICOMPAT, 
                 name="{model_name}",
                 provider_base_url="{provider_url}"
+            )'''
+        elif agent_loop_choice == "OMNI":
+            # For OMNI, provider can be OPENAI, ANTHROPIC, OLLAMA, or OAICOMPAT
+            if provider == LLMProvider.OAICOMPAT:
+                code += f'''
+            model=LLM(
+                provider=LLMProvider.OAICOMPAT, 
+                name="{model_name}",
+                provider_base_url="{provider_url}"
+            )'''
+            else:  # OPENAI, ANTHROPIC, OLLAMA
+                code += f'''
+            model=LLM(
+                provider=LLMProvider.{provider.name}, 
+                name="{model_name}"
+            )'''
+        else:
+            # Default case - just use the provided provider and model
+            code += f'''
+            model=LLM(
+                provider=LLMProvider.{provider.name}, 
+                name="{model_name}"
             )'''
             
         code += """
@@ -561,6 +605,8 @@ async def main():
         print(f"Executing task: {{task}}")
         async for result in agent.run(task):
             print(result)'''
+
+
         
         # Add the main block
         code += '''
@@ -569,62 +615,6 @@ if __name__ == "__main__":
     asyncio.run(main())'''
         
         return code
-
-    # Function to update model choices based on agent loop selection
-    def update_model_choices(loop):
-        models = provider_to_models.get(loop, [])
-        if loop == "OMNI":
-            # For OMNI, include the custom model option
-            if not models:
-                models = ["Custom model..."]
-            elif "Custom model..." not in models:
-                models.append("Custom model...")
-
-            # Show both OpenAI and Anthropic key inputs for OMNI if keys aren't set
-            return [
-                gr.update(choices=models, value=models[0] if models else "Custom model...", interactive=True),
-                gr.update(visible=not has_openai_key),
-                gr.update(visible=not has_anthropic_key)
-            ]
-        elif loop == "OPENAI":
-            # Show only OpenAI key input for OPENAI loop if key isn't set
-            if not models:
-                return [
-                    gr.update(choices=["No models available"], value="No models available", interactive=True),
-                    gr.update(visible=not has_openai_key),
-                    gr.update(visible=False)
-                ]
-            return [
-                gr.update(choices=models, value=models[0] if models else None, interactive=True),
-                gr.update(visible=not has_openai_key),
-                gr.update(visible=False)
-            ]
-        elif loop == "ANTHROPIC":
-            # Show only Anthropic key input for ANTHROPIC loop if key isn't set
-            if not models:
-                return [
-                    gr.update(choices=["No models available"], value="No models available", interactive=True),
-                    gr.update(visible=False),
-                    gr.update(visible=not has_anthropic_key)
-                ]
-            return [
-                gr.update(choices=models, value=models[0] if models else None, interactive=True),
-                gr.update(visible=False),
-                gr.update(visible=not has_anthropic_key)
-            ]
-        else:
-            # For other providers (like UITARS), don't show API key inputs
-            if not models:
-                return [
-                    gr.update(choices=["No models available"], value="No models available", interactive=True),
-                    gr.update(visible=False),
-                    gr.update(visible=False)
-                ]
-            return [
-                gr.update(choices=models, value=models[0] if models else None, interactive=True),
-                gr.update(visible=False),
-                gr.update(visible=False)
-            ]
 
     # Create the Gradio interface with advanced UI
     with gr.Blocks(title="Computer-Use Agent") as demo:
@@ -684,14 +674,52 @@ if __name__ == "__main__":
                         info="Select the agent loop provider",
                     )
 
-                    # Create model selection dropdown with custom value support for OMNI
-                    model_choice = gr.Dropdown(
-                        choices=provider_to_models.get(initial_loop, ["No models available"]),
-                        label="LLM Provider and Model",
-                        value=initial_model,
-                        info="Select model or choose 'Custom model...' to enter a custom name",
-                        interactive=True,
-                    )
+
+                    # Create separate model selection dropdowns for each provider type
+                    # This avoids the Gradio bug with updating choices
+                    with gr.Group() as model_selection_group:
+                        # OpenAI models dropdown
+                        openai_model_choice = gr.Dropdown(
+                            choices=openai_models,
+                            label="OpenAI Model",
+                            value=openai_models[0] if openai_models else "No models available",
+                            info="Select OpenAI model",
+                            interactive=True,
+                            visible=(initial_loop == "OPENAI")
+                        )
+                        
+                        # Anthropic models dropdown
+                        anthropic_model_choice = gr.Dropdown(
+                            choices=anthropic_models,
+                            label="Anthropic Model",
+                            value=anthropic_models[0] if anthropic_models else "No models available",
+                            info="Select Anthropic model",
+                            interactive=True,
+                            visible=(initial_loop == "ANTHROPIC")
+                        )
+                        
+                        # OMNI models dropdown
+                        omni_model_choice = gr.Dropdown(
+                            choices=omni_models + ["Custom model (OpenAI compatible API)", "Custom model (ollama)"],
+                            label="OMNI Model",
+                            value=omni_models[0] if omni_models else "Custom model (OpenAI compatible API)",
+                            info="Select OMNI model or choose a custom model option",
+                            interactive=True,
+                            visible=(initial_loop == "OMNI")
+                        )
+                        
+                        # UITARS models dropdown
+                        uitars_model_choice = gr.Dropdown(
+                            choices=provider_to_models.get("UITARS", ["No models available"]),
+                            label="UITARS Model",
+                            value=provider_to_models.get("UITARS", ["No models available"])[0] if provider_to_models.get("UITARS") else "No models available",
+                            info="Select UITARS model",
+                            interactive=True,
+                            visible=(initial_loop == "UITARS")
+                        )
+                        
+                        # Hidden field to store the selected model (for compatibility with existing code)
+                        model_choice = gr.Textbox(visible=False)
 
                     # Add API key inputs for OpenAI and Anthropic
                     with gr.Group(visible=not has_openai_key and (initial_loop == "OPENAI" or initial_loop == "OMNI")) as openai_key_group:
@@ -713,33 +741,176 @@ if __name__ == "__main__":
                             type="password",
                             info="Required for Anthropic models"
                         )
+                        
+                    # Function to set OpenAI API key environment variable
+                    def set_openai_api_key(key):
+                        if key and key.strip():
+                            os.environ["OPENAI_API_KEY"] = key.strip()
+                            print(f"DEBUG - Set OpenAI API key environment variable")
+                        return key
+                    
+                    # Function to set Anthropic API key environment variable
+                    def set_anthropic_api_key(key):
+                        if key and key.strip():
+                            os.environ["ANTHROPIC_API_KEY"] = key.strip()
+                            print(f"DEBUG - Set Anthropic API key environment variable")
+                        return key
+                    
+                    # Add change event handlers for API key inputs
+                    openai_api_key_input.change(
+                        fn=set_openai_api_key,
+                        inputs=[openai_api_key_input],
+                        outputs=[openai_api_key_input],
+                        queue=False
+                    )
+                    
+                    anthropic_api_key_input.change(
+                        fn=set_anthropic_api_key,
+                        inputs=[anthropic_api_key_input],
+                        outputs=[anthropic_api_key_input],
+                        queue=False
+                    )
 
-                    # Add custom model textbox (only visible when "Custom model..." is selected)
+                    # Combined function to update UI based on selections
+                    def update_ui(loop=None, openai_model=None, anthropic_model=None, omni_model=None, uitars_model=None):
+                        # Default values if not provided
+                        loop = loop or agent_loop.value
+                        
+                        # Determine which model value to use for custom model checks
+                        model_value = None
+                        if loop == "OPENAI" and openai_model:
+                            model_value = openai_model
+                        elif loop == "ANTHROPIC" and anthropic_model:
+                            model_value = anthropic_model
+                        elif loop == "OMNI" and omni_model:
+                            model_value = omni_model
+                        elif loop == "UITARS" and uitars_model:
+                            model_value = uitars_model
+                        
+                        # Show/hide appropriate model dropdown based on loop selection
+                        openai_visible = (loop == "OPENAI")
+                        anthropic_visible = (loop == "ANTHROPIC")
+                        omni_visible = (loop == "OMNI")
+                        uitars_visible = (loop == "UITARS")
+                        
+                        # Show/hide API key inputs based on loop selection
+                        show_openai_key = not has_openai_key and (loop == "OPENAI" or (loop == "OMNI" and model_value and "OpenAI" in model_value and "Custom" not in model_value))
+                        show_anthropic_key = not has_anthropic_key and (loop == "ANTHROPIC" or (loop == "OMNI" and model_value and "Claude" in model_value and "Custom" not in model_value))
+                        
+                        # Determine custom model visibility
+                        is_custom_openai_api = model_value == "Custom model (OpenAI compatible API)"
+                        is_custom_ollama = model_value == "Custom model (ollama)"
+                        is_any_custom = is_custom_openai_api or is_custom_ollama
+                        
+                        # Update the hidden model_choice field based on the visible dropdown
+                        model_choice_value = model_value if model_value else ""
+                        
+                        # Return all UI updates
+                        return [
+                            # Model dropdowns visibility
+                            gr.update(visible=openai_visible),
+                            gr.update(visible=anthropic_visible),
+                            gr.update(visible=omni_visible),
+                            gr.update(visible=uitars_visible),
+                            # API key inputs visibility
+                            gr.update(visible=show_openai_key),
+                            gr.update(visible=show_anthropic_key),
+                            # Custom model fields visibility
+                            gr.update(visible=is_any_custom),  # Custom model name always visible for any custom option
+                            gr.update(visible=is_custom_openai_api),  # Provider base URL only for OpenAI compatible API
+                            gr.update(visible=is_custom_openai_api),   # Provider API key only for OpenAI compatible API
+                            # Update the hidden model_choice field
+                            gr.update(value=model_choice_value)
+                        ]
+                        
+                    # Add custom model textbox (visible for both custom model options)
                     custom_model = gr.Textbox(
                         label="Custom Model Name",
-                        placeholder="Enter custom model name (e.g., Qwen2.5-VL-7B-Instruct)",
+                        placeholder="Enter custom model name (e.g., Qwen2.5-VL-7B-Instruct or llama3)",
                         value=initial_custom_model,
-                        visible=(initial_model == "Custom model..."),
+                        visible=(initial_model == "Custom model (OpenAI compatible API)" or initial_model == "Custom model (ollama)"),
                         interactive=True,
                     )
 
-                    # Add custom provider base URL textbox (only visible when "Custom model..." is selected)
+                    # Add custom provider base URL textbox (only visible for OpenAI compatible API)
                     provider_base_url = gr.Textbox(
                         label="Provider Base URL",
                         placeholder="Enter provider base URL (e.g., http://localhost:1234/v1)",
                         value=initial_provider_base_url,
-                        visible=(initial_model == "Custom model..."),
+                        visible=(initial_model == "Custom model (OpenAI compatible API)"),
                         interactive=True,
                     )
 
-                    # Add custom API key textbox (only visible when "Custom model..." is selected)
+                    # Add custom API key textbox (only visible for OpenAI compatible API)
                     provider_api_key = gr.Textbox(
                         label="Provider API Key",
                         placeholder="Enter provider API key (if required)",
                         value="",
-                        visible=(initial_model == "Custom model..."),
+                        visible=(initial_model == "Custom model (OpenAI compatible API)"),
                         interactive=True,
                         type="password",
+                    )
+                    
+                    # Connect agent_loop changes to update all UI elements
+                    agent_loop.change(
+                        fn=update_ui,
+                        inputs=[agent_loop, openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice],
+                        outputs=[
+                            openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice, 
+                            openai_key_group, anthropic_key_group,
+                            custom_model, provider_base_url, provider_api_key,
+                            model_choice  # Add model_choice to outputs
+                        ],
+                        queue=False  # Process immediately without queueing
+                    )
+
+                    # Connect each model dropdown to update UI
+                    omni_model_choice.change(
+                        fn=update_ui,
+                        inputs=[agent_loop, openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice],                        
+                        outputs=[
+                            openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice, 
+                            openai_key_group, anthropic_key_group,
+                            custom_model, provider_base_url, provider_api_key,
+                            model_choice  # Add model_choice to outputs
+                        ],
+                        queue=False
+                    )
+                    
+                    uitars_model_choice.change(
+                        fn=update_ui,
+                        inputs=[agent_loop, openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice],             
+                        outputs=[
+                            openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice, 
+                            openai_key_group, anthropic_key_group,
+                            custom_model, provider_base_url, provider_api_key,
+                            model_choice  # Add model_choice to outputs
+                        ],
+                        queue=False
+                    )
+                    
+                    openai_model_choice.change(
+                        fn=update_ui,
+                        inputs=[agent_loop, openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice],             
+                        outputs=[
+                            openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice, 
+                            openai_key_group, anthropic_key_group,
+                            custom_model, provider_base_url, provider_api_key,
+                            model_choice  # Add model_choice to outputs
+                        ],
+                        queue=False
+                    )
+
+                    anthropic_model_choice.change(
+                        fn=update_ui,
+                        inputs=[agent_loop, openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice],             
+                        outputs=[
+                            openai_model_choice, anthropic_model_choice, omni_model_choice, uitars_model_choice, 
+                            openai_key_group, anthropic_key_group,
+                            custom_model, provider_base_url, provider_api_key,
+                            model_choice  # Add model_choice to outputs
+                        ],
+                        queue=False
                     )
 
                     save_trajectory = gr.Checkbox(
@@ -772,6 +943,9 @@ if __name__ == "__main__":
                     placeholder="Ask me to perform tasks in a virtual macOS environment"
                 )
                 clear = gr.Button("Clear")
+                
+                # Add cancel button
+                cancel_button = gr.Button("Cancel", variant="stop")
 
                 # Add examples
                 example_group = gr.Examples(examples=example_messages, inputs=msg)
@@ -782,10 +956,28 @@ if __name__ == "__main__":
                     history.append(gr.ChatMessage(role="user", content=message))
                     return "", history
 
+                # Function to cancel the running agent
+                async def cancel_agent_task(history):
+                    global global_agent
+                    if global_agent and hasattr(global_agent, '_loop'):
+                        print("DEBUG - Cancelling agent task")
+                        # Cancel the agent loop
+                        if hasattr(global_agent._loop, 'cancel') and callable(global_agent._loop.cancel):
+                            await global_agent._loop.cancel()
+                            history.append(gr.ChatMessage(role="assistant", content="Task cancelled by user", metadata={"title": "❌ Cancelled"}))
+                        else:
+                            history.append(gr.ChatMessage(role="assistant", content="Could not cancel task: cancel method not found", metadata={"title": "⚠️ Warning"}))
+                    else:
+                        history.append(gr.ChatMessage(role="assistant", content="No active agent task to cancel", metadata={"title": "ℹ️ Info"}))
+                    return history
+                
                 # Function to process agent response after user input
                 async def process_response(
                     history,
-                    model_choice_value,
+                    openai_model_value,
+                    anthropic_model_value,
+                    omni_model_value,
+                    uitars_model_value,
                     custom_model_value,
                     agent_loop_choice,
                     save_traj,
@@ -802,21 +994,47 @@ if __name__ == "__main__":
                     # Get the last user message
                     last_user_message = history[-1]["content"]
 
+                    # Get the appropriate model value based on the agent loop
+                    if agent_loop_choice == "OPENAI":
+                        model_choice_value = openai_model_value
+                    elif agent_loop_choice == "ANTHROPIC":
+                        model_choice_value = anthropic_model_value
+                    elif agent_loop_choice == "OMNI":
+                        model_choice_value = omni_model_value
+                    elif agent_loop_choice == "UITARS":
+                        model_choice_value = uitars_model_value
+                    else:
+                        model_choice_value = "No models available"
+                    
+                    # Determine if this is a custom model selection and which type
+                    is_custom_openai_api = model_choice_value == "Custom model (OpenAI compatible API)"
+                    is_custom_ollama = model_choice_value == "Custom model (ollama)"
+                    is_custom_model_selected = is_custom_openai_api or is_custom_ollama
+                    
                     # Determine the model name string to analyze: custom or from dropdown
-                    model_string_to_analyze = (
-                        custom_model_value
-                        if model_choice_value == "Custom model..."
-                        else model_choice_value  # Use the full UI string initially
-                    )
-
-                    # Determine if this is a custom model selection
-                    is_custom_model_selected = model_choice_value == "Custom model..."
+                    if is_custom_model_selected:
+                        model_string_to_analyze = custom_model_value
+                    else:
+                        model_string_to_analyze = model_choice_value  # Use the full UI string initially
 
                     try:
-                        # Get the provider, *cleaned* model name, and agent loop type
-                        provider, cleaned_model_name_from_func, agent_loop_type = (
-                            get_provider_and_model(model_string_to_analyze, agent_loop_choice)
-                        )
+                        # Special case for UITARS - use MLXVLM provider
+                        if agent_loop_choice == "UITARS":
+                            provider = LLMProvider.MLXVLM
+                            cleaned_model_name_from_func = model_string_to_analyze
+                            agent_loop_type = AgentLoop.UITARS
+                            print(f"Using MLXVLM provider for UITARS model: {model_string_to_analyze}")
+                        # Special case for Ollama custom model
+                        elif is_custom_ollama and agent_loop_choice == "OMNI":
+                            provider = LLMProvider.OLLAMA
+                            cleaned_model_name_from_func = custom_model_value
+                            agent_loop_type = AgentLoop.OMNI
+                            print(f"Using Ollama provider for custom model: {custom_model_value}")
+                        else:
+                            # Get the provider, *cleaned* model name, and agent loop type
+                            provider, cleaned_model_name_from_func, agent_loop_type = (
+                                get_provider_and_model(model_string_to_analyze, agent_loop_choice)
+                            )
                         
                         print(f"provider={provider} cleaned_model_name_from_func={cleaned_model_name_from_func} agent_loop_type={agent_loop_type} agent_loop_choice={agent_loop_choice}")
 
@@ -828,26 +1046,34 @@ if __name__ == "__main__":
                             else cleaned_model_name_from_func
                         )
 
-                        # Determine if OAICOMPAT should be used (only if custom model explicitly selected)
-                        is_oaicompat = is_custom_model_selected
+                        # Determine if OAICOMPAT should be used (only for OpenAI compatible API custom model)
+                        is_oaicompat = is_custom_openai_api and agent_loop_choice != "UITARS"
 
                         # Get API key based on provider determined by get_provider_and_model
                         if is_oaicompat and custom_api_key:
-                            # Use custom API key if provided for custom model
+                            # Use custom API key if provided for OpenAI compatible API custom model
                             api_key = custom_api_key
                             print(
-                                f"DEBUG - Using custom API key for model: {final_model_name_to_send}"
+                                f"DEBUG - Using custom API key for OpenAI compatible API model: {final_model_name_to_send}"
                             )
+                        elif provider == LLMProvider.OLLAMA:
+                            # No API key needed for Ollama
+                            api_key = ""
+                            print(f"DEBUG - No API key needed for Ollama model: {final_model_name_to_send}")
                         elif provider == LLMProvider.OPENAI:
                             # Use OpenAI key from input if provided, otherwise use environment variable
                             api_key = openai_key_input if openai_key_input else (openai_api_key or os.environ.get("OPENAI_API_KEY", ""))
                             if openai_key_input:
-                                print(f"DEBUG - Using provided OpenAI API key from UI")
+                                # Set the environment variable for the OpenAI API key
+                                os.environ["OPENAI_API_KEY"] = openai_key_input
+                                print(f"DEBUG - Using provided OpenAI API key from UI and set as environment variable")
                         elif provider == LLMProvider.ANTHROPIC:
                             # Use Anthropic key from input if provided, otherwise use environment variable
                             api_key = anthropic_key_input if anthropic_key_input else (anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", ""))
                             if anthropic_key_input:
-                                print(f"DEBUG - Using provided Anthropic API key from UI")
+                                # Set the environment variable for the Anthropic API key
+                                os.environ["ANTHROPIC_API_KEY"] = anthropic_key_input
+                                print(f"DEBUG - Using provided Anthropic API key from UI and set as environment variable")
                         else:
                             # For Ollama or default OAICOMPAT (without custom key), no key needed/expected
                             api_key = ""
@@ -866,8 +1092,8 @@ if __name__ == "__main__":
 
                         # Create or update the agent
                         create_agent(
-                            # Provider determined by get_provider_and_model unless custom model selected
-                            provider=LLMProvider.OAICOMPAT if is_oaicompat else provider,
+                            # Provider determined by special cases and get_provider_and_model
+                            provider=provider,
                             agent_loop=agent_loop_type,
                             # Pass the FINAL determined model name (cleaned or custom)
                             model_name=final_model_name_to_send,
@@ -980,13 +1206,21 @@ if __name__ == "__main__":
                         # Update with error message
                         history.append(gr.ChatMessage(role="assistant", content=f"Error: {str(e)}"))
                         yield history
-
-                # Connect the components
-                msg.submit(chat_submit, [msg, chatbot_history], [msg, chatbot_history]).then(
-                    process_response,
-                    [
+                        
+                # Connect the submit button to the process_response function
+                submit_event = msg.submit(
+                    fn=chat_submit,
+                    inputs=[msg, chatbot_history],
+                    outputs=[msg, chatbot_history],
+                    queue=False,
+                ).then(
+                    fn=process_response,
+                    inputs=[
                         chatbot_history,
-                        model_choice,
+                        openai_model_choice,
+                        anthropic_model_choice,
+                        omni_model_choice,
+                        uitars_model_choice,
                         custom_model,
                         agent_loop,
                         save_trajectory,
@@ -996,43 +1230,21 @@ if __name__ == "__main__":
                         openai_api_key_input,
                         anthropic_api_key_input,
                     ],
-                    [chatbot_history],
+                    outputs=[chatbot_history],
+                    queue=True,
                 )
 
                 # Clear button functionality
                 clear.click(lambda: None, None, chatbot_history, queue=False)
-
-                # Connect agent_loop changes to model selection
-                agent_loop.change(
-                    fn=update_model_choices,
-                    inputs=[agent_loop],
-                    outputs=[model_choice],
-                    queue=False,  # Process immediately without queueing
-                )
-
-                # Show/hide custom model, provider base URL, and API key textboxes based on dropdown selection
-                def update_custom_model_visibility(model_value):
-                    is_custom = model_value == "Custom model..."
-                    return (
-                        gr.update(visible=is_custom),
-                        gr.update(visible=is_custom),
-                        gr.update(visible=is_custom),
-                    )
-
-                model_choice.change(
-                    fn=update_custom_model_visibility,
-                    inputs=[model_choice],
-                    outputs=[custom_model, provider_base_url, provider_api_key],
-                    queue=False,  # Process immediately without queueing
-                )
                 
-                # Connect agent_loop changes to model selection and API key visibility
-                agent_loop.change(
-                    fn=update_model_choices,
-                    inputs=[agent_loop],
-                    outputs=[model_choice, openai_key_group, anthropic_key_group],
-                    queue=False,  # Process immediately without queueing
+                # Connect cancel button to cancel function
+                cancel_button.click(
+                    cancel_agent_task,
+                    [chatbot_history],
+                    [chatbot_history],
+                    queue=False  # Process immediately without queueing
                 )
+
 
                 # Function to update the code display based on configuration and chat history
                 def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val):
@@ -1043,9 +1255,72 @@ if __name__ == "__main__":
                             if msg.get("role") == "user":
                                 messages.append(msg.get("content", ""))
                     
-                    # Determine provider and model name based on selection
-                    model_string = custom_model_val if model_choice_val == "Custom model..." else model_choice_val
-                    provider, model_name, _ = get_provider_and_model(model_string, agent_loop)
+                    # Determine if this is a custom model selection and which type
+                    is_custom_openai_api = model_choice_val == "Custom model (OpenAI compatible API)"
+                    is_custom_ollama = model_choice_val == "Custom model (ollama)"
+                    is_custom_model_selected = is_custom_openai_api or is_custom_ollama
+                    
+                    # Determine provider and model name based on agent loop
+                    if agent_loop == "OPENAI":
+                        # For OPENAI loop, always use OPENAI provider with computer-use-preview
+                        provider = LLMProvider.OPENAI
+                        model_name = "computer-use-preview"
+                    elif agent_loop == "ANTHROPIC":
+                        # For ANTHROPIC loop, always use ANTHROPIC provider
+                        provider = LLMProvider.ANTHROPIC
+                        # Extract model name from the UI string
+                        if model_choice_val.startswith("Anthropic: Claude "):
+                            # Extract the model name based on the UI string
+                            model_parts = model_choice_val.replace("Anthropic: Claude ", "").split(" (")
+                            version = model_parts[0]  # e.g., "3.7 Sonnet"
+                            date = model_parts[1].replace(")", "") if len(model_parts) > 1 else ""  # e.g., "20250219"
+                            
+                            # Format as claude-3-7-sonnet-20250219 or claude-3-5-sonnet-20240620
+                            version = version.replace(".", "-").replace(" ", "-").lower()
+                            model_name = f"claude-{version}-{date}"
+                        else:
+                            # Use the model_choice_val directly if it doesn't match the expected format
+                            model_name = model_choice_val
+                    elif agent_loop == "UITARS":
+                        # For UITARS, use MLXVLM for mlx-community models, OAICOMPAT for custom
+                        if model_choice_val == "Custom model (OpenAI compatible API)":
+                            provider = LLMProvider.OAICOMPAT
+                            model_name = custom_model_val
+                        else:
+                            provider = LLMProvider.MLXVLM
+                            model_name = model_choice_val
+                    elif agent_loop == "OMNI":
+                        # For OMNI, provider can be OPENAI, ANTHROPIC, OLLAMA, or OAICOMPAT
+                        if is_custom_openai_api:
+                            provider = LLMProvider.OAICOMPAT
+                            model_name = custom_model_val
+                        elif is_custom_ollama:
+                            provider = LLMProvider.OLLAMA
+                            model_name = custom_model_val
+                        elif model_choice_val.startswith("OMNI: OpenAI "):
+                            provider = LLMProvider.OPENAI
+                            # Extract model name from UI string (e.g., "OMNI: OpenAI GPT-4o" -> "gpt-4o")
+                            model_name = model_choice_val.replace("OMNI: OpenAI ", "").lower().replace(" ", "-")
+                        elif model_choice_val.startswith("OMNI: Claude "):
+                            provider = LLMProvider.ANTHROPIC
+                            # Extract model name from UI string (similar to ANTHROPIC loop case)
+                            model_parts = model_choice_val.replace("OMNI: Claude ", "").split(" (")
+                            version = model_parts[0]  # e.g., "3.7 Sonnet"
+                            date = model_parts[1].replace(")", "") if len(model_parts) > 1 else ""  # e.g., "20250219"
+                            
+                            # Format as claude-3-7-sonnet-20250219 or claude-3-5-sonnet-20240620
+                            version = version.replace(".", "-").replace(" ", "-").lower()
+                            model_name = f"claude-{version}-{date}"
+                        elif model_choice_val.startswith("OMNI: Ollama "):
+                            provider = LLMProvider.OLLAMA
+                            # Extract model name from UI string (e.g., "OMNI: Ollama llama3" -> "llama3")
+                            model_name = model_choice_val.replace("OMNI: Ollama ", "")
+                        else:
+                            # Fallback to get_provider_and_model for any other cases
+                            provider, model_name, _ = get_provider_and_model(model_choice_val, agent_loop)
+                    else:
+                        # Fallback for any other agent loop
+                        provider, model_name, _ = get_provider_and_model(model_choice_val, agent_loop)
                     
                     # Generate and return the code
                     return generate_python_code(
