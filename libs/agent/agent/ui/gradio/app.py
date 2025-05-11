@@ -818,6 +818,7 @@ if __name__ == "__main__":
                             # Custom model fields visibility
                             gr.update(visible=is_any_custom),  # Custom model name always visible for any custom option
                             gr.update(visible=is_custom_openai_api),  # Provider base URL only for OpenAI compatible API
+                            gr.update(visible=is_custom_openai_api),   # Provider API key only for OpenAI compatible API
                             # Update the hidden model_choice field
                             gr.update(value=model_choice_value)
                         ]
