@@ -1018,12 +1018,18 @@ if __name__ == "__main__":
                         model_string_to_analyze = model_choice_value  # Use the full UI string initially
 
                     try:
-                        # Special case for UITARS - use MLXVLM provider
+                        # Special case for UITARS - use MLXVLM provider or OAICOMPAT for custom
                         if agent_loop_choice == "UITARS":
-                            provider = LLMProvider.MLXVLM
-                            cleaned_model_name_from_func = model_string_to_analyze
-                            agent_loop_type = AgentLoop.UITARS
-                            print(f"Using MLXVLM provider for UITARS model: {model_string_to_analyze}")
+                            if is_custom_openai_api:
+                                provider = LLMProvider.OAICOMPAT
+                                cleaned_model_name_from_func = custom_model_value
+                                agent_loop_type = AgentLoop.UITARS
+                                print(f"Using OAICOMPAT provider for custom UITARS model: {custom_model_value}")
+                            else:
+                                provider = LLMProvider.MLXVLM
+                                cleaned_model_name_from_func = model_string_to_analyze
+                                agent_loop_type = AgentLoop.UITARS
+                                print(f"Using MLXVLM provider for UITARS model: {model_string_to_analyze}")
                         # Special case for Ollama custom model
                         elif is_custom_ollama and agent_loop_choice == "OMNI":
                             provider = LLMProvider.OLLAMA
@@ -1046,8 +1052,8 @@ if __name__ == "__main__":
                             else cleaned_model_name_from_func
                         )
 
-                        # Determine if OAICOMPAT should be used (only for OpenAI compatible API custom model)
-                        is_oaicompat = is_custom_openai_api and agent_loop_choice != "UITARS"
+                        # Determine if OAICOMPAT should be used (for OpenAI compatible API custom model)
+                        is_oaicompat = is_custom_openai_api
 
                         # Get API key based on provider determined by get_provider_and_model
                         if is_oaicompat and custom_api_key:
