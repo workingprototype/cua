@@ -35,6 +35,8 @@ from ApplicationServices import (
     kAXRoleDescriptionAttribute,  # type: ignore
     kAXFocusedApplicationAttribute,  # type: ignore
     kAXFocusedUIElementAttribute,  # type: ignore
+    kAXSelectedTextAttribute,  # type: ignore
+    kAXSelectedTextRangeAttribute,  # type: ignore
 )
 import objc
 import re
@@ -527,13 +529,8 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
             # Create system-wide accessibility object
             system = AXUIElementCreateSystemWide()
             
-            # Get focused application
-            err, focused_app = AXUIElementCopyAttributeValue(system, kAXFocusedApplicationAttribute, None)
-            if err != kAXErrorSuccess or not focused_app:
-                return {"success": False, "error": "Could not get focused application"}
-            
-            # Get focused UI element
-            err, focused_element = AXUIElementCopyAttributeValue(focused_app, kAXFocusedUIElementAttribute, None)
+            # Get focused element directly from system-wide element
+            err, focused_element = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
             if err != kAXErrorSuccess or not focused_element:
                 return {"success": False, "error": "Could not get focused UI element"}
             
@@ -566,7 +563,16 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
             title = self.get_ax_attribute(focused_element, kAXTitleAttribute)
             value = self.get_ax_attribute(focused_element, kAXValueAttribute)
             
-            return {
+            # Check if there's selected text (as mentioned in the blog post)
+            selected_text = self.get_ax_attribute(focused_element, kAXSelectedTextAttribute)
+            
+            # Get selected text range if available
+            selected_range = None
+            selected_range_value = self.get_ax_attribute(focused_element, kAXSelectedTextRangeAttribute)
+            if selected_range_value:
+                selected_range = element_value(selected_range_value, kAXValueCFRangeType)
+            
+            result = {
                 "success": True,
                 "position": {"x": position_point.x, "y": position_point.y},
                 "size": {"width": size_value.width, "height": size_value.height},
@@ -575,6 +581,18 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
                 "title": title,
                 "value": value
             }
+            
+            # Add selected text information if available
+            if selected_text:
+                result["selected_text"] = selected_text
+            
+            if selected_range:
+                result["selected_range"] = {
+                    "location": selected_range.location,
+                    "length": selected_range.length
+                }
+                
+            return result
             
         except Exception as e:
             return {"success": False, "error": str(e)}
