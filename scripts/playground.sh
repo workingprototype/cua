@@ -35,7 +35,7 @@ if ! command -v lume &> /dev/null; then
   
   # Add lume to PATH for this session if it's not already there
   if ! command -v lume &> /dev/null; then
-    export PATH="$PATH:$HOME/.lume/bin"
+    export PATH="$PATH:$HOME/.local/bin"
   fi
 fi
 
