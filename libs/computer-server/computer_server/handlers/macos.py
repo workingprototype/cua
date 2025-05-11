@@ -530,8 +530,8 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
             system = AXUIElementCreateSystemWide()
             
             # Get focused element directly from system-wide element
-            err, focused_element = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute, None)
-            if err != kAXErrorSuccess or not focused_element:
+            focused_element = self.get_ax_attribute(system, kAXFocusedUIElementAttribute)
+            if not focused_element:
                 return {"success": False, "error": "Could not get focused UI element"}
             
             # Get position of focused element
