@@ -43,6 +43,9 @@ import re
 import json
 import copy
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def CFAttributeToPyObject(attrValue):
@@ -487,7 +490,8 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
                         try:
                             window_element = UIElement(window)
                             window_trees.append(window_element.to_dict())
-                        except:
+                        except Exception as e:
+                            logger.error(f"Failed to process window {window}: {e}")
                             continue
 
                     processed_windows.append(
