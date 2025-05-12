@@ -22,8 +22,6 @@ for path in pythonpath.split(":"):
 
 from computer import Computer, VMProviderType
 from computer.logger import LogLevel
-from computer.utils import get_image_size
-
 
 async def main():
     try:
@@ -31,15 +29,20 @@ async def main():
 
         # Create computer with configured host
         computer = Computer(
-            display="1024x768",  # Higher resolution
-            memory="8GB",  # More memory
-            cpu="4",  # More CPU cores
+            display="1024x768", 
+            memory="8GB", 
+            cpu="4", 
             os_type="macos",
             verbosity=LogLevel.NORMAL,  # Use QUIET to suppress most logs
-            use_host_computer_server=False,
-            provider_type=VMProviderType.LUME,  # Explicitly use the Lume provider
+            provider_type=VMProviderType.LUME,
+            storage="/Users/francescobonacci/repos/trycua/computer/examples/storage",
+            # shared_directories=[
+            #     "/Users/francescobonacci/repos/trycua/computer/examples/shared"
+            # ]
         )
+        
         try:
+            # Run the computer with default parameters
             await computer.run()
 
             await computer.interface.hotkey("command", "space")
@@ -89,8 +92,7 @@ async def main():
 
         finally:
             # Important to clean up resources
-            pass
-            # await computer.stop()
+            await computer.stop()
     except Exception as e:
         print(f"Error in main: {e}")
         traceback.print_exc()

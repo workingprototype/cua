@@ -37,6 +37,11 @@ class Computer:
             return None
             
         vm = await self.vm_provider.get_vm(self.name)
-        # PyLume returns a VMStatus object, not a dictionary
-        # Access ip_address as an attribute, not with .get()
-        return vm.ip_address if vm else None
+        # Handle both object attribute and dictionary access for ip_address
+        if vm:
+            if isinstance(vm, dict):
+                return vm.get("ip_address")
+            else:
+                # Access as attribute for object-based return values
+                return getattr(vm, "ip_address", None)
+        return None

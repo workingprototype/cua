@@ -35,8 +35,9 @@ class Computer:
         telemetry_enabled: bool = True,
         provider_type: Union[str, VMProviderType] = VMProviderType.LUME,
         port: Optional[int] = 3000,
+        noVNC_port: Optional[int] = 8006,
         host: str = os.environ.get("PYLUME_HOST", "localhost"),
-        storage_path: Optional[str] = None,
+        storage: Optional[str] = None  # Path for persistent VM storage (Lumier provider)
     ):
         """Initialize a new Computer instance.
 
@@ -48,7 +49,7 @@ class Computer:
                     Defaults to "1024x768"
             memory: The VM memory allocation. Defaults to "8GB"
             cpu: The VM CPU allocation. Defaults to "4"
-            os: The operating system type ('macos' or 'linux')
+            os_type: The operating system type ('macos' or 'linux')
             name: The VM name
             image: The VM image name
             shared_directories: Optional list of directory paths to share with the VM
@@ -58,9 +59,9 @@ class Computer:
             telemetry_enabled: Whether to enable telemetry tracking. Defaults to True.
             provider_type: The VM provider type to use (lume, qemu, cloud)
             port: Optional port to use for the VM provider server
+            noVNC_port: Optional port for the noVNC web interface (Lumier provider)
             host: Host to use for VM provider connections (e.g. "localhost", "host.docker.internal")
-            bin_path: Optional path to the VM provider binary
-            storage_path: Optional path to store VM data
+            storage: Optional path for persistent VM storage (Lumier provider)
         """
 
         self.logger = Logger("cua.computer", verbosity)
@@ -69,10 +70,18 @@ class Computer:
         # Store original parameters
         self.image = image
         self.port = port
+        self.noVNC_port = noVNC_port
         self.host = host
         self.os_type = os_type
         self.provider_type = provider_type
-        self.storage_path = storage_path
+        self.storage = storage
+        
+        # For Lumier provider, store the first shared directory path to use
+        # for VM file sharing
+        self.shared_path = None
+        if shared_directories and len(shared_directories) > 0:
+            self.shared_path = shared_directories[0]
+            self.logger.info(f"Using first shared directory for VM file sharing: {self.shared_path}")
 
         # Store telemetry preference
         self._telemetry_enabled = telemetry_enabled
@@ -202,12 +211,29 @@ class Computer:
 
                         # Configure provider based on initialization parameters
                         provider_kwargs = {
-                            "storage_path": self.storage_path,
+                            "storage": self.storage,
                             "verbose": self.verbosity >= LogLevel.DEBUG,
                         }
-
-                        # Set port if specified
-                        if self.port is not None:
+                        
+                        # VM name is already set in self.config.name and will be used when calling provider methods
+                        
+                        # For Lumier provider, add specific configuration
+                        if self.provider_type == VMProviderType.LUMIER:
+                            # Pass VM image to LumierProvider
+                            provider_kwargs["image"] = self.image
+                            self.logger.info(f"Using VM image for Lumier provider: {self.image}")
+                            
+                            # Add shared_path if specified (for file sharing between host and VM)
+                            if self.shared_path:
+                                provider_kwargs["shared_path"] = self.shared_path
+                                self.logger.info(f"Using shared path for Lumier provider: {self.shared_path}")
+                                
+                            # Add noVNC_port if specified (for web interface)
+                            if self.noVNC_port:
+                                provider_kwargs["noVNC_port"] = self.noVNC_port
+                                self.logger.info(f"Using noVNC port for Lumier provider: {self.noVNC_port}")
+                        elif self.port is not None:
+                            # For other providers, set port if specified
                             provider_kwargs["port"] = self.port
                             self.logger.verbose(f"Using specified port for provider: {self.port}")
 
@@ -257,53 +283,52 @@ class Computer:
                     path = os.path.abspath(os.path.expanduser(path))
                     if not os.path.exists(path):
                         self.logger.warning(f"Shared directory does not exist: {path}")
-                        continue
-                    shared_dirs.append({"host_path": path, "vm_path": path})
-
-                # Create VM run options with specs from config
-                # Account for optional shared directories
+                        
+                # Define VM run options
                 run_opts = {
-                    "cpu": int(self.config.cpu),
+                    "noDisplay": False,
+                    "sharedDirectories": shared_dirs,
+                    "display": self.config.display,
                     "memory": self.config.memory,
-                    "display": {
-                        "width": self.config.display.width, 
-                        "height": self.config.display.height
-                    }
+                    "cpu": self.config.cpu
                 }
                 
-                if shared_dirs:
-                    run_opts["shared_directories"] = shared_dirs
-
-                # Log the run options for debugging
+                # For Lumier provider, pass the noVNC_port if specified
+                if self.provider_type == VMProviderType.LUMIER and self.noVNC_port is not None:
+                    run_opts["noVNC_port"] = self.noVNC_port
+                    self.logger.info(f"Using noVNC_port {self.noVNC_port} for Lumier provider")
                 self.logger.info(f"VM run options: {run_opts}")
-
-                # Log the equivalent curl command for debugging
-                payload = json.dumps({"noDisplay": False, "sharedDirectories": []})
-                curl_cmd = f"curl -X POST 'http://localhost:3000/lume/vms/{self.config.name}/run' -H 'Content-Type: application/json' -d '{payload}'"
-                # self.logger.info(f"Equivalent curl command:")
-                # self.logger.info(f"{curl_cmd}")
 
                 try:
                     if self.config.vm_provider is None:
                         raise RuntimeError(f"VM provider not initialized for {self.config.name}")
                         
-                    response = await self.config.vm_provider.run_vm(self.config.name, run_opts)
+                    response = await self.config.vm_provider.run_vm(
+                    name=self.config.name,
+                    run_opts=run_opts,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
                     self.logger.info(f"VM run response: {response if response else 'None'}")
                 except Exception as run_error:
                     self.logger.error(f"Failed to run VM: {run_error}")
                     raise RuntimeError(f"Failed to start VM: {run_error}")
 
-                # Wait for VM to be ready with required properties
-                self.logger.info("Waiting for VM to be ready...")
+                # Wait for VM to be ready with a valid IP address
+                self.logger.info("Waiting for VM to be ready with a valid IP address...")
                 try:
-                    ip = await self.get_ip()
-                    if ip:
-                        self.logger.info(f"VM is ready with IP: {ip}")
-                        # Store the IP address for later use instead of returning early
-                        ip_address = ip
-                    else:
-                        # If no IP was found, try to raise a helpful error
-                        raise RuntimeError(f"VM {self.config.name} failed to get IP address")
+                    # Use the enhanced get_ip method that includes retry logic
+                    max_retries = 30  # Increased for initial VM startup
+                    retry_delay = 2    # 2 seconds between retries
+                    
+                    self.logger.info(f"Waiting up to {max_retries * retry_delay} seconds for VM to be ready...")
+                    ip = await self.get_ip(max_retries=max_retries, retry_delay=retry_delay)
+                    
+                    # If we get here, we have a valid IP
+                    self.logger.info(f"VM is ready with IP: {ip}")
+                    ip_address = ip
+                except TimeoutError as timeout_error:
+                    self.logger.error(str(timeout_error))
+                    raise RuntimeError(f"VM startup timed out: {timeout_error}")
                 except Exception as wait_error:
                     self.logger.error(f"Error waiting for VM: {wait_error}")
                     raise RuntimeError(f"VM failed to become ready: {wait_error}")
@@ -312,6 +337,10 @@ class Computer:
             raise RuntimeError(f"Failed to initialize computer: {e}")
 
         try:
+            # Verify we have a valid IP before initializing the interface
+            if not ip_address or ip_address == "unknown" or ip_address == "0.0.0.0":
+                raise RuntimeError(f"Cannot initialize interface - invalid IP address: {ip_address}")
+                
             # Initialize the interface using the factory with the specified OS
             self.logger.info(f"Initializing interface for {self.os_type} at {ip_address}")
             from .interface.base import BaseComputerInterface
@@ -328,10 +357,11 @@ class Computer:
 
             try:
                 # Use a single timeout for the entire connection process
-                await self._interface.wait_for_ready(timeout=60)
+                # The VM should already be ready at this point, so we're just establishing the connection
+                await self._interface.wait_for_ready(timeout=30)
                 self.logger.info("WebSocket interface connected successfully")
             except TimeoutError as e:
-                self.logger.error("Failed to connect to WebSocket interface")
+                self.logger.error(f"Failed to connect to WebSocket interface at {ip_address}")
                 raise TimeoutError(
                     f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}"
                 )
@@ -359,44 +389,26 @@ class Computer:
         start_time = time.time()
 
         try:
-            if self._running:
-                self._running = False
-                self.logger.info("Stopping Computer...")
+            self.logger.info("Stopping Computer...")
 
-            if hasattr(self, "_stop_event"):
-                self._stop_event.set()
-                if hasattr(self, "_keep_alive_task"):
-                    await self._keep_alive_task
-
-            if self._interface:  # Only try to close interface if it exists
-                self.logger.verbose("Closing interface...")
-                # For host computer server, just use normal close to keep the server running
-                if self.use_host_computer_server:
-                    self._interface.close()
-                else:
-                    # For VM mode, force close the connection
-                    if hasattr(self._interface, "force_close"):
-                        self._interface.force_close()
-                    else:
-                        self._interface.close()
-
-            if not self.use_host_computer_server and self._provider_context:
+            # In VM mode, first explicitly stop the VM, then exit the provider context
+            if not self.use_host_computer_server and self._provider_context and self.config.vm_provider is not None:
                 try:
                     self.logger.info(f"Stopping VM {self.config.name}...")
-                    if self.config.vm_provider is not None:
-                        await self.config.vm_provider.stop_vm(self.config.name)
+                    await self.config.vm_provider.stop_vm(
+                    name=self.config.name,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
                 except Exception as e:
                     self.logger.error(f"Error stopping VM: {e}")
 
                 self.logger.verbose("Closing VM provider context...")
-                if self.config.vm_provider is not None:
-                    await self.config.vm_provider.__aexit__(None, None, None)
+                await self.config.vm_provider.__aexit__(None, None, None)
                 self._provider_context = None
+
             self.logger.info("Computer stopped")
         except Exception as e:
-            self.logger.debug(
-                f"Error during cleanup: {e}"
-            )  # Log as debug since this might be expected
+            self.logger.debug(f"Error during cleanup: {e}")  # Log as debug since this might be expected
         finally:
             # Log stop time for performance monitoring
             duration_ms = (time.time() - start_time) * 1000
@@ -404,12 +416,69 @@ class Computer:
         return
 
     # @property
-    async def get_ip(self) -> str:
-        """Get the IP address of the VM or localhost if using host computer server."""
+    async def get_ip(self, max_retries: int = 15, retry_delay: int = 2) -> str:
+        """Get the IP address of the VM or localhost if using host computer server.
+        
+        Args:
+            max_retries: Maximum number of retries to get the IP (default: 15)
+            retry_delay: Delay between retries in seconds (default: 2)
+            
+        Returns:
+            IP address of the VM or localhost if using host computer server
+            
+        Raises:
+            TimeoutError: If unable to get a valid IP address after retries
+        """
         if self.use_host_computer_server:
             return "127.0.0.1"
-        ip = await self.config.get_ip()
-        return ip or "unknown"  # Return "unknown" if ip is None
+            
+        # Try multiple times to get a valid IP
+        for attempt in range(1, max_retries + 1):
+            if attempt > 1:
+                self.logger.info(f"Retrying to get VM IP address (attempt {attempt}/{max_retries})...")
+                
+            try:
+                # Get VM information from the provider
+                if self.config.vm_provider is None:
+                    raise RuntimeError("VM provider is not initialized")
+                    
+                # Get VM info from provider with explicit storage parameter
+                vm_info = await self.config.vm_provider.get_vm(
+                    name=self.config.name,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
+                
+                # Check if we got a valid IP
+                ip = vm_info.get("ip_address", None)
+                if ip and ip != "unknown" and not ip.startswith("0.0.0.0"):
+                    self.logger.info(f"Got valid VM IP address: {ip}")
+                    return ip
+                    
+                # Check the VM status
+                status = vm_info.get("status", "unknown")
+                
+                # If the VM is in a non-running state (stopped, paused, etc.)
+                # raise a more informative error instead of waiting
+                if status in ["stopped"]:
+                    raise RuntimeError(f"VM is not running yet (status: {status})")
+                    
+                # If VM is starting or initializing, wait and retry
+                if status != "running":
+                    self.logger.info(f"VM is not running yet (status: {status}). Waiting...")
+                    await asyncio.sleep(retry_delay)
+                    continue
+                    
+                # If VM is running but no IP yet, wait and retry
+                self.logger.info("VM is running but no valid IP address yet. Waiting...")
+                
+            except Exception as e:
+                self.logger.warning(f"Error getting VM IP: {e}")
+                
+            await asyncio.sleep(retry_delay)
+            
+        # If we get here, we couldn't get a valid IP after all retries
+        raise TimeoutError(f"Failed to get valid IP address for VM {self.config.name} after {max_retries} attempts")
+        
 
     async def wait_vm_ready(self) -> Optional[Dict[str, Any]]:
         """Wait for VM to be ready with an IP address.
@@ -434,7 +503,11 @@ class Computer:
 
             try:
                 # Keep polling for VM info
-                vm = await self.config.vm_provider.get_vm(self.config.name)
+                if self.config.vm_provider is None:
+                    self.logger.error("VM provider is not initialized")
+                    vm = None
+                else:
+                    vm = await self.config.vm_provider.get_vm(self.config.name)
 
                 # Log full VM properties for debugging (every 30 attempts)
                 if attempts % 30 == 0:
@@ -492,9 +565,9 @@ class Computer:
         try:
             if self.config.vm_provider is not None:
                 vm = await self.config.vm_provider.get_vm(self.config.name)
-                # VMStatus is a Pydantic model with attributes, not a dictionary
-                status = vm.status if vm else "unknown"
-                ip = vm.ip_address if vm else None
+                # VM data is returned as a dictionary from the Lumier provider
+                status = vm.get('status', 'unknown') if vm else "unknown"
+                ip = vm.get('ip_address') if vm else None
             else:
                 status = "unknown"
                 ip = None
@@ -516,7 +589,11 @@ class Computer:
             "memory": memory or self.config.memory
         }
         if self.config.vm_provider is not None:
-            await self.config.vm_provider.update_vm(self.config.name, update_opts)
+                await self.config.vm_provider.update_vm(
+                    name=self.config.name,
+                    update_opts=update_opts,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
         else:
             raise RuntimeError("VM provider not initialized")
 
