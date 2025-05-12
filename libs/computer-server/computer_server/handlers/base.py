@@ -16,11 +16,6 @@ class BaseAccessibilityHandler(ABC):
         """Find an element in the accessibility tree by criteria."""
         pass
 
-    @abstractmethod
-    async def get_keyboard_focus(self) -> Dict[str, Any]:
-        """Get the currently focused UI element."""
-        pass
-
 class BaseAutomationHandler(ABC):
     """Abstract base class for OS-specific automation handlers.
     

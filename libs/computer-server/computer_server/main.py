@@ -54,7 +54,6 @@ async def websocket_endpoint(websocket: WebSocket):
         # Accessibility commands
         "get_accessibility_tree": manager.accessibility_handler.get_accessibility_tree,
         "find_element": manager.accessibility_handler.find_element,
-        "get_keyboard_focus": manager.accessibility_handler.get_keyboard_focus,
         # Automation commands
         "screenshot": manager.automation_handler.screenshot,
         "left_click": manager.automation_handler.left_click,

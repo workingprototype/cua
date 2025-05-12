@@ -175,11 +175,6 @@ class BaseComputerInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_keyboard_focus(self) -> Dict:
-        """Get the currently focused UI element."""
-        pass
-
-    @abstractmethod
     async def to_screen_coordinates(self, x: float, y: float) -> tuple[float, float]:
         """Convert screenshot coordinates to screen coordinates.
 
