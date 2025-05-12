@@ -34,10 +34,11 @@ class Computer:
         verbosity: Union[int, LogLevel] = logging.INFO,
         telemetry_enabled: bool = True,
         provider_type: Union[str, VMProviderType] = VMProviderType.LUME,
-        port: Optional[int] = 3000,
+        port: Optional[int] = 7777,
         noVNC_port: Optional[int] = 8006,
         host: str = os.environ.get("PYLUME_HOST", "localhost"),
-        storage: Optional[str] = None  # Path for persistent VM storage (Lumier provider)
+        storage: Optional[str] = None,
+        ephemeral: bool = False
     ):
         """Initialize a new Computer instance.
 
@@ -62,6 +63,7 @@ class Computer:
             noVNC_port: Optional port for the noVNC web interface (Lumier provider)
             host: Host to use for VM provider connections (e.g. "localhost", "host.docker.internal")
             storage: Optional path for persistent VM storage (Lumier provider)
+            ephemeral: Whether to use ephemeral storage
         """
 
         self.logger = Logger("cua.computer", verbosity)
@@ -74,8 +76,13 @@ class Computer:
         self.host = host
         self.os_type = os_type
         self.provider_type = provider_type
-        self.storage = storage
-        
+        self.ephemeral = ephemeral
+
+        if ephemeral:
+            self.storage = "ephemeral"
+        else:
+            self.storage = storage
+            
         # For Lumier provider, store the first shared directory path to use
         # for VM file sharing
         self.shared_path = None
@@ -150,7 +157,6 @@ class Computer:
 
     async def __aenter__(self):
         """Enter async context manager."""
-        await self.run()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -211,9 +217,18 @@ class Computer:
 
                         # Configure provider based on initialization parameters
                         provider_kwargs = {
-                            "storage": self.storage,
                             "verbose": self.verbosity >= LogLevel.DEBUG,
+                            "ephemeral": self.ephemeral,  # Pass ephemeral flag to provider
                         }
+                        
+                        # Handle storage path separately from ephemeral flag
+                        if self.ephemeral:
+                            self.logger.info("Using ephemeral storage and ephemeral VMs")
+                            # Use ephemeral storage location
+                            provider_kwargs["storage"] = "ephemeral"
+                        else:
+                            # Use explicitly configured storage
+                            provider_kwargs["storage"] = self.storage
                         
                         # VM name is already set in self.config.name and will be used when calling provider methods
                         
@@ -281,33 +296,54 @@ class Computer:
                 for path in self.shared_directories:
                     self.logger.verbose(f"Adding shared directory: {path}")
                     path = os.path.abspath(os.path.expanduser(path))
-                    if not os.path.exists(path):
+                    if os.path.exists(path):
+                        # Add path in format expected by Lume API
+                        shared_dirs.append({
+                            "hostPath": path,
+                            "readOnly": False
+                        })
+                    else:
                         self.logger.warning(f"Shared directory does not exist: {path}")
                         
-                # Define VM run options
-                run_opts = {
-                    "noDisplay": False,
-                    "sharedDirectories": shared_dirs,
-                    "display": self.config.display,
-                    "memory": self.config.memory,
-                    "cpu": self.config.cpu
-                }
-                
-                # For Lumier provider, pass the noVNC_port if specified
-                if self.provider_type == VMProviderType.LUMIER and self.noVNC_port is not None:
-                    run_opts["noVNC_port"] = self.noVNC_port
-                    self.logger.info(f"Using noVNC_port {self.noVNC_port} for Lumier provider")
-                self.logger.info(f"VM run options: {run_opts}")
+                # Prepare run options to pass to the provider
+                run_opts = {}
 
+                # Add display information if available
+                if self.config.display is not None:
+                    display_info = {
+                        "width": self.config.display.width,
+                        "height": self.config.display.height,
+                    }
+                    
+                    # Check if scale_factor exists before adding it
+                    if hasattr(self.config.display, "scale_factor"):
+                        display_info["scale_factor"] = self.config.display.scale_factor
+                    
+                    run_opts["display"] = display_info
+
+                # Add shared directories if available
+                if self.shared_directories:
+                    run_opts["shared_directories"] = shared_dirs.copy()
+
+                # Run the VM with the provider
                 try:
                     if self.config.vm_provider is None:
                         raise RuntimeError(f"VM provider not initialized for {self.config.name}")
                         
+                    # Use the complete run_opts we prepared earlier
+                    # Handle ephemeral storage for run_vm method too
+                    storage_param = "ephemeral" if self.ephemeral else self.storage
+                    
+                    # Log the image being used
+                    self.logger.info(f"Running VM using image: {self.image}")
+                    
+                    # Call provider.run_vm with explicit image parameter
                     response = await self.config.vm_provider.run_vm(
-                    name=self.config.name,
-                    run_opts=run_opts,
-                    storage=self.storage  # Pass storage explicitly for clarity
-                )
+                        image=self.image,
+                        name=self.config.name,
+                        run_opts=run_opts,
+                        storage=storage_param
+                    )
                     self.logger.info(f"VM run response: {response if response else 'None'}")
                 except Exception as run_error:
                     self.logger.error(f"Failed to run VM: {run_error}")
@@ -316,9 +352,13 @@ class Computer:
                 # Wait for VM to be ready with a valid IP address
                 self.logger.info("Waiting for VM to be ready with a valid IP address...")
                 try:
-                    # Use the enhanced get_ip method that includes retry logic
-                    max_retries = 30  # Increased for initial VM startup
-                    retry_delay = 2    # 2 seconds between retries
+                    # Increased values for Lumier provider which needs more time for initial setup
+                    if self.provider_type == VMProviderType.LUMIER:
+                        max_retries = 60  # Increased for Lumier VM startup which takes longer
+                        retry_delay = 3    # 3 seconds between retries for Lumier
+                    else:
+                        max_retries = 30  # Default for other providers
+                        retry_delay = 2    # 2 seconds between retries
                     
                     self.logger.info(f"Waiting up to {max_retries * retry_delay} seconds for VM to be ready...")
                     ip = await self.get_ip(max_retries=max_retries, retry_delay=retry_delay)
@@ -419,65 +459,38 @@ class Computer:
     async def get_ip(self, max_retries: int = 15, retry_delay: int = 2) -> str:
         """Get the IP address of the VM or localhost if using host computer server.
         
+        This method delegates to the provider's get_ip method, which waits indefinitely 
+        until the VM has a valid IP address.
+        
         Args:
-            max_retries: Maximum number of retries to get the IP (default: 15)
+            max_retries: Unused parameter, kept for backward compatibility
             retry_delay: Delay between retries in seconds (default: 2)
             
         Returns:
             IP address of the VM or localhost if using host computer server
-            
-        Raises:
-            TimeoutError: If unable to get a valid IP address after retries
         """
+        # For host computer server, always return localhost immediately
         if self.use_host_computer_server:
             return "127.0.0.1"
             
-        # Try multiple times to get a valid IP
-        for attempt in range(1, max_retries + 1):
-            if attempt > 1:
-                self.logger.info(f"Retrying to get VM IP address (attempt {attempt}/{max_retries})...")
-                
-            try:
-                # Get VM information from the provider
-                if self.config.vm_provider is None:
-                    raise RuntimeError("VM provider is not initialized")
-                    
-                # Get VM info from provider with explicit storage parameter
-                vm_info = await self.config.vm_provider.get_vm(
-                    name=self.config.name,
-                    storage=self.storage  # Pass storage explicitly for clarity
-                )
-                
-                # Check if we got a valid IP
-                ip = vm_info.get("ip_address", None)
-                if ip and ip != "unknown" and not ip.startswith("0.0.0.0"):
-                    self.logger.info(f"Got valid VM IP address: {ip}")
-                    return ip
-                    
-                # Check the VM status
-                status = vm_info.get("status", "unknown")
-                
-                # If the VM is in a non-running state (stopped, paused, etc.)
-                # raise a more informative error instead of waiting
-                if status in ["stopped"]:
-                    raise RuntimeError(f"VM is not running yet (status: {status})")
-                    
-                # If VM is starting or initializing, wait and retry
-                if status != "running":
-                    self.logger.info(f"VM is not running yet (status: {status}). Waiting...")
-                    await asyncio.sleep(retry_delay)
-                    continue
-                    
-                # If VM is running but no IP yet, wait and retry
-                self.logger.info("VM is running but no valid IP address yet. Waiting...")
-                
-            except Exception as e:
-                self.logger.warning(f"Error getting VM IP: {e}")
-                
-            await asyncio.sleep(retry_delay)
-            
-        # If we get here, we couldn't get a valid IP after all retries
-        raise TimeoutError(f"Failed to get valid IP address for VM {self.config.name} after {max_retries} attempts")
+        # Get IP from the provider - each provider implements its own waiting logic
+        if self.config.vm_provider is None:
+            raise RuntimeError("VM provider is not initialized")
+        
+        # Log that we're waiting for the IP
+        self.logger.info(f"Waiting for VM {self.config.name} to get an IP address...")
+        
+        # Call the provider's get_ip method which will wait indefinitely
+        storage_param = "ephemeral" if self.ephemeral else self.storage
+        ip = await self.config.vm_provider.get_ip(
+            name=self.config.name,
+            storage=storage_param,
+            retry_delay=retry_delay
+        )
+        
+        # Log success
+        self.logger.info(f"VM {self.config.name} has IP address: {ip}")
+        return ip
         
 
     async def wait_vm_ready(self) -> Optional[Dict[str, Any]]:

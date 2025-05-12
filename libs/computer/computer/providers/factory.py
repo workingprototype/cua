@@ -14,7 +14,7 @@ class VMProviderFactory:
     @staticmethod
     def create_provider(
         provider_type: Union[str, VMProviderType],
-        port: Optional[int] = None,
+        port: int = 7777,
         host: str = "localhost",
         bin_path: Optional[str] = None,
         storage: Optional[str] = None,
@@ -63,9 +63,9 @@ class VMProviderFactory:
                 return LumeProvider(
                     port=port,
                     host=host,
-                    bin_path=bin_path,
                     storage=storage,
-                    verbose=verbose
+                    verbose=verbose,
+                    ephemeral=ephemeral
                 )
             except ImportError as e:
                 logger.error(f"Failed to import LumeProvider: {e}")

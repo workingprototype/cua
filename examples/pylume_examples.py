@@ -4,7 +4,7 @@ from pylume import PyLume, ImageRef, VMRunOpts, SharedDirectory, VMConfig, VMUpd
 
 async def main():
     """Example usage of PyLume."""
-    async with PyLume(port=3000, use_existing_server=False, debug=True) as pylume:
+    async with PyLume(port=7777, use_existing_server=False, debug=True) as pylume:
 
         # Get latest IPSW URL
         print("\n=== Getting Latest IPSW URL ===")

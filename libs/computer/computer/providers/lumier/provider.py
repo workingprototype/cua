@@ -44,7 +44,7 @@ class LumierProvider(BaseVMProvider):
     
     def __init__(
         self, 
-        port: Optional[int] = 3000,
+        port: Optional[int] = 7777,
         host: str = "localhost",
         storage: Optional[str] = None,
         shared_path: Optional[str] = None,
@@ -56,7 +56,7 @@ class LumierProvider(BaseVMProvider):
         """Initialize the Lumier VM Provider.
         
         Args:
-            port: Port for the API server (default: 3000)
+            port: Port for the API server (default: 7777)
             host: Hostname for the API server (default: localhost)
             storage: Path for persistent VM storage
             shared_path: Path for shared folder between host and VM
@@ -66,8 +66,8 @@ class LumierProvider(BaseVMProvider):
             noVNC_port: Specific port for noVNC interface (default: 8006)
         """
         self.host = host
-        # Always ensure api_port has a valid value (3000 is the default)
-        self.api_port = 3000 if port is None else port
+        # Always ensure api_port has a valid value (7777 is the default)
+        self.api_port = 7777 if port is None else port
         self.vnc_port = noVNC_port  # User-specified noVNC port, will be set in run_vm if provided
         self.ephemeral = ephemeral
         
@@ -78,7 +78,7 @@ class LumierProvider(BaseVMProvider):
             self.storage = storage
             
         self.shared_path = shared_path
-        self.vm_image = image  # Store the VM image name to use
+        self.image = image  # Store the VM image name to use
         # The container_name will be set in run_vm using the VM name
         self.verbose = verbose
         self._container_id = None
@@ -270,10 +270,11 @@ class LumierProvider(BaseVMProvider):
             logger.error(f"Failed to list VMs: {e}")
             return []
     
-    async def run_vm(self, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
+    async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
         """Run a VM with the given options.
         
         Args:
+            image: Name/tag of the image to use
             name: Name of the VM to run (used for the container name and Docker image tag)
             run_opts: Options for running the VM, including:
                 - cpu: Number of CPU cores
@@ -284,7 +285,7 @@ class LumierProvider(BaseVMProvider):
             Dictionary with VM status information
         """
         # Set the container name using the VM name for consistency
-        self.container_name = name or "lumier1-vm"
+        self.container_name = name
         try:
             # First, check if container already exists and remove it
             try:
@@ -341,11 +342,11 @@ class LumierProvider(BaseVMProvider):
             # Add environment variables
             # Always use the container_name as the VM_NAME for consistency
             # Use the VM image passed from the Computer class
-            print(f"Using VM image: {self.vm_image}")
+            print(f"Using VM image: {self.image}")
             
             cmd.extend([
                 "-e", f"VM_NAME={self.container_name}",
-                "-e", f"VERSION=ghcr.io/trycua/{self.vm_image}",
+                "-e", f"VERSION=ghcr.io/trycua/{self.image}",
                 "-e", f"CPU_CORES={run_opts.get('cpu', '4')}",
                 "-e", f"RAM_SIZE={memory_mb}",
             ])
@@ -390,7 +391,43 @@ class LumierProvider(BaseVMProvider):
             # Container started, now check VM status with polling
             print("Container started, checking VM status...")
             print("NOTE: This may take some time while the VM image is being pulled and initialized")
-            print("TIP: You can run 'lume logs -f' in another terminal to see the detailed initialization progress")
+            
+            # Start a background thread to show container logs in real-time
+            import threading
+            
+            def show_container_logs():
+                # Give the container a moment to start generating logs
+                time.sleep(1)
+                print(f"\n---- CONTAINER LOGS FOR '{name}' (LIVE) ----")
+                print("Showing logs as they are generated. Press Ctrl+C to stop viewing logs...\n")
+                
+                try:
+                    # Use docker logs with follow option
+                    log_cmd = ["docker", "logs", "--tail", "30", "--follow", name]
+                    process = subprocess.Popen(log_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                              text=True, bufsize=1, universal_newlines=True)
+                    
+                    # Read and print logs line by line
+                    for line in process.stdout:
+                        print(line, end='')
+                        
+                        # Break if process has exited
+                        if process.poll() is not None:
+                            break
+                except Exception as e:
+                    print(f"\nError showing container logs: {e}")
+                    if self.verbose:
+                        logger.error(f"Error in log streaming thread: {e}")
+                finally:
+                    print("\n---- LOG STREAMING ENDED ----")
+                    # Make sure process is terminated
+                    if 'process' in locals() and process.poll() is None:
+                        process.terminate()
+            
+            # Start log streaming in a background thread if verbose mode is enabled
+            log_thread = threading.Thread(target=show_container_logs)
+            log_thread.daemon = True  # Thread will exit when main program exits
+            log_thread.start()
             
             # Skip waiting for container readiness and just poll get_vm directly
             # Poll the get_vm method indefinitely until the VM is ready with an IP address
@@ -680,6 +717,188 @@ class LumierProvider(BaseVMProvider):
         """Not implemented for Lumier provider."""
         logger.warning("update_vm is not implemented for Lumier provider")
         return {"name": name, "status": "unchanged"}
+        
+    async def get_logs(self, name: str, num_lines: int = 100, follow: bool = False, timeout: Optional[int] = None) -> str:
+        """Get the logs from the Lumier container.
+        
+        Args:
+            name: Name of the VM/container to get logs for
+            num_lines: Number of recent log lines to return (default: 100)
+            follow: If True, follow the logs (stream new logs as they are generated)
+            timeout: Optional timeout in seconds for follow mode (None means no timeout)
+            
+        Returns:
+            Container logs as a string
+            
+        Note:
+            If follow=True, this function will continuously stream logs until timeout
+            or until interrupted. The output will be printed to console in real-time.
+        """
+        if not HAS_LUMIER:
+            error_msg = "Docker is not available. Cannot get container logs."
+            logger.error(error_msg)
+            return error_msg
+        
+        # Make sure we have a container name
+        container_name = name
+        
+        # Check if the container exists and is running
+        try:
+            # Check if the container exists
+            inspect_cmd = ["docker", "container", "inspect", container_name]
+            result = subprocess.run(inspect_cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                error_msg = f"Container '{container_name}' does not exist or is not accessible"
+                logger.error(error_msg)
+                return error_msg
+        except Exception as e:
+            error_msg = f"Error checking container status: {str(e)}"
+            logger.error(error_msg)
+            return error_msg
+        
+        # Base docker logs command
+        log_cmd = ["docker", "logs"]
+        
+        # Add tail parameter to limit the number of lines
+        log_cmd.extend(["--tail", str(num_lines)])
+        
+        # Handle follow mode with or without timeout
+        if follow:
+            log_cmd.append("--follow")
+            
+            if timeout is not None:
+                # For follow mode with timeout, we'll run the command and handle the timeout
+                log_cmd.append(container_name)
+                logger.info(f"Following logs for container '{container_name}' with timeout {timeout}s")
+                print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
+                print(f"Press Ctrl+C to stop following logs\n")
+                
+                try:
+                    # Run with timeout
+                    process = subprocess.Popen(log_cmd, text=True)
+                    
+                    # Wait for the specified timeout
+                    if timeout:
+                        try:
+                            process.wait(timeout=timeout)
+                        except subprocess.TimeoutExpired:
+                            process.terminate()  # Stop after timeout
+                            print(f"\n---- LOG FOLLOWING STOPPED (timeout {timeout}s reached) ----")
+                    else:
+                        # Without timeout, wait for user interruption
+                        process.wait()
+                        
+                    return "Logs were displayed to console in follow mode"
+                except KeyboardInterrupt:
+                    process.terminate()
+                    print("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
+                    return "Logs were displayed to console in follow mode (interrupted)"
+            else:
+                # For follow mode without timeout, we'll print a helpful message
+                log_cmd.append(container_name)
+                logger.info(f"Following logs for container '{container_name}' indefinitely")
+                print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
+                print(f"Press Ctrl+C to stop following logs\n")
+                
+                try:
+                    # Run the command and let it run until interrupted
+                    process = subprocess.Popen(log_cmd, text=True)
+                    process.wait()  # Wait indefinitely (until user interrupts)
+                    return "Logs were displayed to console in follow mode"
+                except KeyboardInterrupt:
+                    process.terminate()
+                    print("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
+                    return "Logs were displayed to console in follow mode (interrupted)"
+        else:
+            # For non-follow mode, capture and return the logs as a string
+            log_cmd.append(container_name)
+            logger.info(f"Getting {num_lines} log lines for container '{container_name}'")
+            
+            try:
+                result = subprocess.run(log_cmd, capture_output=True, text=True, check=True)
+                logs = result.stdout
+                
+                # Only print header and logs if there's content
+                if logs.strip():
+                    print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LAST {num_lines} LINES) ----\n")
+                    print(logs)
+                    print(f"\n---- END OF LOGS ----")
+                else:
+                    print(f"\nNo logs available for container '{container_name}'")
+                    
+                return logs
+            except subprocess.CalledProcessError as e:
+                error_msg = f"Error getting logs: {e.stderr}"
+                logger.error(error_msg)
+                return error_msg
+            except Exception as e:
+                error_msg = f"Unexpected error getting logs: {str(e)}"
+                logger.error(error_msg)
+                return error_msg
+    
+    async def get_ip(self, name: str, storage: Optional[str] = None, retry_delay: int = 2) -> str:
+        """Get the IP address of a VM, waiting indefinitely until it's available.
+        
+        Args:
+            name: Name of the VM to get the IP for
+            storage: Optional storage path override
+            retry_delay: Delay between retries in seconds (default: 2)
+            
+        Returns:
+            IP address of the VM when it becomes available
+        """
+        # Use container_name = name for consistency
+        self.container_name = name
+        
+        # Track total attempts for logging purposes
+        total_attempts = 0
+        
+        # Loop indefinitely until we get a valid IP
+        while True:
+            total_attempts += 1
+            
+            # Log retry message but not on first attempt
+            if total_attempts > 1:
+                logger.info(f"Waiting for VM {name} IP address (attempt {total_attempts})...")
+            
+            try:
+                # Get VM information
+                vm_info = await self.get_vm(name, storage=storage)
+                
+                # Check if we got a valid IP
+                ip = vm_info.get("ip_address", None)
+                if ip and ip != "unknown" and not ip.startswith("0.0.0.0"):
+                    logger.info(f"Got valid VM IP address: {ip}")
+                    return ip
+                    
+                # Check the VM status
+                status = vm_info.get("status", "unknown")
+                
+                # Special handling for Lumier: it may report "stopped" even when the VM is starting
+                # If the VM information contains an IP but status is stopped, it might be a race condition
+                if status == "stopped" and "ip_address" in vm_info:
+                    ip = vm_info.get("ip_address")
+                    if ip and ip != "unknown" and not ip.startswith("0.0.0.0"):
+                        logger.info(f"Found valid IP {ip} despite VM status being {status}")
+                        return ip
+                    logger.info(f"VM status is {status}, but still waiting for IP to be assigned")
+                # If VM is not running yet, log and wait
+                elif status != "running":
+                    logger.info(f"VM is not running yet (status: {status}). Waiting...")
+                # If VM is running but no IP yet, wait and retry
+                else:
+                    logger.info("VM is running but no valid IP address yet. Waiting...")
+                
+            except Exception as e:
+                logger.warning(f"Error getting VM {name} IP: {e}, continuing to wait...")
+                
+            # Wait before next retry
+            await asyncio.sleep(retry_delay)
+            
+            # Add progress log every 10 attempts
+            if total_attempts % 10 == 0:
+                logger.info(f"Still waiting for VM {name} IP after {total_attempts} attempts...")
     
     async def __aenter__(self):
         """Async context manager entry.

@@ -36,7 +36,7 @@ Before using Lumier, make sure you have:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
-After installation, Lume runs as a background service and listens on port 3000. This service allows Lumier to create and manage virtual machines. If port 3000 is already in use on your system, you can specify a different port with the `--port` option when running the `install.sh` script.
+After installation, Lume runs as a background service and listens on port 7777. This service allows Lumier to create and manage virtual machines. If port 7777 is already in use on your system, you can specify a different port with the `--port` option when running the `install.sh` script.
 
 ## How It Works
 

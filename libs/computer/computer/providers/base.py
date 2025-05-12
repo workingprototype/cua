@@ -46,10 +46,11 @@ class BaseVMProvider(AsyncContextManager):
         pass
         
     @abc.abstractmethod
-    async def run_vm(self, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
+    async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
         """Run a VM by name with the given options.
         
         Args:
+            image: Name/tag of the image to use
             name: Name of the VM to run
             run_opts: Dictionary of run options (memory, cpu, etc.)
             storage: Optional storage path override. If provided, this will be used
@@ -86,5 +87,20 @@ class BaseVMProvider(AsyncContextManager):
         
         Returns:
             Dictionary with VM update status and information
+        """
+        pass
+        
+    @abc.abstractmethod
+    async def get_ip(self, name: str, storage: Optional[str] = None, retry_delay: int = 2) -> str:
+        """Get the IP address of a VM, waiting indefinitely until it's available.
+        
+        Args:
+            name: Name of the VM to get the IP for
+            storage: Optional storage path override. If provided, this will be used
+                    instead of the provider's default storage path.
+            retry_delay: Delay between retries in seconds (default: 2)
+            
+        Returns:
+            IP address of the VM when it becomes available
         """
         pass

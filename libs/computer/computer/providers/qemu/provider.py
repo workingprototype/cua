@@ -72,7 +72,7 @@ class QEMUProvider(BaseVMProvider):
         """List all available VMs."""
         raise NotImplementedError("QEMU provider is not implemented yet")
         
-    async def run_vm(self, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
+    async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
         """Run a VM with the given options."""
         raise NotImplementedError("QEMU provider is not implemented yet")
         
@@ -82,4 +82,8 @@ class QEMUProvider(BaseVMProvider):
         
     async def update_vm(self, name: str, update_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
         """Update VM configuration."""
+        raise NotImplementedError("QEMU provider is not implemented yet")
+        
+    async def get_ip(self, name: str, storage: Optional[str] = None, retry_delay: int = 2) -> str:
+        """Get the IP address of a VM, waiting indefinitely until it's available."""
         raise NotImplementedError("QEMU provider is not implemented yet")

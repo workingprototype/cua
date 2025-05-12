@@ -34,17 +34,18 @@ async def main():
             cpu="4", 
             os_type="macos",
             verbosity=LogLevel.NORMAL,  # Use QUIET to suppress most logs
-            provider_type=VMProviderType.LUME,
+            provider_type=VMProviderType.LUMIER,
             storage="/Users/francescobonacci/repos/trycua/computer/examples/storage",
-            # shared_directories=[
-            #     "/Users/francescobonacci/repos/trycua/computer/examples/shared"
-            # ]
+            shared_directories=[
+                "/Users/francescobonacci/repos/trycua/computer/examples/shared"
+            ],
+            ephemeral=True
         )
         
         try:
             # Run the computer with default parameters
             await computer.run()
-
+            
             await computer.interface.hotkey("command", "space")
 
             # res = await computer.interface.run_command("touch ./Downloads/empty_file")
