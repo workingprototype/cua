@@ -133,22 +133,22 @@ class OpenAILoop(BaseLoop):
             logger.info("Starting OpenAI loop run")
 
             # Create queue for response streaming
-            queue = asyncio.Queue()
+            self.queue = asyncio.Queue()
 
             # Ensure tool manager is initialized
             await self.tool_manager.initialize()
 
             # Start loop in background task
-            self.loop_task = asyncio.create_task(self._run_loop(queue, messages))
+            self.loop_task = asyncio.create_task(self._run_loop(self.queue, messages))
 
             # Process and yield messages as they arrive
             while True:
                 try:
-                    item = await queue.get()
+                    item = await self.queue.get()
                     if item is None:  # Stop signal
                         break
                     yield item
-                    queue.task_done()
+                    self.queue.task_done()
                 except Exception as e:
                     logger.error(f"Error processing queue item: {str(e)}")
                     continue
