@@ -13,10 +13,9 @@
 
 **c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
 
-
-
 <div align="center">
-<video src="https://github.com/user-attachments/assets/06e1974f-8f73-477d-b18a-715d83148e45" width="800" controls></video></div>
+  <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
+</div>
 
 # 🚀 Quick Start
 
@@ -38,7 +37,7 @@ This script will:
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
-- [OmniParser](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
+- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 ### System Requirements
 
