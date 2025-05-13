@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
-"""App Screenshots - A standalone script to capture screenshots of running macOS applications
+"""Diorama Renderer - A tool for rendering selective views of macOS desktops
 
-This script captures screenshots of all running macOS applications and their windows,
-preserving z-order information to allow for recomposition of the desktop.
+This script renders filtered views of the macOS desktop, preserving only selected applications
+while maintaining system UI elements like menubar and dock. Each "diorama" shows a consistent
+view of the system while isolating specific applications. 
+
+The image is "smart resized" to remove any empty space around the menubar and dock.
+
+Key features:
+- Captures shared window state, z-order and position information
+- Filters windows by application based on whitelist
+- Preserves system context (menubar, dock) in each view
+- Preserves menu-owning / keyboard-focused window in each view
+- Supports parallel views of the same desktop for multi-agent systems
 """
 
 import sys
@@ -16,7 +26,7 @@ import io
 import asyncio
 import functools
 
-from ui_bounds_helper import (
+from safezone import (
     get_menubar_bounds,
     get_dock_bounds,
 )

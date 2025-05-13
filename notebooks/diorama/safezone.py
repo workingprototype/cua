@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-UI Bounds Helper - A utility to get accurate bounds for macOS UI elements
+UI Safezone Helper - A utility to get accurate bounds for macOS UI elements
 
 This module provides helper functions to get accurate bounds for macOS UI elements
 like the menubar and dock, which are needed for proper screenshot composition.
