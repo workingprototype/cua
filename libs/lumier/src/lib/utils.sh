@@ -134,13 +134,35 @@ EOF
 extract_json_field() {
     local field_name=$1
     local input=$2
-    local result
-    result=$(echo "$input" | grep -oP '"'"$field_name"'"\s*:\s*"\K[^"]+')
-    if [[ $? -ne 0 ]]; then
-        echo ""
-    else
-        echo "$result"
+    local result=""
+    
+    # First attempt with jq if available (most reliable JSON parsing)
+    if command -v jq &> /dev/null; then
+        # Use jq for reliable JSON parsing
+        result=$(echo "$input" | jq -r ".$field_name // empty" 2>/dev/null)
+        if [[ -n "$result" ]]; then
+            echo "$result"
+            return 0
+        fi
     fi
+    
+    # Fallback to grep-based approach with improvements
+    # First try for quoted string values
+    result=$(echo "$input" | tr -d '\n' | grep -o "\"$field_name\"\s*:\s*\"[^\"]*\"" | sed -E 's/.*":\s*"(.*)"$/\1/')
+    if [[ -n "$result" ]]; then
+        echo "$result"
+        return 0
+    fi
+    
+    # Try for non-quoted values (numbers, true, false, null)
+    result=$(echo "$input" | tr -d '\n' | grep -o "\"$field_name\"\s*:\s*[^,}]*" | sed -E 's/.*":\s*(.*)$/\1/')
+    if [[ -n "$result" ]]; then
+        echo "$result"
+        return 0
+    fi
+    
+    # Return empty string if field not found
+    echo ""
 }
 
 extract_json_field_from_file() {

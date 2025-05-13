@@ -131,6 +131,15 @@ class BaseLoop(ABC):
             An async generator that yields agent responses
         """
         raise NotImplementedError
+        
+    @abstractmethod
+    async def cancel(self) -> None:
+        """Cancel the currently running agent loop task.
+        
+        This method should stop any ongoing processing in the agent loop
+        and clean up resources appropriately.
+        """
+        raise NotImplementedError
 
     ###########################################
     # EXPERIMENT AND TRAJECTORY MANAGEMENT

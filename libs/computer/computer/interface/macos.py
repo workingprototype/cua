@@ -343,7 +343,15 @@ class MacOSComputerInterface(BaseComputerInterface):
 
     # Keyboard Actions
     async def type_text(self, text: str) -> None:
-        await self._send_command("type_text", {"text": text})
+        # Temporary fix for https://github.com/trycua/cua/issues/165
+        # Check if text contains Unicode characters
+        if any(ord(char) > 127 for char in text):
+            # For Unicode text, use clipboard and paste
+            await self.set_clipboard(text)
+            await self.hotkey(Key.COMMAND, 'v')
+        else:
+            # For ASCII text, use the regular typing method
+            await self._send_command("type_text", {"text": text})
 
     async def press(self, key: "KeyType") -> None:
         """Press a single key.
@@ -531,7 +539,7 @@ class MacOSComputerInterface(BaseComputerInterface):
         result = await self._send_command("get_accessibility_tree")
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to get accessibility tree"))
-        return result.get("tree", {})
+        return result
 
     async def get_active_window_bounds(self) -> Dict[str, int]:
         """Get the bounds of the currently active window."""

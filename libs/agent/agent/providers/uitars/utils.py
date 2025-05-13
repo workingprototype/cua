@@ -105,7 +105,7 @@ async def to_agent_response_format(
             }
         ],
         truncation="auto",
-        usage=response["usage"],
+        usage=response.get("usage", {}),
         user=None,
         metadata={},
         response=response
