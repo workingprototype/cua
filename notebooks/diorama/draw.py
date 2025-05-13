@@ -25,6 +25,17 @@ from PIL import Image, ImageDraw
 import io
 import asyncio
 import functools
+import logging
+
+# simple, nicely formatted logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    datefmt='%H:%M:%S',
+    stream=sys.stdout
+)
+logger = logging.getLogger("diorama.draw")
+
 
 from safezone import (
     get_menubar_bounds,
@@ -39,7 +50,7 @@ def timing_decorator(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Function {func.__name__} took {elapsed_time:.4f} seconds to run")
+        logger.debug(f"Function {func.__name__} took {elapsed_time:.4f} seconds to run")
         return result
     return wrapper
 
@@ -82,8 +93,8 @@ try:
     from Foundation import NSObject, NSMakeRect
     import objc
 except ImportError:
-    print("Error: This script requires PyObjC to be installed.")
-    print("Please install it with: pip install pyobjc")
+    logger.error("Error: This script requires PyObjC to be installed.")
+    logger.error("Please install it with: pip install pyobjc")
     sys.exit(1)
 
 # Constants for accessibility API
@@ -586,25 +597,25 @@ def get_menubar_items(active_app_pid: int = None) -> List[Dict[str, Any]]:
         if frontmost_app:
             active_app_pid = frontmost_app.processIdentifier()
         else:
-            print("Error: Could not determine frontmost application")
+            logger.error("Error: Could not determine frontmost application")
             return menubar_items
     
     # Create an accessibility element for the application
     app_element = AXUIElementCreateApplication(active_app_pid)
     if app_element is None:
-        print(f"Error: Could not create accessibility element for PID {active_app_pid}")
+        logger.error(f"Error: Could not create accessibility element for PID {active_app_pid}")
         return menubar_items
     
     # Get the menubar
     menubar = element_attribute(app_element, kAXMenuBarAttribute)
     if menubar is None:
-        print(f"Error: Could not get menubar for application with PID {active_app_pid}")
+        logger.error(f"Error: Could not get menubar for application with PID {active_app_pid}")
         return menubar_items
     
     # Get the menubar items
     children = element_attribute(menubar, kAXChildrenAttribute)
     if children is None:
-        print("Error: Could not get menubar items")
+        logger.error("Error: Could not get menubar items")
         return menubar_items
     
     # Process each menubar item
@@ -665,19 +676,19 @@ def get_dock_items() -> List[Dict[str, Any]]:
             break
             
     if dock_pid is None:
-        print("Error: Could not find Dock process")
+        logger.error("Error: Could not find Dock process")
         return dock_items
         
     # Create an accessibility element for the Dock
     dock_element = AXUIElementCreateApplication(dock_pid)
     if dock_element is None:
-        print(f"Error: Could not create accessibility element for Dock (PID {dock_pid})")
+        logger.error(f"Error: Could not create accessibility element for Dock (PID {dock_pid})")
         return dock_items
         
     # Get the Dock's main element
     dock_list = element_attribute(dock_element, kAXChildrenAttribute)
     if dock_list is None or len(dock_list) == 0:
-        print("Error: Could not get Dock children")
+        logger.error("Error: Could not get Dock children")
         return dock_items
         
     # Find the Dock's application list (usually the first child)
@@ -689,13 +700,13 @@ def get_dock_items() -> List[Dict[str, Any]]:
             break
             
     if dock_app_list is None:
-        print("Error: Could not find Dock application list")
+        logger.error("Error: Could not find Dock application list")
         return dock_items
         
     # Get all items in the Dock
     items = element_attribute(dock_app_list, kAXChildrenAttribute)
     if items is None:
-        print("Error: Could not get Dock items")
+        logger.error("Error: Could not get Dock items")
         return dock_items
         
     # Process each Dock item
@@ -822,7 +833,7 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
             
     # Activate the selected application
     if active_app_pid:
-        print(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
+        logger.debug(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
         
         # Get all running applications
         running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
