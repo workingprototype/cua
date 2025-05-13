@@ -354,11 +354,15 @@ def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: Lis
                 
         # Calculate bounds of app windows
         app_bounds = {
-            "x": min(window["bounds"]["x"] for window in app_windows),
-            "y": min(window["bounds"]["y"] for window in app_windows),
+            "x": min(window["bounds"]["x"] for window in app_windows) if app_windows else 0,
+            "y": min(window["bounds"]["y"] for window in app_windows) if app_windows else 0,
         }
-        app_bounds["width"] = max(window["bounds"]["x"] + window["bounds"]["width"] for window in app_windows) - app_bounds["x"]
-        app_bounds["height"] = max(window["bounds"]["y"] + window["bounds"]["height"] for window in app_windows) - app_bounds["y"]
+        app_bounds["width"] = max(window["bounds"]["x"] + window["bounds"]["width"] for window in app_windows) - app_bounds["x"] if app_windows else 0
+        app_bounds["height"] = max(window["bounds"]["y"] + window["bounds"]["height"] for window in app_windows) - app_bounds["y"] if app_windows else 0
+        
+        # Set minimum bounds of 256x256
+        app_bounds["width"] = max(app_bounds["width"], 256)
+        app_bounds["height"] = max(app_bounds["height"], 256)
         
         # Add dock bounds to app bounds
         if dock_orientation == "bottom":
@@ -777,9 +781,14 @@ def capture_all_apps(save_to_disk: bool = False, create_composite: bool = False,
     for window in all_windows[::-1]:
         owner = window.get("owner")
         role = window.get("role")
+        is_on_screen = window.get("is_on_screen")
         
         # Skip non-app windows
         if role != "app":
+            continue
+        
+        # Skip not-on-screen windows
+        if not is_on_screen:
             continue
         
         # Skip filtered apps
