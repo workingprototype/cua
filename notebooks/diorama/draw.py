@@ -316,7 +316,7 @@ def get_app_windows(app_pid: int, all_windows: List[Dict[str, Any]]) -> List[Dic
     return [window for window in all_windows if window["pid"] == app_pid]
 
 @timing_decorator
-def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None, dock_bounds: Dict[str, float] = None, dock_items: List[Dict[str, Any]] = None, menubar_bounds: Dict[str, float] = None, menubar_items: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
+def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None, dock_bounds: Dict[str, float] = None, dock_items: List[Dict[str, Any]] = None, menubar_bounds: Dict[str, float] = None, menubar_items: List[Dict[str, Any]] = None) -> Tuple[Optional[Image.Image], List[Dict[str, Any]]]:
     """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
     Args:
         app_whitelist: Optional list of app names to include in the screenshot
@@ -345,6 +345,9 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
     else:
         screen_rect = Quartz.CGRectNull
 
+    # Screenshot-to-screen hitboxes
+    hitboxes = []
+    
     if app_whitelist is None:
         # Single pass: desktop, menubar, app, dock
         window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
@@ -364,6 +367,10 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
             None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
         )
         Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
+        hitboxes.append({
+            "hitbox": [0, 0, width, height],
+            "target": [0, 0, width, height]
+        })
     else:
         # Filter out windows that are not in the whitelist
         all_windows = [window for window in all_windows if window["owner"] in app_whitelist or window["role"] != "app"]
@@ -456,6 +463,11 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
         )
         first_pass_windows = [w for w in all_windows if w["role"] == "app" or w["role"] == "desktop"]
         _draw_layer(cg_context, first_pass_windows, app_source_rect, app_target_rect)
+        
+        hitboxes.append({
+            "hitbox": [app_source_rect.origin.x, app_source_rect.origin.y, app_source_rect.size.width, app_source_rect.size.height],
+            "target": [app_target_rect.origin.x, app_target_rect.origin.y, app_target_rect.size.width, app_target_rect.size.height]
+        })
 
         # --- SECOND PASS: menubar ---
         allowed_roles = {"menubar"}
@@ -467,6 +479,11 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
             0, app_bounds["height"] - menubar_bounds["height"], app_bounds["width"], menubar_bounds["height"]
         )
         _draw_layer(cg_context, menubar_windows, menubar_source_rect, menubar_target_rect)
+        
+        hitboxes.append({
+            "hitbox": [0, 0, app_bounds["width"], menubar_bounds["height"]],
+            "target": [0, 0, app_bounds["width"], menubar_bounds["height"]]
+        })
         
         # --- THIRD PASS: dock, filtered ---
         # Step 1: Collect dock items to draw, with their computed target rects
@@ -484,26 +501,46 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
                     if not any(window["name"] == item["title"] and window["role"] == "app" and window["owner"] in app_whitelist for window in all_windows):
                         continue
 
+            # Preserve unscaled (original) source position and size before any modification
+            hitbox_position = source_position
+            hitbox_size = source_size
+            
+            screen_position = source_position
+            screen_size = source_size
+            
             # stretch to screen size
             padding = 32
             if dock_orientation == "bottom":
                 source_position = (source_position[0], 0)
                 source_size = (source_size[0], frame.size.height)
+                
+                hitbox_position = (source_position[0], app_bounds['height'] - hitbox_size[1])
+                hitbox_size = (source_size[0], hitbox_size[1])
+                
                 if index == 0:
                     source_size = (padding + source_size[0], source_size[1])
                     source_position = (source_position[0] - padding, 0)
                 elif index == len(dock_items) - 1:
                     source_size = (source_size[0] + padding, source_size[1])
                     source_position = (source_position[0], 0)
+                    
             elif dock_orientation == "side":
                 source_position = (0, source_position[1])
                 source_size = (frame.size.width, source_size[1])
+                
+                hitbox_position = (
+                    source_position[0] if dock_bounds['x'] < frame.size.width / 2 else app_bounds['width'] - hitbox_size[0],
+                    source_position[1]
+                )
+                hitbox_size = (hitbox_size[0], source_size[1])
+                
                 if index == 0:
                     source_size = (source_size[0], padding + source_size[1])
                     source_position = (0, source_position[1] - padding)
                 elif index == len(dock_items) - 1:
                     source_size = (source_size[0], source_size[1] + padding)
                     source_position = (0, source_position[1])
+                
 
             # Compute the initial target position
             target_position = source_position
@@ -516,6 +553,10 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
                 "source_size": source_size,
                 "target_size": target_size,
                 "target_position": target_position,  # Will be updated after packing
+                "hitbox_position": hitbox_position,
+                "hitbox_size": hitbox_size,
+                "screen_position": screen_position,
+                "screen_size": screen_size,
             })
 
         # Step 2: Pack the target rects along the main axis, removing gaps
@@ -533,6 +574,18 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
             for i, draw_item in enumerate(dock_draw_items):
                 px, py = packed_positions[i]
                 draw_item["target_position"] = (px + x_offset, py - y_offset)
+                
+            # Pack unscaled source rects
+            x_cursor = 0
+            for draw_item in dock_draw_items:
+                draw_item["hitbox_position"] = (x_cursor, draw_item["hitbox_position"][1])
+                x_cursor += draw_item["hitbox_size"][0]
+            packed_strip_length = x_cursor
+            # Center horizontally
+            x_offset = (app_bounds['width'] - packed_strip_length) / 2
+            for i, draw_item in enumerate(dock_draw_items):
+                px, py = draw_item["hitbox_position"]
+                draw_item["hitbox_position"] = (px + x_offset, py)
         elif dock_orientation == "side":
             # Pack top-to-bottom
             y_cursor = 0
@@ -546,7 +599,19 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
             for i, draw_item in enumerate(dock_draw_items):
                 px, py = packed_positions[i]
                 draw_item["target_position"] = (px - x_offset, py + y_offset)
-
+            
+            # Pack unscaled source rects
+            y_cursor = 0
+            for draw_item in dock_draw_items:
+                draw_item["hitbox_position"] = (draw_item["hitbox_position"][0], y_cursor)
+                y_cursor += draw_item["hitbox_size"][1]
+            packed_strip_length = y_cursor
+            # Center vertically
+            y_offset = (app_bounds['height'] - packed_strip_length) / 2
+            for i, draw_item in enumerate(dock_draw_items):
+                px, py = draw_item["hitbox_position"]
+                draw_item["hitbox_position"] = (px, py + y_offset)
+            
         dock_windows = [window for window in all_windows if window["role"] == "dock"]
         # Step 3: Draw dock items using packed and recentered positions
         for draw_item in dock_draw_items:
@@ -564,10 +629,23 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
 
             _draw_layer(cg_context, dock_windows, source_rect, target_rect)
 
-            # Debug: Draw dock item border
-            # Quartz.CGContextSetStrokeColorWithColor(cg_context, Quartz.CGColorCreateGenericRGB(1, 0, 0, 1))
-            # Quartz.CGContextSetLineWidth(cg_context, 2.0)
-            # Quartz.CGContextStrokeRect(cg_context, target_rect)
+            # Debug: Draw true hitbox rect (packed position, unscaled size)
+            hitbox_position = draw_item["hitbox_position"]
+            hitbox_size = draw_item["hitbox_size"]
+            # Flip y like target_rect
+            hitbox_position_flipped = (
+                hitbox_position[0],
+                app_bounds['height'] - hitbox_position[1] - hitbox_size[1]
+            )
+            hitbox_rect = Quartz.CGRectMake(*hitbox_position_flipped, *hitbox_size)
+            Quartz.CGContextSetStrokeColorWithColor(cg_context, Quartz.CGColorCreateGenericRGB(0, 1, 0, 1))
+            Quartz.CGContextStrokeRect(cg_context, hitbox_rect)
+            
+            hitboxes.append({
+                "hitbox": [*hitbox_position, hitbox_position[0] + hitbox_size[0], hitbox_position[1] + hitbox_size[1]],
+                "target": [*draw_item["screen_position"], draw_item["screen_position"][0] + draw_item["screen_size"][0], draw_item["screen_position"][1] + draw_item["screen_size"][1]]
+            })
+            
 
     # Convert composited context to CGImage
     final_cg_image = Quartz.CGBitmapContextCreateImage(cg_context)
@@ -576,8 +654,7 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
     bitmap_rep = AppKit.NSBitmapImageRep.imageRepWithData_(ns_data)
     png_data = bitmap_rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
     image_data = io.BytesIO(png_data)
-    return Image.open(image_data)
-
+    return Image.open(image_data), hitboxes
 
 @timing_decorator
 def get_menubar_items(active_app_pid: int = None) -> List[Dict[str, Any]]:
@@ -880,13 +957,90 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
     result["dock_bounds"] = dock_bounds
     
     # Capture the entire desktop using Quartz compositing
-    desktop_screenshot = draw_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
+    desktop_screenshot, hitboxes = draw_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
     
+    result["hitboxes"] = hitboxes
+    
+    from PIL import Image, ImageDraw, ImageChops
+    def _draw_hitboxes(img, hitboxes, key="target"):
+        """
+        Overlay opaque colored rectangles for each hitbox (using hitbox[key])
+        with color depending on index, then multiply overlay onto img.
+        Args:
+            img: PIL.Image (RGBA or RGB)
+            hitboxes: list of dicts with 'hitbox' and 'target' keys
+            key: 'hitbox' or 'target'
+        Returns:
+            PIL.Image with overlayed hitboxes (same mode/size as input)
+        """
+        # Ensure RGBA mode for blending
+        base = img.convert("RGBA")
+        overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Distinct colors for order
+        colors = [
+            (255, 0, 0, 180),      # Red
+            (0, 255, 0, 180),      # Green
+            (0, 0, 255, 180),      # Blue
+            (255, 255, 0, 180),    # Yellow
+            (0, 255, 255, 180),    # Cyan
+            (255, 0, 255, 180),    # Magenta
+            (255, 128, 0, 180),    # Orange
+            (128, 0, 255, 180),    # Purple
+            (0, 128, 255, 180),    # Sky blue
+            (128, 255, 0, 180),    # Lime
+        ]
+        # Set minimum brightness for colors
+        min_brightness = 0
+        colors = [
+            (max(min_brightness, c[0]), max(min_brightness, c[1]), max(min_brightness, c[2]), c[3]) for c in colors
+        ]
+        
+        for i, h in enumerate(hitboxes):
+            rect = h.get(key)
+            color = colors[i % len(colors)]
+            if rect:
+                draw.rectangle(rect, fill=color)
+
+        # Multiply blend overlay onto base
+        result = ImageChops.multiply(base, overlay)
+        return result
+
+    # DEBUG: Save hitboxes to disk
     if desktop_screenshot and save_to_disk and output_dir:
-        desktop_path = os.path.join(output_dir, "desktop.png")
-        desktop_screenshot.save(desktop_path)
-        result["desktop_screenshot"] = desktop_path
-    
+        if app_whitelist:
+            # Take screenshot without whitelist
+            desktop_screenshot_full, hitboxes_full = draw_desktop_screenshot(
+                None, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
+
+            # Draw hitboxes on both images using overlay
+            img1 = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
+            img2 = _draw_hitboxes(desktop_screenshot_full.copy(), hitboxes, key="target") if desktop_screenshot_full else None
+
+            if img2 and hitboxes_full:
+
+                # Compose side-by-side
+                from PIL import Image
+                width = img1.width + img2.width
+                height = max(img1.height, img2.height)
+                combined = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                combined.paste(img1, (0, 0))
+                combined.paste(img2, (img1.width, 0))
+                side_by_side_path = os.path.join(output_dir, "side_by_side_hitboxes.png")
+                combined.save(side_by_side_path)
+                result["side_by_side_hitboxes"] = side_by_side_path
+        else:
+            desktop_path = os.path.join(output_dir, "desktop.png")
+            desktop_screenshot.save(desktop_path)
+            result["desktop_screenshot"] = desktop_path
+
+            # Overlay hitboxes using new function
+            hitbox_img = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
+            hitbox_path = os.path.join(output_dir, "hitboxes.png")
+            hitbox_img.save(hitbox_path)
+            result["hitbox_screenshot"] = hitbox_path
+
     # Switch focus back to the originally frontmost app
     if frontmost_app:
         frontmost_app.activateWithOptions_(0)
