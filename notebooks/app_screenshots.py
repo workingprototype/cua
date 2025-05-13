@@ -295,7 +295,7 @@ def get_app_windows(app_pid: int, all_windows: List[Dict[str, Any]]) -> List[Dic
     return [window for window in all_windows if window["pid"] == app_pid]
 
 @timing_decorator
-def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None, dock_bounds: Dict[str, float] = None, dock_items: List[Dict[str, Any]] = None, menubar_bounds: Dict[str, float] = None, menubar_items: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
+def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None, dock_bounds: Dict[str, float] = None, dock_items: List[Dict[str, Any]] = None, menubar_bounds: Dict[str, float] = None, menubar_items: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
     """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
     Args:
         app_whitelist: Optional list of app names to include in the screenshot
@@ -754,6 +754,7 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
         
     Returns:
         Dictionary with application information and screenshots
+        Optional PIL Image of the recomposited screenshot
     """
     result = {
         "timestamp": time.time(),
@@ -857,7 +858,7 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
     result["dock_bounds"] = dock_bounds
     
     # Capture the entire desktop using Quartz compositing
-    desktop_screenshot = capture_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
+    desktop_screenshot = draw_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
     
     if desktop_screenshot and save_to_disk and output_dir:
         desktop_path = os.path.join(output_dir, "desktop.png")
@@ -869,7 +870,6 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
         frontmost_app.activateWithOptions_(0)
     
     return result, desktop_screenshot
-
 
 async def run_capture():
     """Run the screenshot capture asynchronously"""
@@ -912,7 +912,7 @@ async def run_capture():
             print("No screenshots captured in demo mode.")
             return
         # Mosaic-pack: grid (rows of sqrt(N))
-        def make_mosaic(images, pad=10, bg=(30,30,30)):
+        def make_mosaic(images, pad=64, bg=(30,30,30)):
             import rpack
             sizes = [(img.width + pad, img.height + pad) for _, img in images]
             positions = rpack.pack(sizes)
@@ -1007,10 +1007,5 @@ async def run_capture():
     
     print(f"\nMetadata saved to: {metadata_path}")
 
-def main():
-    """Main entry point"""
-    asyncio.run(run_capture())
-
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_capture())
