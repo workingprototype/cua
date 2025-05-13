@@ -339,7 +339,7 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
         window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
         for window in all_windows:
             Foundation.CFArrayAppendValue(window_list, window["id"])
-        cg_image = Quartz.CGWindowListCreateImage(
+        cg_image = Quartz.CGWindowListCreateImageFromArray(
             screen_rect, window_list, Quartz.kCGWindowImageDefault
         )
         if cg_image is None:
@@ -754,7 +754,7 @@ def get_dock_items() -> List[Dict[str, Any]]:
         
     return dock_items
 
-def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None, output_dir: str = None) -> Tuple[Dict[str, Any], Optional[Image.Image]]:
+def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None, output_dir: str = None, take_focus: bool = True) -> Tuple[Dict[str, Any], Optional[Image.Image]]:
     """Capture screenshots of all running applications
     
     Args:
@@ -787,42 +787,43 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
     active_app_to_use = None
     active_app_pid = None
     
-    # Find the topmost (highest z_index) non-filtered app
-    for window in all_windows[::-1]:
-        owner = window.get("owner")
-        role = window.get("role")
-        is_on_screen = window.get("is_on_screen")
-        
-        # Skip non-app windows
-        if role != "app":
-            continue
-        
-        # Skip not-on-screen windows
-        if not is_on_screen:
-            continue
-        
-        # Skip filtered apps
-        if app_whitelist is not None and owner not in app_whitelist:
-            continue
+    if take_focus:
+        # Find the topmost (highest z_index) non-filtered app
+        for window in all_windows[::-1]:
+            owner = window.get("owner")
+            role = window.get("role")
+            is_on_screen = window.get("is_on_screen")
             
-        # Found a suitable app
-        active_app_to_use = owner
-        active_app_pid = window.get("pid")
-        break
-    
-    # If no suitable app found, use Finder
-    if active_app_to_use is None:
-        active_app_to_use = "Finder"
-        # Find Finder's PID
-        for app in running_apps:
-            if app.localizedName() == "Finder":
-                active_app_pid = app.processIdentifier()
-                break
-    
-    print(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
-    
+            # Skip non-app windows
+            if role != "app":
+                continue
+            
+            # Skip not-on-screen windows
+            if not is_on_screen:
+                continue
+            
+            # Skip filtered apps
+            if app_whitelist is not None and owner not in app_whitelist:
+                continue
+                
+            # Found a suitable app
+            active_app_to_use = owner
+            active_app_pid = window.get("pid")
+            break
+        
+        # If no suitable app found, use Finder
+        if active_app_to_use is None:
+            active_app_to_use = "Finder"
+            # Find Finder's PID
+            for app in running_apps:
+                if app.localizedName() == "Finder":
+                    active_app_pid = app.processIdentifier()
+                    break
+            
     # Activate the selected application
     if active_app_pid:
+        print(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
+        
         # Get all running applications
         running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
         
@@ -951,7 +952,8 @@ async def run_capture():
     result, img = capture_all_apps(
         save_to_disk=True, 
         app_whitelist=args.filter,
-        output_dir=output_dir
+        output_dir=output_dir,
+        take_focus=True
     )
     
     # Print summary
