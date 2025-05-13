@@ -16,6 +16,11 @@ import io
 import asyncio
 import functools
 
+from ui_bounds_helper import (
+    get_menubar_bounds,
+    get_dock_bounds,
+)
+
 # Timing decorator for profiling
 def timing_decorator(func):
     @functools.wraps(func)
@@ -256,15 +261,12 @@ class AppScreenshotCapture:
             z_index = z_order.get(window_id, -1)
             
             # Determine window role (desktop, dock, menubar, app)
-            if window_owner == "Window Server":
-                if window_name == "Desktop":
-                    role = "desktop"
-                elif window_name == "Dock":
-                    role = "dock"
-                elif window_name == "Menubar":
-                    role = "menubar"
-            elif window_owner == "Dock":
+            if window_name == "Dock" and window_owner == "Dock":
                 role = "dock"
+            elif window_name == "Menubar" and window_owner == "Window Server":
+                role = "menubar"
+            elif window_owner in ["Window Server", "Dock"]:
+                role = "desktop"
             else:
                 role = "app"
             
@@ -319,25 +321,15 @@ class AppScreenshotCapture:
         if all_windows is None:
             all_windows = self.get_all_windows()
         
-        # Create a list of window IDs to include
-        window_ids_to_include = []
-        
         # Reverse the list to get the correct z-order
-        for window in all_windows[::-1]:
-            owner = window["owner"]
-            name = window["name"]
-            role = window["role"]
-            is_on_screen = window["is_on_screen"]
-            
-            # Skip windows that are not on screen
-            if not is_on_screen:
-                continue
-
-            # Skip app windows that are not in the filter
-            if app_filter is not None and owner not in app_filter and role == "app":
-                continue
-            
-            window_ids_to_include.append(window["id"])
+        all_windows = all_windows[::-1]
+        
+        # Filter out windows that are not on screen
+        all_windows = [window for window in all_windows if window["is_on_screen"]]
+        
+        # Filter out windows that are not in the app_filter
+        if app_filter is not None:
+            all_windows = [window for window in all_windows if window["owner"] in app_filter or window["role"] != "app"]
         
         # Get the main screen dimensions
         main_screen = AppKit.NSScreen.mainScreen()
@@ -363,9 +355,9 @@ class AppScreenshotCapture:
             )
         else:
             # Create a CFArray of window IDs to include
-            window_list = Foundation.CFArrayCreateMutable(None, len(window_ids_to_include), None)
-            for window_id in window_ids_to_include:
-                Foundation.CFArrayAppendValue(window_list, window_id)
+            window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
+            for window in all_windows:
+                Foundation.CFArrayAppendValue(window_list, window["id"])
             
             # Capture only the specified windows
             cg_image = Quartz.CGWindowListCreateImageFromArray(
@@ -387,6 +379,7 @@ class AppScreenshotCapture:
         image_data = io.BytesIO(png_data)
         return Image.open(image_data)
     
+    @timing_decorator
     def get_menubar_items(self, active_app_pid: int = None) -> List[Dict[str, Any]]:
         """Get menubar items from the active application using Accessibility API
         
@@ -662,6 +655,9 @@ class AppScreenshotCapture:
             
             result["applications"].append(app_data)
         
+        # Add all windows to the result
+        result["windows"] = all_windows
+        
         # Get menubar items from the active application
         menubar_items = self.get_menubar_items(active_app_pid)
         result["menubar_items"] = menubar_items
@@ -670,8 +666,13 @@ class AppScreenshotCapture:
         dock_items = self.get_dock_items()
         result["dock_items"] = dock_items
         
-        # Add all windows to the result
-        result["windows"] = all_windows
+        # Get menubar bounds
+        menubar_bounds = get_menubar_bounds()
+        result["menubar_bounds"] = menubar_bounds
+        
+        # Get dock bounds
+        dock_bounds = get_dock_bounds()
+        result["dock_bounds"] = dock_bounds
         
         # Capture the entire desktop using Quartz compositing
         desktop_screenshot = self.capture_desktop_screenshot(app_filter, all_windows)
