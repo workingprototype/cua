@@ -177,537 +177,523 @@ def element_value(element, type):
     return None
 
 
-class AppScreenshotCapture:
-    """Capture screenshots of running macOS applications"""
+@timing_decorator
+def get_running_apps() -> List[NSRunningApplication]:
+    """Get list of all running applications
     
-    def __init__(self, output_dir: str = None):
-        """Initialize the screenshot capture
-        
-        Args:
-            output_dir: Directory to save screenshots (if None, won't save to disk)
-        """
-        self.output_dir = output_dir
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-    
-    @timing_decorator
-    def get_running_apps(self) -> List[NSRunningApplication]:
-        """Get list of all running applications
-        
-        Returns:
-            List of NSRunningApplication objects
-        """
-        return NSWorkspace.sharedWorkspace().runningApplications()
-    
-    # @timing_decorator
-    def get_app_info(self, app: NSRunningApplication) -> Dict[str, Any]:
-        """Get information about an application
-        
-        Args:
-            app: NSRunningApplication object
-            
-        Returns:
-            Dictionary with application information
-        """
-        return {
-            "name": app.localizedName(),
-            "bundle_id": app.bundleIdentifier(),
-            "pid": app.processIdentifier(),
-            "active": app.isActive(),
-            "hidden": app.isHidden(),
-            "terminated": app.isTerminated(),
-        }
-    
-    @timing_decorator
-    def get_all_windows(self) -> List[Dict[str, Any]]:
-        """Get all windows from all applications with z-order information
-        
-        Returns:
-            List of window dictionaries with z-order information
-        """
-        # Get all windows from Quartz
-        # The kCGWindowListOptionOnScreenOnly flag gets only visible windows with preserved z-order
-        window_list = Quartz.CGWindowListCopyWindowInfo(
-            Quartz.kCGWindowListOptionOnScreenOnly,
-            Quartz.kCGNullWindowID
-        )
-        
-        # Create a dictionary of window z-order
-        z_order = {window['kCGWindowNumber']: z_index for z_index, window in enumerate(window_list[::-1])}
-        
-        # The kCGWindowListOptionAll flag gets all windows *without* z-order preserved
-        window_list_all = Quartz.CGWindowListCopyWindowInfo(
-            Quartz.kCGWindowListOptionAll,
-            Quartz.kCGNullWindowID
-        )
-        
-        # Process all windows
-        windows = []
-        for window in window_list_all:
-            # We track z_index which is the index in the window list (0 is the desktop / background)
-            
-            # Get window properties
-            window_id = window.get('kCGWindowNumber', 0)
-            window_name = window.get('kCGWindowName', '')
-            window_pid = window.get('kCGWindowOwnerPID', 0)
-            window_bounds = window.get('kCGWindowBounds', {})
-            window_owner = window.get('kCGWindowOwnerName', '')
-            window_is_on_screen = window.get('kCGWindowIsOnscreen', False)
-            
-            # Get z-order information
-            # Note: kCGWindowLayer provides the system's layer value (lower values are higher in the stack)
-            layer = window.get(kCGWindowLayer, 0)
-            opacity = window.get(kCGWindowAlpha, 1.0)
-            z_index = z_order.get(window_id, -1)
-            
-            # Determine window role (desktop, dock, menubar, app)
-            if window_name == "Dock" and window_owner == "Dock":
-                role = "dock"
-            elif window_name == "Menubar" and window_owner == "Window Server":
-                role = "menubar"
-            elif window_owner in ["Window Server", "Dock"]:
-                role = "desktop"
-            else:
-                role = "app"
-            
-            # Only include windows with valid bounds
-            if window_bounds:
-                windows.append({
-                    "id": window_id,
-                    "name": window_name or "Unnamed Window",
-                    "pid": window_pid,
-                    "owner": window_owner,
-                    "role": role,
-                    "is_on_screen": window_is_on_screen,
-                    "bounds": {
-                        "x": window_bounds.get('X', 0),
-                        "y": window_bounds.get('Y', 0),
-                        "width": window_bounds.get('Width', 0),
-                        "height": window_bounds.get('Height', 0)
-                    },
-                    "layer": layer,  # System layer (lower values are higher in stack)
-                    "z_index": z_index,  # Our z-index (0 is the desktop)
-                    "opacity": opacity
-                })
-                
-        windows = sorted(windows, key=lambda x: x["z_index"])
-        
-        return windows
-    
-    def get_app_windows(self, app_pid: int, all_windows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Get all windows for a specific application
-        
-        Args:
-            app_pid: Process ID of the application
-            all_windows: List of all windows with z-order information
-            
-        Returns:
-            List of window dictionaries for the app
-        """
-        # Filter windows by PID
-        return [window for window in all_windows if window["pid"] == app_pid]
-    
-    @timing_decorator
-    def capture_desktop_screenshot(self, app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
-        """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
-        Args:
-            app_whitelist: Optional list of app names to include in the screenshot
-        Returns:
-            PIL Image of the desktop or None if capture failed
-        """
-        import ctypes
+    Returns:
+        List of NSRunningApplication objects
+    """
+    return NSWorkspace.sharedWorkspace().runningApplications()
 
-        if all_windows is None:
-            all_windows = self.get_all_windows()
-        all_windows = all_windows[::-1]
-        all_windows = [window for window in all_windows if window["is_on_screen"]]
+# @timing_decorator
+def get_app_info(app: NSRunningApplication) -> Dict[str, Any]:
+    """Get information about an application
+    
+    Args:
+        app: NSRunningApplication object
+        
+    Returns:
+        Dictionary with application information
+    """
+    return {
+        "name": app.localizedName(),
+        "bundle_id": app.bundleIdentifier(),
+        "pid": app.processIdentifier(),
+        "active": app.isActive(),
+        "hidden": app.isHidden(),
+        "terminated": app.isTerminated(),
+    }
 
-        main_screen = AppKit.NSScreen.mainScreen()
-        if main_screen:
-            frame = main_screen.frame()
-            screen_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+@timing_decorator
+def get_all_windows() -> List[Dict[str, Any]]:
+    """Get all windows from all applications with z-order information
+    
+    Returns:
+        List of window dictionaries with z-order information
+    """
+    # Get all windows from Quartz
+    # The kCGWindowListOptionOnScreenOnly flag gets only visible windows with preserved z-order
+    window_list = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionOnScreenOnly,
+        Quartz.kCGNullWindowID
+    )
+    
+    # Create a dictionary of window z-order
+    z_order = {window['kCGWindowNumber']: z_index for z_index, window in enumerate(window_list[::-1])}
+    
+    # The kCGWindowListOptionAll flag gets all windows *without* z-order preserved
+    window_list_all = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionAll,
+        Quartz.kCGNullWindowID
+    )
+    
+    # Process all windows
+    windows = []
+    for window in window_list_all:
+        # We track z_index which is the index in the window list (0 is the desktop / background)
+        
+        # Get window properties
+        window_id = window.get('kCGWindowNumber', 0)
+        window_name = window.get('kCGWindowName', '')
+        window_pid = window.get('kCGWindowOwnerPID', 0)
+        window_bounds = window.get('kCGWindowBounds', {})
+        window_owner = window.get('kCGWindowOwnerName', '')
+        window_is_on_screen = window.get('kCGWindowIsOnscreen', False)
+        
+        # Get z-order information
+        # Note: kCGWindowLayer provides the system's layer value (lower values are higher in the stack)
+        layer = window.get(kCGWindowLayer, 0)
+        opacity = window.get(kCGWindowAlpha, 1.0)
+        z_index = z_order.get(window_id, -1)
+        
+        # Determine window role (desktop, dock, menubar, app)
+        if window_name == "Dock" and window_owner == "Dock":
+            role = "dock"
+        elif window_name == "Menubar" and window_owner == "Window Server":
+            role = "menubar"
+        elif window_owner in ["Window Server", "Dock"]:
+            role = "desktop"
         else:
-            screen_rect = Quartz.CGRectNull
-
-        if app_whitelist is None:
-            # Single pass: desktop, menubar, app, dock
-            window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
-            for window in all_windows:
-                Foundation.CFArrayAppendValue(window_list, window["id"])
-            cg_image = Quartz.CGWindowListCreateImage(
-                screen_rect, window_list, Quartz.kCGWindowImageDefault
-            )
-            if cg_image is None:
-                return None
-
-            # Create CGContext for compositing
-            width = int(frame.size.width)
-            height = int(frame.size.height)
-            color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
-            cg_context = Quartz.CGBitmapContextCreate(
-                None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
-            )
-            Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
-        else:
-            # Two passes: desktop, menubar, app; then dock
-            allowed_roles = {"desktop", "menubar", "app"}
-            first_pass_windows = [w for w in all_windows if w["role"] in allowed_roles and (w["role"] != "app" or w["owner"] in app_whitelist)]
-            window_list = Foundation.CFArrayCreateMutable(None, len(first_pass_windows), None)
-            for window in first_pass_windows:
-                Foundation.CFArrayAppendValue(window_list, window["id"])
-            cg_image = Quartz.CGWindowListCreateImageFromArray(
-                screen_rect, window_list, Quartz.kCGWindowImageDefault
-            )
-            if cg_image is None:
-                return None
-
-            # Create CGContext for compositing
-            width = int(frame.size.width)
-            height = int(frame.size.height)
-            color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
-            cg_context = Quartz.CGBitmapContextCreate(
-                None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
-            )
-            Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
-
-            # --- SECOND PASS: dock, cropped ---
-            def _draw_dock_windows(cg_context, all_windows, frame, source_rect, target_rect):
-                """Draw dock windows from source_rect to target_rect on the given context."""
-                dock_windows = [w for w in all_windows if w["role"] == "dock"]
-                if not dock_windows:
-                    return
-                dock_window_list = Foundation.CFArrayCreateMutable(None, len(dock_windows), None)
-                for window in dock_windows:
-                    Foundation.CFArrayAppendValue(dock_window_list, window["id"])
-                dock_cg_image = Quartz.CGWindowListCreateImageFromArray(
-                    source_rect, dock_window_list, Quartz.kCGWindowImageDefault
-                )
-                if dock_cg_image is not None:
-                    Quartz.CGContextDrawImage(cg_context, target_rect, dock_cg_image)
-
-            # Draw the dock using the helper (currently full screen, adjust source/target as needed)
-            dock_source_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
-            target_area = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
-            _draw_dock_windows(cg_context, all_windows, frame, dock_source_rect, target_area)
-
-        # Convert composited context to CGImage
-        final_cg_image = Quartz.CGBitmapContextCreateImage(cg_context)
-        ns_image = AppKit.NSImage.alloc().initWithCGImage_size_(final_cg_image, Foundation.NSZeroSize)
-        ns_data = ns_image.TIFFRepresentation()
-        bitmap_rep = AppKit.NSBitmapImageRep.imageRepWithData_(ns_data)
-        png_data = bitmap_rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
-        image_data = io.BytesIO(png_data)
-        return Image.open(image_data)
-
-    
-    @timing_decorator
-    def get_menubar_items(self, active_app_pid: int = None) -> List[Dict[str, Any]]:
-        """Get menubar items from the active application using Accessibility API
+            role = "app"
         
-        Args:
-            active_app_pid: PID of the active application
-            
-        Returns:
-            List of dictionaries with menubar item information
-        """
-        menubar_items = []
-        
-        if active_app_pid is None:
-            # Get the frontmost application's PID if none provided
-            frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
-            if frontmost_app:
-                active_app_pid = frontmost_app.processIdentifier()
-            else:
-                print("Error: Could not determine frontmost application")
-                return menubar_items
-        
-        # Create an accessibility element for the application
-        app_element = AXUIElementCreateApplication(active_app_pid)
-        if app_element is None:
-            print(f"Error: Could not create accessibility element for PID {active_app_pid}")
-            return menubar_items
-        
-        # Get the menubar
-        menubar = element_attribute(app_element, kAXMenuBarAttribute)
-        if menubar is None:
-            print(f"Error: Could not get menubar for application with PID {active_app_pid}")
-            return menubar_items
-        
-        # Get the menubar items
-        children = element_attribute(menubar, kAXChildrenAttribute)
-        if children is None:
-            print("Error: Could not get menubar items")
-            return menubar_items
-        
-        # Process each menubar item
-        for i in range(len(children)):
-            item = children[i]
-            
-            # Get item title
-            title = element_attribute(item, kAXTitleAttribute) or "Untitled"
-            
-            # Create bounding box
-            bounds = {
-                "x": 0,
-                "y": 0,
-                "width": 0,
-                "height": 0
-            }
-            
-            # Get item position
-            position_value = element_attribute(item, kAXPositionAttribute)
-            if position_value:
-                position_value = element_value(position_value, kAXValueCGPointType)
-                bounds["x"] = position_value.x
-                bounds["y"] = position_value.y
-            
-            # Get item size
-            size_value = element_attribute(item, kAXSizeAttribute)
-            if size_value:
-                size_value = element_value(size_value, kAXValueCGSizeType)
-                bounds["width"] = size_value.width
-                bounds["height"] = size_value.height
-            
-            
-            # Add to list
-            menubar_items.append({
-                "title": title,
-                "bounds": bounds,
-                "index": i,
-                "app_pid": active_app_pid
-            })
-        
-        return menubar_items
-        
-    @timing_decorator
-    def get_dock_items(self) -> List[Dict[str, Any]]:
-        """Get all items in the macOS Dock
-        
-        Returns:
-            List of dictionaries with Dock item information
-        """
-        dock_items = []
-        
-        # Find the Dock process
-        dock_pid = None
-        running_apps = self.get_running_apps()
-        for app in running_apps:
-            if app.localizedName() == "Dock" and app.bundleIdentifier() == "com.apple.dock":
-                dock_pid = app.processIdentifier()
-                break
-                
-        if dock_pid is None:
-            print("Error: Could not find Dock process")
-            return dock_items
-            
-        # Create an accessibility element for the Dock
-        dock_element = AXUIElementCreateApplication(dock_pid)
-        if dock_element is None:
-            print(f"Error: Could not create accessibility element for Dock (PID {dock_pid})")
-            return dock_items
-            
-        # Get the Dock's main element
-        dock_list = element_attribute(dock_element, kAXChildrenAttribute)
-        if dock_list is None or len(dock_list) == 0:
-            print("Error: Could not get Dock children")
-            return dock_items
-            
-        # Find the Dock's application list (usually the first child)
-        dock_app_list = None
-        for child in dock_list:
-            role = element_attribute(child, kAXRoleAttribute)
-            if role == "AXList":
-                dock_app_list = child
-                break
-                
-        if dock_app_list is None:
-            print("Error: Could not find Dock application list")
-            return dock_items
-            
-        # Get all items in the Dock
-        items = element_attribute(dock_app_list, kAXChildrenAttribute)
-        if items is None:
-            print("Error: Could not get Dock items")
-            return dock_items
-            
-        # Process each Dock item
-        for i, item in enumerate(items):
-            # Get item attributes
-            title = element_attribute(item, kAXTitleAttribute) or "Untitled"
-            description = element_attribute(item, "AXDescription") or ""
-            role = element_attribute(item, kAXRoleAttribute) or ""
-            subrole = element_attribute(item, "AXSubrole") or ""
-            
-            # Create bounding box
-            bounds = {
-                "x": 0,
-                "y": 0,
-                "width": 0,
-                "height": 0
-            }
-            
-            # Get item position
-            position_value = element_attribute(item, kAXPositionAttribute)
-            if position_value:
-                position_value = element_value(position_value, kAXValueCGPointType)
-                bounds["x"] = position_value.x
-                bounds["y"] = position_value.y
-            
-            # Get item size
-            size_value = element_attribute(item, kAXSizeAttribute)
-            if size_value:
-                size_value = element_value(size_value, kAXValueCGSizeType)
-                bounds["width"] = size_value.width
-                bounds["height"] = size_value.height
-                
-            # Determine if this is an application, file/folder, or separator
-            item_type = "unknown"
-            if subrole == "AXApplicationDockItem":
-                item_type = "application"
-            elif subrole == "AXFolderDockItem":
-                item_type = "folder"
-            elif subrole == "AXDocumentDockItem":
-                item_type = "document"
-            elif subrole == "AXSeparatorDockItem" or role == "AXSeparator":
-                item_type = "separator"
-            elif "trash" in title.lower():
-                item_type = "trash"
-                
-            # Add to list
-            dock_items.append({
-                "title": title,
-                "description": description,
-                "bounds": bounds,
-                "index": i,
-                "type": item_type,
+        # Only include windows with valid bounds
+        if window_bounds:
+            windows.append({
+                "id": window_id,
+                "name": window_name or "Unnamed Window",
+                "pid": window_pid,
+                "owner": window_owner,
                 "role": role,
-                "subrole": subrole
+                "is_on_screen": window_is_on_screen,
+                "bounds": {
+                    "x": window_bounds.get('X', 0),
+                    "y": window_bounds.get('Y', 0),
+                    "width": window_bounds.get('Width', 0),
+                    "height": window_bounds.get('Height', 0)
+                },
+                "layer": layer,  # System layer (lower values are higher in stack)
+                "z_index": z_index,  # Our z-index (0 is the desktop)
+                "opacity": opacity
             })
             
-        return dock_items
+    windows = sorted(windows, key=lambda x: x["z_index"])
     
-    def capture_all_apps(self, save_to_disk: bool = False, create_composite: bool = False, 
-                         app_whitelist: List[str] = None) -> Dict[str, Any]:
-        """Capture screenshots of all running applications
+    return windows
+
+def get_app_windows(app_pid: int, all_windows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Get all windows for a specific application
+    
+    Args:
+        app_pid: Process ID of the application
+        all_windows: List of all windows with z-order information
         
-        Args:
-            save_to_disk: Whether to save screenshots to disk
-            create_composite: Whether to create a recomposited screenshot
-            app_whitelist: Optional list of app names to include in the recomposited screenshot
-                       (will always include 'Window Server' and 'Dock')
-            
-        Returns:
-            Dictionary with application information and screenshots
-        """
-        result = {
-            "timestamp": time.time(),
-            "applications": [],
-            "windows": [],  # New array to store all windows, including those without apps
-            "menubar_items": [],  # New array to store menubar items
-            "dock_items": []  # New array to store dock items
+    Returns:
+        List of window dictionaries for the app
+    """
+    # Filter windows by PID
+    return [window for window in all_windows if window["pid"] == app_pid]
+
+@timing_decorator
+def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
+    """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
+    Args:
+        app_whitelist: Optional list of app names to include in the screenshot
+    Returns:
+        PIL Image of the desktop or None if capture failed
+    """
+    import ctypes
+
+    if all_windows is None:
+        all_windows = get_all_windows()
+    all_windows = all_windows[::-1]
+    all_windows = [window for window in all_windows if window["is_on_screen"]]
+
+    main_screen = AppKit.NSScreen.mainScreen()
+    if main_screen:
+        frame = main_screen.frame()
+        screen_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+    else:
+        screen_rect = Quartz.CGRectNull
+
+    if app_whitelist is None:
+        # Single pass: desktop, menubar, app, dock
+        window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
+        for window in all_windows:
+            Foundation.CFArrayAppendValue(window_list, window["id"])
+        cg_image = Quartz.CGWindowListCreateImage(
+            screen_rect, window_list, Quartz.kCGWindowImageDefault
+        )
+        if cg_image is None:
+            return None
+
+        # Create CGContext for compositing
+        width = int(frame.size.width)
+        height = int(frame.size.height)
+        color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
+        cg_context = Quartz.CGBitmapContextCreate(
+            None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
+        )
+        Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
+    else:
+        # Two passes: desktop, menubar, app; then dock
+        allowed_roles = {"desktop", "menubar", "app"}
+        first_pass_windows = [w for w in all_windows if w["role"] in allowed_roles and (w["role"] != "app" or w["owner"] in app_whitelist)]
+        window_list = Foundation.CFArrayCreateMutable(None, len(first_pass_windows), None)
+        for window in first_pass_windows:
+            Foundation.CFArrayAppendValue(window_list, window["id"])
+        cg_image = Quartz.CGWindowListCreateImageFromArray(
+            screen_rect, window_list, Quartz.kCGWindowImageDefault
+        )
+        if cg_image is None:
+            return None
+
+        # Create CGContext for compositing
+        width = int(frame.size.width)
+        height = int(frame.size.height)
+        color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
+        cg_context = Quartz.CGBitmapContextCreate(
+            None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
+        )
+        Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
+
+        # --- SECOND PASS: dock, cropped ---
+        def _draw_dock_windows(cg_context, all_windows, frame, source_rect, target_rect):
+            """Draw dock windows from source_rect to target_rect on the given context."""
+            dock_windows = [w for w in all_windows if w["role"] == "dock"]
+            if not dock_windows:
+                return
+            dock_window_list = Foundation.CFArrayCreateMutable(None, len(dock_windows), None)
+            for window in dock_windows:
+                Foundation.CFArrayAppendValue(dock_window_list, window["id"])
+            dock_cg_image = Quartz.CGWindowListCreateImageFromArray(
+                source_rect, dock_window_list, Quartz.kCGWindowImageDefault
+            )
+            if dock_cg_image is not None:
+                Quartz.CGContextDrawImage(cg_context, target_rect, dock_cg_image)
+
+        # Draw the dock using the helper (currently full screen, adjust source/target as needed)
+        dock_source_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+        target_area = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+        _draw_dock_windows(cg_context, all_windows, frame, dock_source_rect, target_area)
+
+    # Convert composited context to CGImage
+    final_cg_image = Quartz.CGBitmapContextCreateImage(cg_context)
+    ns_image = AppKit.NSImage.alloc().initWithCGImage_size_(final_cg_image, Foundation.NSZeroSize)
+    ns_data = ns_image.TIFFRepresentation()
+    bitmap_rep = AppKit.NSBitmapImageRep.imageRepWithData_(ns_data)
+    png_data = bitmap_rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
+    image_data = io.BytesIO(png_data)
+    return Image.open(image_data)
+
+
+@timing_decorator
+def get_menubar_items(active_app_pid: int = None) -> List[Dict[str, Any]]:
+    """Get menubar items from the active application using Accessibility API
+    
+    Args:
+        active_app_pid: PID of the active application
+        
+    Returns:
+        List of dictionaries with menubar item information
+    """
+    menubar_items = []
+    
+    if active_app_pid is None:
+        # Get the frontmost application's PID if none provided
+        frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        if frontmost_app:
+            active_app_pid = frontmost_app.processIdentifier()
+        else:
+            print("Error: Could not determine frontmost application")
+            return menubar_items
+    
+    # Create an accessibility element for the application
+    app_element = AXUIElementCreateApplication(active_app_pid)
+    if app_element is None:
+        print(f"Error: Could not create accessibility element for PID {active_app_pid}")
+        return menubar_items
+    
+    # Get the menubar
+    menubar = element_attribute(app_element, kAXMenuBarAttribute)
+    if menubar is None:
+        print(f"Error: Could not get menubar for application with PID {active_app_pid}")
+        return menubar_items
+    
+    # Get the menubar items
+    children = element_attribute(menubar, kAXChildrenAttribute)
+    if children is None:
+        print("Error: Could not get menubar items")
+        return menubar_items
+    
+    # Process each menubar item
+    for i in range(len(children)):
+        item = children[i]
+        
+        # Get item title
+        title = element_attribute(item, kAXTitleAttribute) or "Untitled"
+        
+        # Create bounding box
+        bounds = {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
         }
         
-        # Get all windows with z-order information
-        all_windows = self.get_all_windows()
+        # Get item position
+        position_value = element_attribute(item, kAXPositionAttribute)
+        if position_value:
+            position_value = element_value(position_value, kAXValueCGPointType)
+            bounds["x"] = position_value.x
+            bounds["y"] = position_value.y
         
-        # Get all running applications
-        running_apps = self.get_running_apps()
+        # Get item size
+        size_value = element_attribute(item, kAXSizeAttribute)
+        if size_value:
+            size_value = element_value(size_value, kAXValueCGSizeType)
+            bounds["width"] = size_value.width
+            bounds["height"] = size_value.height
         
-        # Save the currently frontmost app before making any changes
-        frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
         
-        # Automatically determine the active app based on the topmost non-filtered app
-        active_app_to_use = None
-        active_app_pid = None
-        
-        # Find the topmost (highest z_index) non-filtered app
-        for window in all_windows[::-1]:
-            owner = window.get("owner")
-            role = window.get("role")
-            
-            # Skip non-app windows
-            if role != "app":
-                continue
-            
-            # Skip filtered apps
-            if app_whitelist is not None and owner not in app_whitelist:
-                continue
-                
-            # Found a suitable app
-            active_app_to_use = owner
-            active_app_pid = window.get("pid")
+        # Add to list
+        menubar_items.append({
+            "title": title,
+            "bounds": bounds,
+            "index": i,
+            "app_pid": active_app_pid
+        })
+    
+    return menubar_items
+    
+@timing_decorator
+def get_dock_items() -> List[Dict[str, Any]]:
+    """Get all items in the macOS Dock
+    
+    Returns:
+        List of dictionaries with Dock item information
+    """
+    dock_items = []
+    
+    # Find the Dock process
+    dock_pid = None
+    running_apps = get_running_apps()
+    for app in running_apps:
+        if app.localizedName() == "Dock" and app.bundleIdentifier() == "com.apple.dock":
+            dock_pid = app.processIdentifier()
             break
-        
-        # If no suitable app found, use Finder
-        if active_app_to_use is None:
-            active_app_to_use = "Finder"
-            # Find Finder's PID
-            for app in running_apps:
-                if app.localizedName() == "Finder":
-                    active_app_pid = app.processIdentifier()
-                    break
-        
-        print(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
-        
-        # Activate the selected application
-        if active_app_pid:
-            # Get all running applications
-            running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
             
-            # Find the NSRunningApplication object for the active app
-            for app in running_apps_list:
-                if app.processIdentifier() == active_app_pid:
-                    app.activateWithOptions_(0)
-                    break
+    if dock_pid is None:
+        print("Error: Could not find Dock process")
+        return dock_items
         
-        # Process applications
+    # Create an accessibility element for the Dock
+    dock_element = AXUIElementCreateApplication(dock_pid)
+    if dock_element is None:
+        print(f"Error: Could not create accessibility element for Dock (PID {dock_pid})")
+        return dock_items
+        
+    # Get the Dock's main element
+    dock_list = element_attribute(dock_element, kAXChildrenAttribute)
+    if dock_list is None or len(dock_list) == 0:
+        print("Error: Could not get Dock children")
+        return dock_items
+        
+    # Find the Dock's application list (usually the first child)
+    dock_app_list = None
+    for child in dock_list:
+        role = element_attribute(child, kAXRoleAttribute)
+        if role == "AXList":
+            dock_app_list = child
+            break
+            
+    if dock_app_list is None:
+        print("Error: Could not find Dock application list")
+        return dock_items
+        
+    # Get all items in the Dock
+    items = element_attribute(dock_app_list, kAXChildrenAttribute)
+    if items is None:
+        print("Error: Could not get Dock items")
+        return dock_items
+        
+    # Process each Dock item
+    for i, item in enumerate(items):
+        # Get item attributes
+        title = element_attribute(item, kAXTitleAttribute) or "Untitled"
+        description = element_attribute(item, "AXDescription") or ""
+        role = element_attribute(item, kAXRoleAttribute) or ""
+        subrole = element_attribute(item, "AXSubrole") or ""
+        
+        # Create bounding box
+        bounds = {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+        }
+        
+        # Get item position
+        position_value = element_attribute(item, kAXPositionAttribute)
+        if position_value:
+            position_value = element_value(position_value, kAXValueCGPointType)
+            bounds["x"] = position_value.x
+            bounds["y"] = position_value.y
+        
+        # Get item size
+        size_value = element_attribute(item, kAXSizeAttribute)
+        if size_value:
+            size_value = element_value(size_value, kAXValueCGSizeType)
+            bounds["width"] = size_value.width
+            bounds["height"] = size_value.height
+            
+        # Determine if this is an application, file/folder, or separator
+        item_type = "unknown"
+        if subrole == "AXApplicationDockItem":
+            item_type = "application"
+        elif subrole == "AXFolderDockItem":
+            item_type = "folder"
+        elif subrole == "AXDocumentDockItem":
+            item_type = "document"
+        elif subrole == "AXSeparatorDockItem" or role == "AXSeparator":
+            item_type = "separator"
+        elif "trash" in title.lower():
+            item_type = "trash"
+            
+        # Add to list
+        dock_items.append({
+            "title": title,
+            "description": description,
+            "bounds": bounds,
+            "index": i,
+            "type": item_type,
+            "role": role,
+            "subrole": subrole
+        })
+        
+    return dock_items
+
+def capture_all_apps(save_to_disk: bool = False, create_composite: bool = False, app_whitelist: List[str] = None, output_dir: str = None) -> Dict[str, Any]:
+    """Capture screenshots of all running applications
+    
+    Args:
+        save_to_disk: Whether to save screenshots to disk
+        create_composite: Whether to create a recomposited screenshot
+        app_whitelist: Optional list of app names to include in the recomposited screenshot
+                    (will always include 'Window Server' and 'Dock')
+        
+    Returns:
+        Dictionary with application information and screenshots
+    """
+    result = {
+        "timestamp": time.time(),
+        "applications": [],
+        "windows": [],  # New array to store all windows, including those without apps
+        "menubar_items": [],  # New array to store menubar items
+        "dock_items": []  # New array to store dock items
+    }
+    
+    # Get all windows with z-order information
+    all_windows = get_all_windows()
+    
+    # Get all running applications
+    running_apps = get_running_apps()
+    
+    # Save the currently frontmost app before making any changes
+    frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+    
+    # Automatically determine the active app based on the topmost non-filtered app
+    active_app_to_use = None
+    active_app_pid = None
+    
+    # Find the topmost (highest z_index) non-filtered app
+    for window in all_windows[::-1]:
+        owner = window.get("owner")
+        role = window.get("role")
+        
+        # Skip non-app windows
+        if role != "app":
+            continue
+        
+        # Skip filtered apps
+        if app_whitelist is not None and owner not in app_whitelist:
+            continue
+            
+        # Found a suitable app
+        active_app_to_use = owner
+        active_app_pid = window.get("pid")
+        break
+    
+    # If no suitable app found, use Finder
+    if active_app_to_use is None:
+        active_app_to_use = "Finder"
+        # Find Finder's PID
         for app in running_apps:
-            # Skip system apps without a bundle ID
-            if app.bundleIdentifier() is None:
-                continue
-                
-            app_info = self.get_app_info(app)
-            app_windows = self.get_app_windows(app.processIdentifier(), all_windows)
+            if app.localizedName() == "Finder":
+                active_app_pid = app.processIdentifier()
+                break
+    
+    print(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
+    
+    # Activate the selected application
+    if active_app_pid:
+        # Get all running applications
+        running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
+        
+        # Find the NSRunningApplication object for the active app
+        for app in running_apps_list:
+            if app.processIdentifier() == active_app_pid:
+                app.activateWithOptions_(0)
+                break
+    
+    # Process applications
+    for app in running_apps:
+        # Skip system apps without a bundle ID
+        if app.bundleIdentifier() is None:
+            continue
             
-            app_data = {
-                "info": app_info,
-                "windows": [ window["id"] for window in app_windows ]
-            }
-            
-            result["applications"].append(app_data)
+        app_info = get_app_info(app)
+        app_windows = get_app_windows(app.processIdentifier(), all_windows)
         
-        # Add all windows to the result
-        result["windows"] = all_windows
+        app_data = {
+            "info": app_info,
+            "windows": [ window["id"] for window in app_windows ]
+        }
         
-        # Get menubar items from the active application
-        menubar_items = self.get_menubar_items(active_app_pid)
-        result["menubar_items"] = menubar_items
-        
-        # Get dock items
-        dock_items = self.get_dock_items()
-        result["dock_items"] = dock_items
-        
-        # Get menubar bounds
-        menubar_bounds = get_menubar_bounds()
-        result["menubar_bounds"] = menubar_bounds
-        
-        # Get dock bounds
-        dock_bounds = get_dock_bounds()
-        result["dock_bounds"] = dock_bounds
-        
-        # Capture the entire desktop using Quartz compositing
-        desktop_screenshot = self.capture_desktop_screenshot(app_whitelist, all_windows)
-        
-        if desktop_screenshot and save_to_disk and self.output_dir:
-            desktop_path = os.path.join(self.output_dir, "desktop.png")
-            desktop_screenshot.save(desktop_path)
-            result["desktop_screenshot"] = desktop_path
-        
-        # Switch focus back to the originally frontmost app
-        if frontmost_app:
-            frontmost_app.activateWithOptions_(0)
-        
-        return result
+        result["applications"].append(app_data)
+    
+    # Add all windows to the result
+    result["windows"] = all_windows
+    
+    # Get menubar items from the active application
+    menubar_items = get_menubar_items(active_app_pid)
+    result["menubar_items"] = menubar_items
+    
+    # Get dock items
+    dock_items = get_dock_items()
+    result["dock_items"] = dock_items
+    
+    # Get menubar bounds
+    menubar_bounds = get_menubar_bounds()
+    result["menubar_bounds"] = menubar_bounds
+    
+    # Get dock bounds
+    dock_bounds = get_dock_bounds()
+    result["dock_bounds"] = dock_bounds
+    
+    # Capture the entire desktop using Quartz compositing
+    desktop_screenshot = capture_desktop_screenshot(app_whitelist, all_windows)
+    
+    if desktop_screenshot and save_to_disk and output_dir:
+        desktop_path = os.path.join(output_dir, "desktop.png")
+        desktop_screenshot.save(desktop_path)
+        result["desktop_screenshot"] = desktop_path
+    
+    # Switch focus back to the originally frontmost app
+    if frontmost_app:
+        frontmost_app.activateWithOptions_(0)
+    
+    return result
 
 
 async def run_capture():
@@ -727,9 +713,6 @@ async def run_capture():
     else:
         output_dir = args.output
     
-    # Create the screenshot capture
-    capture = AppScreenshotCapture(output_dir)
-    
     # Capture all apps and save to disk, including a recomposited screenshot
     print(f"Capturing screenshots of all running applications...")
     print(f"Saving screenshots to: {output_dir}")
@@ -738,10 +721,11 @@ async def run_capture():
     if args.filter:
         print(f"Filtering recomposited screenshot to only include: {', '.join(args.filter)} (plus Window Server and Dock)")
     
-    result = capture.capture_all_apps(
+    result = capture_all_apps(
         save_to_disk=True, 
         create_composite=args.composite, 
-        app_whitelist=args.filter
+        app_whitelist=args.filter,
+        output_dir=output_dir
     )
     
     # Print summary
