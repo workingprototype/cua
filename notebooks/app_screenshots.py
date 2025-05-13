@@ -295,7 +295,7 @@ def get_app_windows(app_pid: int, all_windows: List[Dict[str, Any]]) -> List[Dic
     return [window for window in all_windows if window["pid"] == app_pid]
 
 @timing_decorator
-def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
+def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None, dock_bounds: Dict[str, float] = None, dock_items: List[Dict[str, Any]] = None, menubar_bounds: Dict[str, float] = None, menubar_items: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
     """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
     Args:
         app_whitelist: Optional list of app names to include in the screenshot
@@ -304,6 +304,14 @@ def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: Lis
     """
     import ctypes
 
+    if dock_bounds is None:
+        dock_bounds = get_dock_bounds()
+    if dock_items is None:
+        dock_items = get_dock_items()
+    if menubar_bounds is None:
+        menubar_bounds = get_menubar_bounds()
+    if menubar_items is None:
+        menubar_items = get_menubar_items()
     if all_windows is None:
         all_windows = get_all_windows()
     all_windows = all_windows[::-1]
@@ -336,46 +344,205 @@ def capture_desktop_screenshot(app_whitelist: List[str] = None, all_windows: Lis
         )
         Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
     else:
-        # Two passes: desktop, menubar, app; then dock
-        allowed_roles = {"desktop", "menubar", "app"}
-        first_pass_windows = [w for w in all_windows if w["role"] in allowed_roles and (w["role"] != "app" or w["owner"] in app_whitelist)]
-        window_list = Foundation.CFArrayCreateMutable(None, len(first_pass_windows), None)
-        for window in first_pass_windows:
-            Foundation.CFArrayAppendValue(window_list, window["id"])
-        cg_image = Quartz.CGWindowListCreateImageFromArray(
-            screen_rect, window_list, Quartz.kCGWindowImageDefault
-        )
-        if cg_image is None:
-            return None
-
+        # Filter out windows that are not in the whitelist
+        all_windows = [window for window in all_windows if window["owner"] in app_whitelist or window["role"] != "app"]
+        app_windows = [window for window in all_windows if window["role"] == "app"]
+        
+        dock_orientation = "side" if dock_bounds["width"] < dock_bounds["height"] else "bottom"
+        
+        menubar_length = max(item["bounds"]["x"] + item["bounds"]["width"] for item in menubar_items)
+                
+        # Calculate bounds of app windows
+        app_bounds = {
+            "x": min(window["bounds"]["x"] for window in app_windows),
+            "y": min(window["bounds"]["y"] for window in app_windows),
+        }
+        app_bounds["width"] = max(window["bounds"]["x"] + window["bounds"]["width"] for window in app_windows) - app_bounds["x"]
+        app_bounds["height"] = max(window["bounds"]["y"] + window["bounds"]["height"] for window in app_windows) - app_bounds["y"]
+        
+        # Add dock bounds to app bounds
+        if dock_orientation == "bottom":
+            app_bounds["height"] += dock_bounds["height"] + 4
+        elif dock_orientation == "side":
+            if dock_bounds["x"] > frame.size.width / 2:
+                app_bounds["width"] += dock_bounds["width"] + 4
+            else:
+                app_bounds["x"] -= dock_bounds["width"] + 4
+                app_bounds["width"] += dock_bounds["width"] + 4
+        
+        # Add menubar bounds to app bounds
+        app_bounds["height"] += menubar_bounds["height"]
+        
+        # Make sure app bounds contains menubar bounds
+        app_bounds["width"] = max(app_bounds["width"], menubar_length)
+        
+        # Clamp bounds to screen
+        app_bounds["x"] = max(app_bounds["x"], 0)
+        app_bounds["y"] = max(app_bounds["y"], 0)
+        app_bounds["width"] = min(app_bounds["width"], frame.size.width - app_bounds["x"])
+        app_bounds["height"] = min(app_bounds["height"], frame.size.height - app_bounds["y"] + menubar_bounds["height"])
+        
         # Create CGContext for compositing
-        width = int(frame.size.width)
-        height = int(frame.size.height)
+        width = int(app_bounds["width"])
+        height = int(app_bounds["height"])
         color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
         cg_context = Quartz.CGBitmapContextCreate(
             None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
         )
-        Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
-
-        # --- SECOND PASS: dock, cropped ---
-        def _draw_dock_windows(cg_context, all_windows, frame, source_rect, target_rect):
-            """Draw dock windows from source_rect to target_rect on the given context."""
-            dock_windows = [w for w in all_windows if w["role"] == "dock"]
-            if not dock_windows:
-                return
-            dock_window_list = Foundation.CFArrayCreateMutable(None, len(dock_windows), None)
-            for window in dock_windows:
-                Foundation.CFArrayAppendValue(dock_window_list, window["id"])
-            dock_cg_image = Quartz.CGWindowListCreateImageFromArray(
-                source_rect, dock_window_list, Quartz.kCGWindowImageDefault
+        
+        def _draw_layer(cg_context, all_windows, source_rect, target_rect):
+            """Draw a layer of windows from source_rect to target_rect on the given context."""
+            window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
+            for window in all_windows:
+                Foundation.CFArrayAppendValue(window_list, window["id"])
+            cg_image = Quartz.CGWindowListCreateImageFromArray(
+                source_rect, window_list, Quartz.kCGWindowImageDefault
             )
-            if dock_cg_image is not None:
-                Quartz.CGContextDrawImage(cg_context, target_rect, dock_cg_image)
+            if cg_image is not None:
+                Quartz.CGContextDrawImage(cg_context, target_rect, cg_image)
+        
+        # --- FIRST PASS: desktop, apps ---
+        source_position = [app_bounds["x"], app_bounds["y"]]
+        source_size = [app_bounds["width"], app_bounds["height"]]
+        target_position = [
+            0,
+            min(
+                menubar_bounds["y"] + menubar_bounds["height"], 
+                app_bounds["y"]
+            )
+        ]
+        target_size = [app_bounds["width"], app_bounds["height"]]
+        
+        if dock_orientation == "bottom":
+            source_size[1] += dock_bounds["height"]
+            target_size[1] += dock_bounds["height"]
+        elif dock_orientation == "side":
+            if dock_bounds["x"] < frame.size.width / 2:
+                source_position[0] -= dock_bounds["width"]
+                target_position[0] -= dock_bounds["width"]
+            source_size[0] += dock_bounds["width"]
+            target_size[0] += dock_bounds["width"]
+        
+        app_source_rect = Quartz.CGRectMake(
+            source_position[0], source_position[1], source_size[0], source_size[1]
+        )
+        app_target_rect = Quartz.CGRectMake(
+            target_position[0], app_bounds["height"] - target_position[1] - target_size[1], target_size[0], target_size[1]
+        )
+        first_pass_windows = [w for w in all_windows if w["role"] == "app" or w["role"] == "desktop"]
+        _draw_layer(cg_context, first_pass_windows, app_source_rect, app_target_rect)
 
-        # Draw the dock using the helper (currently full screen, adjust source/target as needed)
-        dock_source_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
-        target_area = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
-        _draw_dock_windows(cg_context, all_windows, frame, dock_source_rect, target_area)
+        # --- SECOND PASS: menubar ---
+        allowed_roles = {"menubar"}
+        menubar_windows = [w for w in all_windows if w["role"] in allowed_roles]
+        menubar_source_rect = Quartz.CGRectMake(
+            0, 0, app_bounds["width"], menubar_bounds["height"]
+        )
+        menubar_target_rect = Quartz.CGRectMake(
+            0, app_bounds["height"] - menubar_bounds["height"], app_bounds["width"], menubar_bounds["height"]
+        )
+        _draw_layer(cg_context, menubar_windows, menubar_source_rect, menubar_target_rect)
+        
+        # --- THIRD PASS: dock, filtered ---
+        # Step 1: Collect dock items to draw, with their computed target rects
+        dock_draw_items = []
+        for index, item in enumerate(dock_items):
+            source_position = (item["bounds"]["x"], item["bounds"]["y"])
+            source_size = (item["bounds"]["width"], item["bounds"]["height"])
+
+            # apply whitelist to middle items
+            if not (index == 0 or index == len(dock_items) - 1):
+                if item["subrole"] == "AXApplicationDockItem":
+                    if item["title"] not in app_whitelist:
+                        continue
+                elif item["subrole"] == "AXMinimizedWindowDockItem":
+                    if not any(window["name"] == item["title"] and window["role"] == "app" and window["owner"] in app_whitelist for window in all_windows):
+                        continue
+
+            # stretch to screen size
+            padding = 32
+            if dock_orientation == "bottom":
+                source_position = (source_position[0], 0)
+                source_size = (source_size[0], frame.size.height)
+                if index == 0:
+                    source_size = (padding + source_size[0], source_size[1])
+                    source_position = (source_position[0] - padding, 0)
+                elif index == len(dock_items) - 1:
+                    source_size = (source_size[0] + padding, source_size[1])
+                    source_position = (source_position[0], 0)
+            elif dock_orientation == "side":
+                source_position = (0, source_position[1])
+                source_size = (frame.size.width, source_size[1])
+                if index == 0:
+                    source_size = (source_size[0], padding + source_size[1])
+                    source_position = (0, source_position[1] - padding)
+                elif index == len(dock_items) - 1:
+                    source_size = (source_size[0], source_size[1] + padding)
+                    source_position = (0, source_position[1])
+
+            # Compute the initial target position
+            target_position = source_position
+            target_size = source_size
+            
+            dock_draw_items.append({
+                "item": item,
+                "index": index,
+                "source_position": source_position,
+                "source_size": source_size,
+                "target_size": target_size,
+                "target_position": target_position,  # Will be updated after packing
+            })
+
+        # Step 2: Pack the target rects along the main axis, removing gaps
+        packed_positions = []
+        if dock_orientation == "bottom":
+            # Pack left-to-right
+            x_cursor = 0
+            for draw_item in dock_draw_items:
+                packed_positions.append((x_cursor, draw_item["target_position"][1]))
+                x_cursor += draw_item["target_size"][0]
+            packed_strip_length = x_cursor
+            # Center horizontally
+            x_offset = (app_bounds['width'] - packed_strip_length) / 2
+            y_offset = (frame.size.height - app_bounds['height'])
+            for i, draw_item in enumerate(dock_draw_items):
+                px, py = packed_positions[i]
+                draw_item["target_position"] = (px + x_offset, py - y_offset)
+        elif dock_orientation == "side":
+            # Pack top-to-bottom
+            y_cursor = 0
+            for draw_item in dock_draw_items:
+                packed_positions.append((draw_item["target_position"][0], y_cursor))
+                y_cursor += draw_item["target_size"][1]
+            packed_strip_length = y_cursor
+            # Center vertically
+            y_offset = (app_bounds['height'] - packed_strip_length) / 2
+            x_offset = 0 if dock_bounds['x'] < frame.size.width / 2 else frame.size.width - app_bounds['width']
+            for i, draw_item in enumerate(dock_draw_items):
+                px, py = packed_positions[i]
+                draw_item["target_position"] = (px - x_offset, py + y_offset)
+
+        dock_windows = [window for window in all_windows if window["role"] == "dock"]
+        # Step 3: Draw dock items using packed and recentered positions
+        for draw_item in dock_draw_items:
+            item = draw_item["item"]
+            source_position = draw_item["source_position"]
+            source_size = draw_item["source_size"]
+            target_position = draw_item["target_position"]
+            target_size = draw_item["target_size"]
+
+            # flip target position y
+            target_position = (target_position[0], app_bounds['height'] - target_position[1] - target_size[1])
+
+            source_rect = Quartz.CGRectMake(*source_position, *source_size)
+            target_rect = Quartz.CGRectMake(*target_position, *target_size)
+
+            _draw_layer(cg_context, dock_windows, source_rect, target_rect)
+
+            # Debug: Draw dock item border
+            # Quartz.CGContextSetStrokeColorWithColor(cg_context, Quartz.CGColorCreateGenericRGB(1, 0, 0, 1))
+            # Quartz.CGContextSetLineWidth(cg_context, 2.0)
+            # Quartz.CGContextStrokeRect(cg_context, target_rect)
 
     # Convert composited context to CGImage
     final_cg_image = Quartz.CGBitmapContextCreateImage(cg_context)
@@ -682,7 +849,7 @@ def capture_all_apps(save_to_disk: bool = False, create_composite: bool = False,
     result["dock_bounds"] = dock_bounds
     
     # Capture the entire desktop using Quartz compositing
-    desktop_screenshot = capture_desktop_screenshot(app_whitelist, all_windows)
+    desktop_screenshot = capture_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
     
     if desktop_screenshot and save_to_disk and output_dir:
         desktop_path = os.path.join(output_dir, "desktop.png")
