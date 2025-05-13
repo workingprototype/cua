@@ -749,9 +749,9 @@ class OmniLoop(BaseLoop):
 
                 # Create a brief delay before retrying
                 await asyncio.sleep(1)
-        finally:
-            # Signal that we're done
-            await queue.put(None)
+            finally:
+                # Signal that we're done
+                await queue.put(None)
                 
     async def cancel(self) -> None:
         """Cancel the currently running agent loop task.
