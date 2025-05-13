@@ -629,17 +629,18 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
 
             _draw_layer(cg_context, dock_windows, source_rect, target_rect)
 
-            # Debug: Draw true hitbox rect (packed position, unscaled size)
             hitbox_position = draw_item["hitbox_position"]
             hitbox_size = draw_item["hitbox_size"]
-            # Flip y like target_rect
-            hitbox_position_flipped = (
-                hitbox_position[0],
-                app_bounds['height'] - hitbox_position[1] - hitbox_size[1]
-            )
-            hitbox_rect = Quartz.CGRectMake(*hitbox_position_flipped, *hitbox_size)
-            Quartz.CGContextSetStrokeColorWithColor(cg_context, Quartz.CGColorCreateGenericRGB(0, 1, 0, 1))
-            Quartz.CGContextStrokeRect(cg_context, hitbox_rect)
+
+            # Debug: Draw true hitbox rect (packed position, unscaled size)
+            # # Flip y like target_rect
+            # hitbox_position_flipped = (
+            #     hitbox_position[0],
+            #     app_bounds['height'] - hitbox_position[1] - hitbox_size[1]
+            # )
+            # hitbox_rect = Quartz.CGRectMake(*hitbox_position_flipped, *hitbox_size)
+            # Quartz.CGContextSetStrokeColorWithColor(cg_context, Quartz.CGColorCreateGenericRGB(0, 1, 0, 1))
+            # Quartz.CGContextStrokeRect(cg_context, hitbox_rect)
             
             hitboxes.append({
                 "hitbox": [*hitbox_position, hitbox_position[0] + hitbox_size[0], hitbox_position[1] + hitbox_size[1]],
@@ -842,6 +843,70 @@ def get_dock_items() -> List[Dict[str, Any]]:
         
     return dock_items
 
+class AppActivationContext:
+    def __init__(self, active_app_pid=None, active_app_to_use="", logger=None):
+        self.active_app_pid = active_app_pid
+        self.active_app_to_use = active_app_to_use
+        self.logger = logger
+        self.frontmost_app = None
+
+    def __enter__(self):
+        from AppKit import NSWorkspace
+        if self.active_app_pid:
+            if self.logger and self.active_app_to_use:
+                self.logger.debug(f"Automatically activating app '{self.active_app_to_use}' for screenshot composition")
+            self.frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
+            for app in running_apps_list:
+                if app.processIdentifier() == self.active_app_pid:
+                    app.activateWithOptions_(0)
+                    break
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.frontmost_app:
+            self.frontmost_app.activateWithOptions_(0)
+
+def get_frontmost_and_active_app(all_windows, running_apps, app_whitelist):
+    from AppKit import NSWorkspace
+    frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+
+    active_app_to_use = None
+    active_app_pid = None
+
+    # Find the topmost (highest z_index) non-filtered app
+    for window in reversed(all_windows):
+        owner = window.get("owner")
+        role = window.get("role")
+        is_on_screen = window.get("is_on_screen")
+
+        # Skip non-app windows
+        if role != "app":
+            continue
+
+        # Skip not-on-screen windows
+        if not is_on_screen:
+            continue
+
+        # Skip filtered apps
+        if app_whitelist is not None and owner not in app_whitelist:
+            continue
+
+        # Found a suitable app
+        active_app_to_use = owner
+        active_app_pid = window.get("pid")
+        break
+
+    # If no suitable app found, use Finder
+    if active_app_to_use is None:
+        active_app_to_use = "Finder"
+        for app in running_apps:
+            if app.localizedName() == "Finder":
+                active_app_pid = app.processIdentifier()
+                break
+
+    return frontmost_app, active_app_to_use, active_app_pid
+
 def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None, output_dir: str = None, take_focus: bool = True) -> Tuple[Dict[str, Any], Optional[Image.Image]]:
     """Capture screenshots of all running applications
     
@@ -868,182 +933,132 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
     # Get all running applications
     running_apps = get_running_apps()
     
-    # Save the currently frontmost app before making any changes
-    frontmost_app = NSWorkspace.sharedWorkspace().frontmostApplication()
-    
-    # Automatically determine the active app based on the topmost non-filtered app
-    active_app_to_use = None
-    active_app_pid = None
-    
-    if take_focus:
-        # Find the topmost (highest z_index) non-filtered app
-        for window in all_windows[::-1]:
-            owner = window.get("owner")
-            role = window.get("role")
-            is_on_screen = window.get("is_on_screen")
+    frontmost_app, active_app_to_use, active_app_pid = get_frontmost_and_active_app(all_windows, running_apps, app_whitelist) if take_focus else (None, None, None)
             
-            # Skip non-app windows
-            if role != "app":
-                continue
-            
-            # Skip not-on-screen windows
-            if not is_on_screen:
-                continue
-            
-            # Skip filtered apps
-            if app_whitelist is not None and owner not in app_whitelist:
+    # Use AppActivationContext to activate the app and restore focus
+    with AppActivationContext(active_app_pid, active_app_to_use, logger):
+        
+        # Process applications
+        for app in running_apps:
+            # Skip system apps without a bundle ID
+            if app.bundleIdentifier() is None:
                 continue
                 
-            # Found a suitable app
-            active_app_to_use = owner
-            active_app_pid = window.get("pid")
-            break
-        
-        # If no suitable app found, use Finder
-        if active_app_to_use is None:
-            active_app_to_use = "Finder"
-            # Find Finder's PID
-            for app in running_apps:
-                if app.localizedName() == "Finder":
-                    active_app_pid = app.processIdentifier()
-                    break
+            app_info = get_app_info(app)
+            app_windows = get_app_windows(app.processIdentifier(), all_windows)
             
-    # Activate the selected application
-    if active_app_pid:
-        logger.debug(f"Automatically activating app '{active_app_to_use}' for screenshot composition")
-        
-        # Get all running applications
-        running_apps_list = NSWorkspace.sharedWorkspace().runningApplications()
-        
-        # Find the NSRunningApplication object for the active app
-        for app in running_apps_list:
-            if app.processIdentifier() == active_app_pid:
-                app.activateWithOptions_(0)
-                break
-    
-    # Process applications
-    for app in running_apps:
-        # Skip system apps without a bundle ID
-        if app.bundleIdentifier() is None:
-            continue
+            app_data = {
+                "info": app_info,
+                "windows": [ window["id"] for window in app_windows ]
+            }
             
-        app_info = get_app_info(app)
-        app_windows = get_app_windows(app.processIdentifier(), all_windows)
+            result["applications"].append(app_data)
         
-        app_data = {
-            "info": app_info,
-            "windows": [ window["id"] for window in app_windows ]
-        }
+        # Add all windows to the result
+        result["windows"] = all_windows
         
-        result["applications"].append(app_data)
-    
-    # Add all windows to the result
-    result["windows"] = all_windows
-    
-    # Get menubar items from the active application
-    menubar_items = get_menubar_items(active_app_pid)
-    result["menubar_items"] = menubar_items
-    
-    # Get dock items
-    dock_items = get_dock_items()
-    result["dock_items"] = dock_items
-    
-    # Get menubar bounds
-    menubar_bounds = get_menubar_bounds()
-    result["menubar_bounds"] = menubar_bounds
-    
-    # Get dock bounds
-    dock_bounds = get_dock_bounds()
-    result["dock_bounds"] = dock_bounds
-    
-    # Capture the entire desktop using Quartz compositing
-    desktop_screenshot, hitboxes = draw_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
-    
-    result["hitboxes"] = hitboxes
-    
-    from PIL import Image, ImageDraw, ImageChops
-    def _draw_hitboxes(img, hitboxes, key="target"):
-        """
-        Overlay opaque colored rectangles for each hitbox (using hitbox[key])
-        with color depending on index, then multiply overlay onto img.
-        Args:
-            img: PIL.Image (RGBA or RGB)
-            hitboxes: list of dicts with 'hitbox' and 'target' keys
-            key: 'hitbox' or 'target'
-        Returns:
-            PIL.Image with overlayed hitboxes (same mode/size as input)
-        """
-        # Ensure RGBA mode for blending
-        base = img.convert("RGBA")
-        overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-
-        # Distinct colors for order
-        colors = [
-            (255, 0, 0, 180),      # Red
-            (0, 255, 0, 180),      # Green
-            (0, 0, 255, 180),      # Blue
-            (255, 255, 0, 180),    # Yellow
-            (0, 255, 255, 180),    # Cyan
-            (255, 0, 255, 180),    # Magenta
-            (255, 128, 0, 180),    # Orange
-            (128, 0, 255, 180),    # Purple
-            (0, 128, 255, 180),    # Sky blue
-            (128, 255, 0, 180),    # Lime
-        ]
-        # Set minimum brightness for colors
-        min_brightness = 0
-        colors = [
-            (max(min_brightness, c[0]), max(min_brightness, c[1]), max(min_brightness, c[2]), c[3]) for c in colors
-        ]
+        # Get menubar items from the active application
+        menubar_items = get_menubar_items(active_app_pid)
+        result["menubar_items"] = menubar_items
         
-        for i, h in enumerate(hitboxes):
-            rect = h.get(key)
-            color = colors[i % len(colors)]
-            if rect:
-                draw.rectangle(rect, fill=color)
+        # Get dock items
+        dock_items = get_dock_items()
+        result["dock_items"] = dock_items
+        
+        # Get menubar bounds
+        menubar_bounds = get_menubar_bounds()
+        result["menubar_bounds"] = menubar_bounds
+        
+        # Get dock bounds
+        dock_bounds = get_dock_bounds()
+        result["dock_bounds"] = dock_bounds
+        
+        # Capture the entire desktop using Quartz compositing
+        desktop_screenshot, hitboxes = draw_desktop_screenshot(app_whitelist, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
+        
+        result["hitboxes"] = hitboxes
+        
+        from PIL import Image, ImageDraw, ImageChops
+        def _draw_hitboxes(img, hitboxes, key="target"):
+            """
+            Overlay opaque colored rectangles for each hitbox (using hitbox[key])
+            with color depending on index, then multiply overlay onto img.
+            Args:
+                img: PIL.Image (RGBA or RGB)
+                hitboxes: list of dicts with 'hitbox' and 'target' keys
+                key: 'hitbox' or 'target'
+            Returns:
+                PIL.Image with overlayed hitboxes (same mode/size as input)
+            """
+            # Ensure RGBA mode for blending
+            base = img.convert("RGBA")
+            overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
 
-        # Multiply blend overlay onto base
-        result = ImageChops.multiply(base, overlay)
-        return result
+            # Distinct colors for order
+            colors = [
+                (255, 0, 0, 180),      # Red
+                (0, 255, 0, 180),      # Green
+                (0, 0, 255, 180),      # Blue
+                (255, 255, 0, 180),    # Yellow
+                (0, 255, 255, 180),    # Cyan
+                (255, 0, 255, 180),    # Magenta
+                (255, 128, 0, 180),    # Orange
+                (128, 0, 255, 180),    # Purple
+                (0, 128, 255, 180),    # Sky blue
+                (128, 255, 0, 180),    # Lime
+            ]
+            # Set minimum brightness for colors
+            min_brightness = 0
+            colors = [
+                (max(min_brightness, c[0]), max(min_brightness, c[1]), max(min_brightness, c[2]), c[3]) for c in colors
+            ]
+            
+            for i, h in enumerate(hitboxes):
+                rect = h.get(key)
+                color = colors[i % len(colors)]
+                if rect:
+                    draw.rectangle(rect, fill=color)
 
-    # DEBUG: Save hitboxes to disk
-    if desktop_screenshot and save_to_disk and output_dir:
-        if app_whitelist:
-            # Take screenshot without whitelist
-            desktop_screenshot_full, hitboxes_full = draw_desktop_screenshot(
-                None, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
+            # Multiply blend overlay onto base
+            result = ImageChops.multiply(base, overlay)
+            return result
 
-            # Draw hitboxes on both images using overlay
-            img1 = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
-            img2 = _draw_hitboxes(desktop_screenshot_full.copy(), hitboxes, key="target") if desktop_screenshot_full else None
+        # DEBUG: Save hitboxes to disk
+        if desktop_screenshot and save_to_disk and output_dir:
+            if app_whitelist:
+                # Take screenshot without whitelist
+                desktop_screenshot_full, hitboxes_full = draw_desktop_screenshot(
+                    None, all_windows, dock_bounds, dock_items, menubar_bounds, menubar_items)
 
-            if img2 and hitboxes_full:
+                # Draw hitboxes on both images using overlay
+                img1 = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
+                img2 = _draw_hitboxes(desktop_screenshot_full.copy(), hitboxes, key="target") if desktop_screenshot_full else None
 
-                # Compose side-by-side
-                from PIL import Image
-                width = img1.width + img2.width
-                height = max(img1.height, img2.height)
-                combined = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-                combined.paste(img1, (0, 0))
-                combined.paste(img2, (img1.width, 0))
-                side_by_side_path = os.path.join(output_dir, "side_by_side_hitboxes.png")
-                combined.save(side_by_side_path)
-                result["side_by_side_hitboxes"] = side_by_side_path
-        else:
-            desktop_path = os.path.join(output_dir, "desktop.png")
-            desktop_screenshot.save(desktop_path)
-            result["desktop_screenshot"] = desktop_path
+                if img2 and hitboxes_full:
 
-            # Overlay hitboxes using new function
-            hitbox_img = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
-            hitbox_path = os.path.join(output_dir, "hitboxes.png")
-            hitbox_img.save(hitbox_path)
-            result["hitbox_screenshot"] = hitbox_path
+                    # Compose side-by-side
+                    from PIL import Image
+                    width = img1.width + img2.width
+                    height = max(img1.height, img2.height)
+                    combined = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                    combined.paste(img1, (0, 0))
+                    combined.paste(img2, (img1.width, 0))
+                    side_by_side_path = os.path.join(output_dir, "side_by_side_hitboxes.png")
+                    combined.save(side_by_side_path)
+                    result["side_by_side_hitboxes"] = side_by_side_path
+            else:
+                desktop_path = os.path.join(output_dir, "desktop.png")
+                desktop_screenshot.save(desktop_path)
+                result["desktop_screenshot"] = desktop_path
 
-    # Switch focus back to the originally frontmost app
-    if frontmost_app:
-        frontmost_app.activateWithOptions_(0)
+                # Overlay hitboxes using new function
+                hitbox_img = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
+                hitbox_path = os.path.join(output_dir, "hitboxes.png")
+                hitbox_img.save(hitbox_path)
+                result["hitbox_screenshot"] = hitbox_path
+
+        # Focus restoration is now handled by AppActivationContext
     
     return result, desktop_screenshot
 
