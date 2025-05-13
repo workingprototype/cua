@@ -465,8 +465,13 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
         _draw_layer(cg_context, first_pass_windows, app_source_rect, app_target_rect)
         
         hitboxes.append({
-            "hitbox": [app_source_rect.origin.x, app_source_rect.origin.y, app_source_rect.size.width, app_source_rect.size.height],
-            "target": [app_target_rect.origin.x, app_target_rect.origin.y, app_target_rect.size.width, app_target_rect.size.height]
+            "hitbox": [0, 0, app_bounds["width"], app_bounds["height"]],
+            "target": [
+                app_source_rect.origin.x, 
+                app_source_rect.origin.y, 
+                app_source_rect.origin.x + app_bounds["width"], 
+                app_source_rect.origin.y + app_bounds["height"]
+            ]
         })
 
         # --- SECOND PASS: menubar ---
