@@ -308,76 +308,97 @@ class AppScreenshotCapture:
         return [window for window in all_windows if window["pid"] == app_pid]
     
     @timing_decorator
-    def capture_desktop_screenshot(self, app_filter: List[str] = None, all_windows: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
-        """Capture a screenshot of the entire desktop using Quartz compositing
-        
+    def capture_desktop_screenshot(self, app_whitelist: List[str] = None, all_windows: List[Dict[str, Any]] = None) -> Optional[Image.Image]:
+        """Capture a screenshot of the entire desktop using Quartz compositing, including dock as a second pass.
         Args:
-            app_filter: Optional list of app names to include in the screenshot
-            
+            app_whitelist: Optional list of app names to include in the screenshot
         Returns:
             PIL Image of the desktop or None if capture failed
         """
-        # Get all windows with z-order information to determine which ones to include
+        import ctypes
+
         if all_windows is None:
             all_windows = self.get_all_windows()
-        
-        # Reverse the list to get the correct z-order
         all_windows = all_windows[::-1]
-        
-        # Filter out windows that are not on screen
         all_windows = [window for window in all_windows if window["is_on_screen"]]
-        
-        # Filter out windows that are not in the app_filter
-        if app_filter is not None:
-            all_windows = [window for window in all_windows if window["owner"] in app_filter or window["role"] != "app"]
-        
-        # Get the main screen dimensions
+
         main_screen = AppKit.NSScreen.mainScreen()
-        screen_rect = None
-        
         if main_screen:
             frame = main_screen.frame()
-            screen_rect = Quartz.CGRectMake(
-                0, 0,
-                frame.size.width, frame.size.height
-            )
+            screen_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
         else:
-            # Fallback to CGRectNull if we can't get the main screen
             screen_rect = Quartz.CGRectNull
-            
-        # If no filter is applied, capture the entire screen
-        if app_filter is None:
-            cg_image = Quartz.CGWindowListCreateImage(
-                screen_rect,  # Capture only the main screen area
-                Quartz.kCGWindowListOptionOnScreenOnly,  # Only capture on-screen windows
-                Quartz.kCGNullWindowID,  # No specific window
-                Quartz.kCGWindowImageDefault  # Include shadows
-            )
-        else:
-            # Create a CFArray of window IDs to include
+
+        if app_whitelist is None:
+            # Single pass: desktop, menubar, app, dock
             window_list = Foundation.CFArrayCreateMutable(None, len(all_windows), None)
             for window in all_windows:
                 Foundation.CFArrayAppendValue(window_list, window["id"])
-            
-            # Capture only the specified windows
-            cg_image = Quartz.CGWindowListCreateImageFromArray(
-                screen_rect,  # Capture only the main screen area
-                window_list,  # Array of window IDs to include
-                Quartz.kCGWindowImageDefault  # Include shadows
+            cg_image = Quartz.CGWindowListCreateImage(
+                screen_rect, window_list, Quartz.kCGWindowImageDefault
             )
-        
-        if cg_image is None:
-            return None
-        
-        # Convert CGImage to PNG data
-        ns_image = AppKit.NSImage.alloc().initWithCGImage_size_(cg_image, Foundation.NSZeroSize)
+            if cg_image is None:
+                return None
+
+            # Create CGContext for compositing
+            width = int(frame.size.width)
+            height = int(frame.size.height)
+            color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
+            cg_context = Quartz.CGBitmapContextCreate(
+                None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
+            )
+            Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
+        else:
+            # Two passes: desktop, menubar, app; then dock
+            allowed_roles = {"desktop", "menubar", "app"}
+            first_pass_windows = [w for w in all_windows if w["role"] in allowed_roles and (w["role"] != "app" or w["owner"] in app_whitelist)]
+            window_list = Foundation.CFArrayCreateMutable(None, len(first_pass_windows), None)
+            for window in first_pass_windows:
+                Foundation.CFArrayAppendValue(window_list, window["id"])
+            cg_image = Quartz.CGWindowListCreateImageFromArray(
+                screen_rect, window_list, Quartz.kCGWindowImageDefault
+            )
+            if cg_image is None:
+                return None
+
+            # Create CGContext for compositing
+            width = int(frame.size.width)
+            height = int(frame.size.height)
+            color_space = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
+            cg_context = Quartz.CGBitmapContextCreate(
+                None, width, height, 8, 0, color_space, Quartz.kCGImageAlphaPremultipliedLast
+            )
+            Quartz.CGContextDrawImage(cg_context, screen_rect, cg_image)
+
+            # --- SECOND PASS: dock, cropped ---
+            def _draw_dock_windows(cg_context, all_windows, frame, source_rect, target_rect):
+                """Draw dock windows from source_rect to target_rect on the given context."""
+                dock_windows = [w for w in all_windows if w["role"] == "dock"]
+                if not dock_windows:
+                    return
+                dock_window_list = Foundation.CFArrayCreateMutable(None, len(dock_windows), None)
+                for window in dock_windows:
+                    Foundation.CFArrayAppendValue(dock_window_list, window["id"])
+                dock_cg_image = Quartz.CGWindowListCreateImageFromArray(
+                    source_rect, dock_window_list, Quartz.kCGWindowImageDefault
+                )
+                if dock_cg_image is not None:
+                    Quartz.CGContextDrawImage(cg_context, target_rect, dock_cg_image)
+
+            # Draw the dock using the helper (currently full screen, adjust source/target as needed)
+            dock_source_rect = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+            target_area = Quartz.CGRectMake(0, 0, frame.size.width, frame.size.height)
+            _draw_dock_windows(cg_context, all_windows, frame, dock_source_rect, target_area)
+
+        # Convert composited context to CGImage
+        final_cg_image = Quartz.CGBitmapContextCreateImage(cg_context)
+        ns_image = AppKit.NSImage.alloc().initWithCGImage_size_(final_cg_image, Foundation.NSZeroSize)
         ns_data = ns_image.TIFFRepresentation()
         bitmap_rep = AppKit.NSBitmapImageRep.imageRepWithData_(ns_data)
         png_data = bitmap_rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, None)
-        
-        # Convert to PIL Image
         image_data = io.BytesIO(png_data)
         return Image.open(image_data)
+
     
     @timing_decorator
     def get_menubar_items(self, active_app_pid: int = None) -> List[Dict[str, Any]]:
@@ -566,13 +587,13 @@ class AppScreenshotCapture:
         return dock_items
     
     def capture_all_apps(self, save_to_disk: bool = False, create_composite: bool = False, 
-                         app_filter: List[str] = None) -> Dict[str, Any]:
+                         app_whitelist: List[str] = None) -> Dict[str, Any]:
         """Capture screenshots of all running applications
         
         Args:
             save_to_disk: Whether to save screenshots to disk
             create_composite: Whether to create a recomposited screenshot
-            app_filter: Optional list of app names to include in the recomposited screenshot
+            app_whitelist: Optional list of app names to include in the recomposited screenshot
                        (will always include 'Window Server' and 'Dock')
             
         Returns:
@@ -609,7 +630,7 @@ class AppScreenshotCapture:
                 continue
             
             # Skip filtered apps
-            if app_filter is not None and owner not in app_filter:
+            if app_whitelist is not None and owner not in app_whitelist:
                 continue
                 
             # Found a suitable app
@@ -675,7 +696,7 @@ class AppScreenshotCapture:
         result["dock_bounds"] = dock_bounds
         
         # Capture the entire desktop using Quartz compositing
-        desktop_screenshot = self.capture_desktop_screenshot(app_filter, all_windows)
+        desktop_screenshot = self.capture_desktop_screenshot(app_whitelist, all_windows)
         
         if desktop_screenshot and save_to_disk and self.output_dir:
             desktop_path = os.path.join(self.output_dir, "desktop.png")
@@ -720,7 +741,7 @@ async def run_capture():
     result = capture.capture_all_apps(
         save_to_disk=True, 
         create_composite=args.composite, 
-        app_filter=args.filter
+        app_whitelist=args.filter
     )
     
     # Print summary
