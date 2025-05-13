@@ -32,14 +32,16 @@ async def main():
             display="1024x768", 
             memory="8GB", 
             cpu="4", 
-            os_type="macos",
+            os_type="linux",
+            image="ubuntu-noble-vanilla:latest",
+            name="ubuntu-noble-vanilla_latest",
             verbosity=LogLevel.NORMAL,  # Use QUIET to suppress most logs
-            provider_type=VMProviderType.LUMIER,
-            storage="/Users/francescobonacci/repos/trycua/computer/examples/storage",
-            shared_directories=[
-                "/Users/francescobonacci/repos/trycua/computer/examples/shared"
-            ],
-            ephemeral=True
+            provider_type=VMProviderType.LUME,
+            # storage="/Users/francescobonacci/repos/trycua/computer/examples/storage",
+            # shared_directories=[
+            #     "/Users/francescobonacci/repos/trycua/computer/examples/shared"
+            # ],
+            ephemeral=False,
         )
         
         try:

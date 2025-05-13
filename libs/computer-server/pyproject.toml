@@ -9,20 +9,26 @@ description = "Server component for the Computer-Use Interface (CUI) framework p
 authors = [
     { name = "TryCua", email = "gh@trycua.com" }
 ]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
 dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.27.0",
     "pydantic>=2.0.0",
     "pyautogui>=0.9.54",
-    "pyobjc-framework-Cocoa>=10.1; sys_platform == 'darwin'",
-    "pyobjc-framework-Quartz>=10.1; sys_platform == 'darwin'",
-    "pyobjc-framework-ApplicationServices>=10.1; sys_platform == 'darwin'",
-    "python-xlib>=0.33; sys_platform == 'linux'",
     "pillow>=10.2.0"
 ]
-requires-python = ">=3.10"
-readme = "README.md"
-license = { text = "MIT" }
+
+[project.optional-dependencies]
+macos = [
+    "pyobjc-framework-Cocoa>=10.1",
+    "pyobjc-framework-Quartz>=10.1",
+    "pyobjc-framework-ApplicationServices>=10.1"
+]
+linux = [
+    "python-xlib>=0.33"
+]
 
 [project.urls]
 homepage = "https://github.com/trycua/cua"
@@ -47,13 +53,13 @@ format = [
     "black>=23.0.0",
     "isort>=5.12.0"
 ]
+dev = [
+    "ruff>=0.0.241",
+    "mypy>=0.971"
+]
 
 [tool.pdm.scripts]
 api = "python -m computer_server"
-
-[tool.black]
-line-length = 100
-target-version = ["py310"]
 
 [tool.ruff]
 line-length = 100

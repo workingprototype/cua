@@ -2,8 +2,13 @@ import platform
 import subprocess
 from typing import Tuple, Type
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
-from .macos import MacOSAccessibilityHandler, MacOSAutomationHandler
-# from .linux import LinuxAccessibilityHandler, LinuxAutomationHandler
+
+# Conditionally import platform-specific handlers
+system = platform.system().lower()
+if system == 'darwin':
+    from .macos import MacOSAccessibilityHandler, MacOSAutomationHandler
+elif system == 'linux':
+    from .linux import LinuxAccessibilityHandler, LinuxAutomationHandler
 
 class HandlerFactory:
     """Factory for creating OS-specific handlers."""
@@ -19,7 +24,12 @@ class HandlerFactory:
             RuntimeError: If unable to determine the current OS
         """
         try:
-            # Use uname -s to determine OS since this runs on the target machine
+            # Use platform.system() as primary method
+            system = platform.system().lower()
+            if system in ['darwin', 'linux', 'windows']:
+                return 'darwin' if system == 'darwin' else 'linux' if system == 'linux' else 'windows'
+                
+            # Fallback to uname if platform.system() doesn't return expected values
             result = subprocess.run(['uname', '-s'], capture_output=True, text=True)
             if result.returncode != 0:
                 raise RuntimeError(f"uname command failed: {result.stderr}")
@@ -43,7 +53,7 @@ class HandlerFactory:
         
         if os_type == 'darwin':
             return MacOSAccessibilityHandler(), MacOSAutomationHandler()
-        # elif os_type == 'linux':
-        #     return LinuxAccessibilityHandler(), LinuxAutomationHandler()
+        elif os_type == 'linux':
+            return LinuxAccessibilityHandler(), LinuxAutomationHandler()
         else:
             raise NotImplementedError(f"OS '{os_type}' is not supported") 
