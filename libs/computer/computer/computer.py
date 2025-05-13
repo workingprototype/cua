@@ -16,7 +16,7 @@ import os
 from .providers.base import VMProviderType
 from .providers.factory import VMProviderFactory
 
-OSType = Literal["macos", "linux"]
+OSType = Literal["macos", "linux", "windows"]
 
 class Computer:
     """Computer is the main class for interacting with the computer."""
@@ -266,10 +266,10 @@ class Computer:
                             self.logger.verbose("VM provider context initialized successfully")
                         except ImportError as ie:
                             self.logger.error(f"Failed to import provider dependencies: {ie}")
-                            if str(ie).find("lume") >= 0:
+                            if str(ie).find("lume") >= 0 and str(ie).find("lumier") < 0:
                                 self.logger.error("Please install with: pip install cua-computer[lume]")
-                            elif str(ie).find("qemu") >= 0:
-                                self.logger.error("Please install with: pip install cua-computer[qemu]")
+                            elif str(ie).find("lumier") >= 0 or str(ie).find("docker") >= 0:
+                                self.logger.error("Please install with: pip install cua-computer[lumier] and make sure Docker is installed")
                             elif str(ie).find("cloud") >= 0:
                                 self.logger.error("Please install with: pip install cua-computer[cloud]")
                             raise

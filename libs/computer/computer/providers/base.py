@@ -9,7 +9,6 @@ class VMProviderType(str, Enum):
     """Enum of supported VM provider types."""
     LUME = "lume"
     LUMIER = "lumier"
-    QEMU = "qemu"
     CLOUD = "cloud"
     UNKNOWN = "unknown"
 

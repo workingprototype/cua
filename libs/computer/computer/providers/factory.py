@@ -97,26 +97,11 @@ class VMProviderFactory:
                     "Docker and Lume CLI are required for LumierProvider. "
                     "Please install Docker for Apple Silicon and run the Lume installer script."
                 ) from e
-        elif provider_type == VMProviderType.QEMU:
-            try:
-                from .qemu import QEMUProvider
-                return QEMUProvider(
-                    bin_path=bin_path,
-                    storage=storage,
-                    port=port,
-                    host=host,
-                    verbose=verbose
-                )
-            except ImportError as e:
-                logger.error(f"Failed to import QEMUProvider: {e}")
-                raise ImportError(
-                    "The qemu package is required for QEMUProvider. "
-                    "Please install it with 'pip install cua-computer[qemu]'"
-                ) from e
+
         elif provider_type == VMProviderType.CLOUD:
             try:
                 from .cloud import CloudProvider
-                # Cloud provider might need different parameters, but including basic ones
+                # Return the stub implementation of CloudProvider
                 return CloudProvider(
                     host=host,
                     port=port,
@@ -126,8 +111,8 @@ class VMProviderFactory:
             except ImportError as e:
                 logger.error(f"Failed to import CloudProvider: {e}")
                 raise ImportError(
-                    "Cloud provider dependencies are required for CloudProvider. "
-                    "Please install them with 'pip install cua-computer[cloud]'"
+                    "The CloudProvider is not fully implemented yet. "
+                    "Please use LUME or LUMIER provider instead."
                 ) from e
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")
