@@ -744,12 +744,11 @@ def get_dock_items() -> List[Dict[str, Any]]:
         
     return dock_items
 
-def capture_all_apps(save_to_disk: bool = False, create_composite: bool = False, app_whitelist: List[str] = None, output_dir: str = None) -> Dict[str, Any]:
+def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None, output_dir: str = None) -> Tuple[Dict[str, Any], Optional[Image.Image]]:
     """Capture screenshots of all running applications
     
     Args:
         save_to_disk: Whether to save screenshots to disk
-        create_composite: Whether to create a recomposited screenshot
         app_whitelist: Optional list of app names to include in the recomposited screenshot
                     (will always include 'Window Server' and 'Dock')
         
@@ -869,7 +868,7 @@ def capture_all_apps(save_to_disk: bool = False, create_composite: bool = False,
     if frontmost_app:
         frontmost_app.activateWithOptions_(0)
     
-    return result
+    return result, desktop_screenshot
 
 
 async def run_capture():
@@ -877,10 +876,10 @@ async def run_capture():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Capture screenshots of running macOS applications")
     parser.add_argument("--output", "-o", help="Output directory for screenshots", default="app_screenshots")
-    parser.add_argument("--composite", "-c", action="store_true", help="Create a recomposited screenshot")
     parser.add_argument("--filter", "-f", nargs="+", help="Filter recomposited screenshot to only include specified apps")
     parser.add_argument("--menubar", "-m", action="store_true", help="List menubar and status items with their bounding boxes")
     parser.add_argument("--dock", "-d", action="store_true", help="List Dock items with their bounding boxes")
+    parser.add_argument("--demo", nargs="*", help="Demo mode: pass app names to capture individual and combinations, create mosaic PNG")
     args = parser.parse_args()
     
     # Create output directory in the current directory if not absolute
@@ -889,6 +888,48 @@ async def run_capture():
     else:
         output_dir = args.output
     
+    # DEMO MODE: capture each app and all non-empty combinations, then mosaic
+    if args.demo:
+        from PIL import Image
+        demo_apps = args.demo
+        print(f"Running in DEMO mode for apps: {demo_apps}")
+        groups = []
+        for item in demo_apps:
+            if "/" in item:
+                group = [x.strip() for x in item.split("/") if x.strip()]
+            else:
+                group = [item.strip()]
+            if group:
+                groups.append(group)
+        screenshots = []
+        for group in groups:
+            app_whitelist = group + ["Window Server", "Dock"]
+            print(f"Capturing for apps: {app_whitelist}")
+            _, img = capture_all_apps(app_whitelist=app_whitelist)
+            if img:
+                screenshots.append((group, img))
+        if not screenshots:
+            print("No screenshots captured in demo mode.")
+            return
+        # Mosaic-pack: grid (rows of sqrt(N))
+        def make_mosaic(images, pad=10, bg=(30,30,30)):
+            import rpack
+            sizes = [(img.width + pad, img.height + pad) for _, img in images]
+            positions = rpack.pack(sizes)
+            # Find the bounding box for the mosaic
+            max_x = max(x + w for (x, y), (w, h) in zip(positions, sizes))
+            max_y = max(y + h for (x, y), (w, h) in zip(positions, sizes))
+            mosaic = Image.new("RGBA", (max_x, max_y), bg)
+            for (group, img), (x, y) in zip(images, positions):
+                mosaic.paste(img, (x, y))
+            return mosaic
+        mosaic_img = make_mosaic(screenshots)
+        mosaic_path = os.path.join(output_dir, "demo_mosaic.png")
+        os.makedirs(output_dir, exist_ok=True)
+        mosaic_img.save(mosaic_path)
+        print(f"Demo mosaic saved to: {mosaic_path}")
+        return
+
     # Capture all apps and save to disk, including a recomposited screenshot
     print(f"Capturing screenshots of all running applications...")
     print(f"Saving screenshots to: {output_dir}")
@@ -897,9 +938,8 @@ async def run_capture():
     if args.filter:
         print(f"Filtering recomposited screenshot to only include: {', '.join(args.filter)} (plus Window Server and Dock)")
     
-    result = capture_all_apps(
+    result, img = capture_all_apps(
         save_to_disk=True, 
-        create_composite=args.composite, 
         app_whitelist=args.filter,
         output_dir=output_dir
     )
