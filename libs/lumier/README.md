@@ -54,9 +54,9 @@ Here's what's happening behind the scenes:
 ```bash
 # Run the container with temporary storage (using pre-built image from Docker Hub)
 docker run -it --rm \
-    --name lumier-vm \
+    --name macos-vm \
     -p 8006:8006 \
-    -e VM_NAME=lumier-vm \
+    -e VM_NAME=macos-vm \
     -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
     -e CPU_CORES=4 \
     -e RAM_SIZE=8192 \
