@@ -312,21 +312,6 @@ lume_pull() {
     # Inform users how to check pull progress
     echo "You can check the pull progress using: lume logs -f"
     
-    # Always print the curl command before executing
-    echo ""
-    echo "EXECUTING PULL COMMAND:"
-    echo "curl -X POST \\
-      -H \"Content-Type: application/json\" \\
-      -d '{
-        \"image\": \"$image\",
-        \"name\": \"$vm_name\",
-        \"registry\": \"$registry\",
-        \"organization\": \"$organization\",
-        \"storage\": \"$storage\"
-      }' \\
-      \"http://${api_host}:${api_port}/lume/pull\""
-    echo ""
-    
     # Pull image via API and capture response
     local response
     if [[ "${LUMIER_DEBUG:-0}" == "1" ]]; then
