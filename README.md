@@ -284,7 +284,13 @@ Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonica
 
 Thank you to all our supporters!
 
-[![Star History Chart](https://api.star-history.com/svg?repos=trycua/cua&type=Date)](https://www.star-history.com/#trycua/cua&Date)
+<a href="https://www.star-history.com/#trycua/cua&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=trycua/cua&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=trycua/cua&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=trycua/cua&type=Date" />
+ </picture>
+</a>
 
 ## Contributors
 
