@@ -52,10 +52,7 @@ Here's what's happening behind the scenes:
 ## Getting Started
 
 ```bash
-# 1. Navigate to the Lumier directory
-cd libs/lumier
-
-# 2. Run the container with temporary storage (using pre-built image from Docker Hub)
+# Run the container with temporary storage (using pre-built image from Docker Hub)
 docker run -it --rm \
     --name lumier-vm \
     -p 8006:8006 \

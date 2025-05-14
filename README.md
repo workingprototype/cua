@@ -103,7 +103,7 @@ For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
 ### Lume CLI Reference
 
 ```bash
-# Install Lume CLI
+# Install Lume CLI and background service
 curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
 
 # List all VMs
@@ -125,7 +125,28 @@ lume stop macos-sequoia-cua_latest
 lume delete macos-sequoia-cua_latest
 ```
 
+### Lumier CLI Reference
+
 For advanced container-like virtualization, check out [Lumier](./libs/lumier/README.md) - a Docker interface for macOS and Linux VMs.
+
+```bash
+# Install Lume CLI and background service
+curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
+
+# Run macOS in a Docker container
+docker run -it --rm \
+    --name lumier-vm \
+    -p 8006:8006 \
+    -v $(pwd)/storage:/storage \
+    -v $(pwd)/shared:/shared \
+    -e VM_NAME=lumier-vm \
+    -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
+    -e CPU_CORES=4 \
+    -e RAM_SIZE=8192 \
+    -e HOST_STORAGE_PATH=$(pwd)/storage \
+    -e HOST_SHARED_PATH=$(pwd)/shared \
+    trycua/lumier:latest
+```
 
 ## Resources
 
