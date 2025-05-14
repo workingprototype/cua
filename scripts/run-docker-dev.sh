@@ -47,7 +47,7 @@ case "$1" in
         if [ "$2" == "--interactive" ]; then
             print_info "Running the development Docker container with interactive shell..."
             print_info "Mounting source code from host"
-            print_info "Connecting to host.docker.internal:3000"
+            print_info "Connecting to host.docker.internal:7777"
             
             docker run -it --rm \
                 --platform=${PLATFORM} \
@@ -64,7 +64,7 @@ case "$1" in
                 exit 1
             fi
             print_info "Running example: $2"
-            print_info "Connecting to host.docker.internal:3000"
+            print_info "Connecting to host.docker.internal:7777"
             
             docker run -it --rm \
                 --platform=${PLATFORM} \

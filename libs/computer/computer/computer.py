@@ -1,6 +1,4 @@
 from typing import Optional, List, Literal, Dict, Any, Union, TYPE_CHECKING, cast
-from pylume import PyLume
-from pylume.models import VMRunOpts, VMUpdateOpts, ImageRef, SharedDirectory, VMStatus
 import asyncio
 from .models import Computer as ComputerConfig, Display
 from .interface.factory import InterfaceFactory
@@ -14,12 +12,11 @@ import logging
 from .telemetry import record_computer_initialization
 import os
 
-OSType = Literal["macos", "linux"]
+# Import provider related modules
+from .providers.base import VMProviderType
+from .providers.factory import VMProviderFactory
 
-# Import BaseComputerInterface for type annotations
-if TYPE_CHECKING:
-    from .interface.base import BaseComputerInterface
-
+OSType = Literal["macos", "linux", "windows"]
 
 class Computer:
     """Computer is the main class for interacting with the computer."""
@@ -36,8 +33,12 @@ class Computer:
         use_host_computer_server: bool = False,
         verbosity: Union[int, LogLevel] = logging.INFO,
         telemetry_enabled: bool = True,
-        port: Optional[int] = 3000,
+        provider_type: Union[str, VMProviderType] = VMProviderType.LUME,
+        port: Optional[int] = 7777,
+        noVNC_port: Optional[int] = 8006,
         host: str = os.environ.get("PYLUME_HOST", "localhost"),
+        storage: Optional[str] = None,
+        ephemeral: bool = False
     ):
         """Initialize a new Computer instance.
 
@@ -49,7 +50,7 @@ class Computer:
                     Defaults to "1024x768"
             memory: The VM memory allocation. Defaults to "8GB"
             cpu: The VM CPU allocation. Defaults to "4"
-            os: The operating system type ('macos' or 'linux')
+            os_type: The operating system type ('macos' or 'linux')
             name: The VM name
             image: The VM image name
             shared_directories: Optional list of directory paths to share with the VM
@@ -57,8 +58,12 @@ class Computer:
             verbosity: Logging level (standard Python logging levels: logging.DEBUG, logging.INFO, etc.)
                       LogLevel enum values are still accepted for backward compatibility
             telemetry_enabled: Whether to enable telemetry tracking. Defaults to True.
-            port: Optional port to use for the PyLume server
-            host: Host to use for PyLume connections (e.g. "localhost", "host.docker.internal")
+            provider_type: The VM provider type to use (lume, qemu, cloud)
+            port: Optional port to use for the VM provider server
+            noVNC_port: Optional port for the noVNC web interface (Lumier provider)
+            host: Host to use for VM provider connections (e.g. "localhost", "host.docker.internal")
+            storage: Optional path for persistent VM storage (Lumier provider)
+            ephemeral: Whether to use ephemeral storage
         """
 
         self.logger = Logger("cua.computer", verbosity)
@@ -67,8 +72,23 @@ class Computer:
         # Store original parameters
         self.image = image
         self.port = port
+        self.noVNC_port = noVNC_port
         self.host = host
         self.os_type = os_type
+        self.provider_type = provider_type
+        self.ephemeral = ephemeral
+
+        if ephemeral:
+            self.storage = "ephemeral"
+        else:
+            self.storage = storage
+            
+        # For Lumier provider, store the first shared directory path to use
+        # for VM file sharing
+        self.shared_path = None
+        if shared_directories and len(shared_directories) > 0:
+            self.shared_path = shared_directories[0]
+            self.logger.info(f"Using first shared directory for VM file sharing: {self.shared_path}")
 
         # Store telemetry preference
         self._telemetry_enabled = telemetry_enabled
@@ -116,25 +136,17 @@ class Computer:
                 memory=memory,
                 cpu=cpu,
             )
-            # Initialize PyLume but don't start the server yet - we'll do that in run()
-            self.config.pylume = PyLume(
-                debug=(self.verbosity == LogLevel.DEBUG),
-                port=3000,
-                use_existing_server=False,
-                server_start_timeout=120,  # Increase timeout to 2 minutes
-            )
+            # Initialize VM provider but don't start it yet - we'll do that in run()
+            self.config.vm_provider = None  # Will be initialized in run()
+
+        # Store shared directories config
+        self.shared_directories = shared_directories or []
+
+        # Placeholder for VM provider context manager
+        self._provider_context = None
 
         # Initialize with proper typing - None at first, will be set in run()
         self._interface = None
-        self.os = os
-        self.shared_paths = []
-        if shared_directories:
-            for path in shared_directories:
-                abs_path = os.path.abspath(os.path.expanduser(path))
-                if not os.path.exists(abs_path):
-                    raise ValueError(f"Shared directory does not exist: {path}")
-                self.shared_paths.append(abs_path)
-        self._pylume_context = None
         self.use_host_computer_server = use_host_computer_server
 
         # Record initialization in telemetry (if enabled)
@@ -145,7 +157,6 @@ class Computer:
 
     async def __aenter__(self):
         """Enter async context manager."""
-        await self.run()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -164,7 +175,7 @@ class Computer:
         # We could add cleanup here if needed in the future
         pass
 
-    async def run(self) -> None:
+    async def run(self) -> Optional[str]:
         """Initialize the VM and computer interface."""
         if TYPE_CHECKING:
             from .interface.base import BaseComputerInterface
@@ -199,87 +210,166 @@ class Computer:
             else:
                 # Start or connect to VM
                 self.logger.info(f"Starting VM: {self.image}")
-                if not self._pylume_context:
+                if not self._provider_context:
                     try:
-                        self.logger.verbose("Initializing PyLume context...")
+                        provider_type_name = self.provider_type.name if isinstance(self.provider_type, VMProviderType) else self.provider_type
+                        self.logger.verbose(f"Initializing {provider_type_name} provider context...")
 
-                        # Configure PyLume based on initialization parameters
-                        pylume_kwargs = {
-                            "debug": self.verbosity <= LogLevel.DEBUG,
-                            "server_start_timeout": 120,  # Increase timeout to 2 minutes
-                        }
+                        # Explicitly set provider parameters
+                        storage = "ephemeral" if self.ephemeral else self.storage
+                        verbose = self.verbosity >= LogLevel.DEBUG
+                        ephemeral = self.ephemeral
+                        port = self.port if self.port is not None else 7777
+                        host = self.host if self.host else "localhost"
+                        image = self.image
+                        shared_path = self.shared_path
+                        noVNC_port = self.noVNC_port
 
-                        # Add port if specified
-                        if hasattr(self, "port") and self.port is not None:
-                            pylume_kwargs["port"] = self.port
-                            self.logger.verbose(f"Using specified port for PyLume: {self.port}")
-
-                        # Add host if specified
-                        if hasattr(self, "host") and self.host != "localhost":
-                            pylume_kwargs["host"] = self.host
-                            self.logger.verbose(f"Using specified host for PyLume: {self.host}")
-
-                        # Create PyLume instance with configured parameters
-                        self.config.pylume = PyLume(**pylume_kwargs)
-
-                        self._pylume_context = await self.config.pylume.__aenter__()  # type: ignore[attr-defined]
-                        self.logger.verbose("PyLume context initialized successfully")
+                        # Create VM provider instance with explicit parameters
+                        try:
+                            if self.provider_type == VMProviderType.LUMIER:
+                                self.logger.info(f"Using VM image for Lumier provider: {image}")
+                                if shared_path:
+                                    self.logger.info(f"Using shared path for Lumier provider: {shared_path}")
+                                if noVNC_port:
+                                    self.logger.info(f"Using noVNC port for Lumier provider: {noVNC_port}")
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    shared_path=shared_path,
+                                    image=image,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                    noVNC_port=noVNC_port,
+                                )
+                            elif self.provider_type == VMProviderType.LUME:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                )
+                            elif self.provider_type == VMProviderType.CLOUD:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                )
+                            else:
+                                raise ValueError(f"Unsupported provider type: {self.provider_type}")
+                            self._provider_context = await self.config.vm_provider.__aenter__()
+                            self.logger.verbose("VM provider context initialized successfully")
+                        except ImportError as ie:
+                            self.logger.error(f"Failed to import provider dependencies: {ie}")
+                            if str(ie).find("lume") >= 0 and str(ie).find("lumier") < 0:
+                                self.logger.error("Please install with: pip install cua-computer[lume]")
+                            elif str(ie).find("lumier") >= 0 or str(ie).find("docker") >= 0:
+                                self.logger.error("Please install with: pip install cua-computer[lumier] and make sure Docker is installed")
+                            elif str(ie).find("cloud") >= 0:
+                                self.logger.error("Please install with: pip install cua-computer[cloud]")
+                            raise
                     except Exception as e:
-                        self.logger.error(f"Failed to initialize PyLume context: {e}")
-                        raise RuntimeError(f"Failed to initialize PyLume: {e}")
+                        self.logger.error(f"Failed to initialize provider context: {e}")
+                        raise RuntimeError(f"Failed to initialize VM provider: {e}")
 
-                # Try to get the VM, if it doesn't exist, return an error
+                # Check if VM exists or create it
                 try:
-                    vm = await self.config.pylume.get_vm(self.config.name)  # type: ignore[attr-defined]
+                    if self.config.vm_provider is None:
+                        raise RuntimeError(f"VM provider not initialized for {self.config.name}")
+                        
+                    vm = await self.config.vm_provider.get_vm(self.config.name)
                     self.logger.verbose(f"Found existing VM: {self.config.name}")
                 except Exception as e:
                     self.logger.error(f"VM not found: {self.config.name}")
-                    self.logger.error(
-                        f"Please pull the VM first with lume pull macos-sequoia-cua-sparse:latest: {e}"
-                    )
+                    self.logger.error(f"Error: {e}")
                     raise RuntimeError(
-                        f"VM not found: {self.config.name}. Please pull the VM first."
+                        f"VM {self.config.name} could not be found or created."
                     )
 
-                # Convert paths to SharedDirectory objects
-                shared_directories = []
-                for path in self.shared_paths:
+                # Convert paths to dictionary format for shared directories
+                shared_dirs = []
+                for path in self.shared_directories:
                     self.logger.verbose(f"Adding shared directory: {path}")
-                    shared_directories.append(
-                        SharedDirectory(host_path=path)  # type: ignore[arg-type]
-                    )
+                    path = os.path.abspath(os.path.expanduser(path))
+                    if os.path.exists(path):
+                        # Add path in format expected by Lume API
+                        shared_dirs.append({
+                            "hostPath": path,
+                            "readOnly": False
+                        })
+                    else:
+                        self.logger.warning(f"Shared directory does not exist: {path}")
+                        
+                # Prepare run options to pass to the provider
+                run_opts = {}
 
-                # Run with shared directories
-                self.logger.info(f"Starting VM {self.config.name}...")
-                run_opts = VMRunOpts(
-                    no_display=False,  # type: ignore[arg-type]
-                    shared_directories=shared_directories,  # type: ignore[arg-type]
-                )
+                # Add display information if available
+                if self.config.display is not None:
+                    display_info = {
+                        "width": self.config.display.width,
+                        "height": self.config.display.height,
+                    }
+                    
+                    # Check if scale_factor exists before adding it
+                    if hasattr(self.config.display, "scale_factor"):
+                        display_info["scale_factor"] = self.config.display.scale_factor
+                    
+                    run_opts["display"] = display_info
 
-                # Log the run options for debugging
-                self.logger.info(f"VM run options: {vars(run_opts)}")
+                # Add shared directories if available
+                if self.shared_directories:
+                    run_opts["shared_directories"] = shared_dirs.copy()
 
-                # Log the equivalent curl command for debugging
-                payload = json.dumps({"noDisplay": False, "sharedDirectories": []})
-                curl_cmd = f"curl -X POST 'http://localhost:3000/lume/vms/{self.config.name}/run' -H 'Content-Type: application/json' -d '{payload}'"
-                self.logger.info(f"Equivalent curl command:")
-                self.logger.info(f"{curl_cmd}")
-
+                # Run the VM with the provider
                 try:
-                    response = await self.config.pylume.run_vm(self.config.name, run_opts)  # type: ignore[attr-defined]
+                    if self.config.vm_provider is None:
+                        raise RuntimeError(f"VM provider not initialized for {self.config.name}")
+                        
+                    # Use the complete run_opts we prepared earlier
+                    # Handle ephemeral storage for run_vm method too
+                    storage_param = "ephemeral" if self.ephemeral else self.storage
+                    
+                    # Log the image being used
+                    self.logger.info(f"Running VM using image: {self.image}")
+                    
+                    # Call provider.run_vm with explicit image parameter
+                    response = await self.config.vm_provider.run_vm(
+                        image=self.image,
+                        name=self.config.name,
+                        run_opts=run_opts,
+                        storage=storage_param
+                    )
                     self.logger.info(f"VM run response: {response if response else 'None'}")
                 except Exception as run_error:
                     self.logger.error(f"Failed to run VM: {run_error}")
                     raise RuntimeError(f"Failed to start VM: {run_error}")
 
-                # Wait for VM to be ready with required properties
-                self.logger.info("Waiting for VM to be ready...")
+                # Wait for VM to be ready with a valid IP address
+                self.logger.info("Waiting for VM to be ready with a valid IP address...")
                 try:
-                    vm = await self.wait_vm_ready()
-                    if not vm or not vm.ip_address:  # type: ignore[attr-defined]
-                        raise RuntimeError(f"VM {self.config.name} failed to get IP address")
-                    ip_address = vm.ip_address  # type: ignore[attr-defined]
-                    self.logger.info(f"VM is ready with IP: {ip_address}")
+                    # Increased values for Lumier provider which needs more time for initial setup
+                    if self.provider_type == VMProviderType.LUMIER:
+                        max_retries = 60  # Increased for Lumier VM startup which takes longer
+                        retry_delay = 3    # 3 seconds between retries for Lumier
+                    else:
+                        max_retries = 30  # Default for other providers
+                        retry_delay = 2    # 2 seconds between retries
+                    
+                    self.logger.info(f"Waiting up to {max_retries * retry_delay} seconds for VM to be ready...")
+                    ip = await self.get_ip(max_retries=max_retries, retry_delay=retry_delay)
+                    
+                    # If we get here, we have a valid IP
+                    self.logger.info(f"VM is ready with IP: {ip}")
+                    ip_address = ip
+                except TimeoutError as timeout_error:
+                    self.logger.error(str(timeout_error))
+                    raise RuntimeError(f"VM startup timed out: {timeout_error}")
                 except Exception as wait_error:
                     self.logger.error(f"Error waiting for VM: {wait_error}")
                     raise RuntimeError(f"VM failed to become ready: {wait_error}")
@@ -288,6 +378,10 @@ class Computer:
             raise RuntimeError(f"Failed to initialize computer: {e}")
 
         try:
+            # Verify we have a valid IP before initializing the interface
+            if not ip_address or ip_address == "unknown" or ip_address == "0.0.0.0":
+                raise RuntimeError(f"Cannot initialize interface - invalid IP address: {ip_address}")
+                
             # Initialize the interface using the factory with the specified OS
             self.logger.info(f"Initializing interface for {self.os_type} at {ip_address}")
             from .interface.base import BaseComputerInterface
@@ -304,10 +398,11 @@ class Computer:
 
             try:
                 # Use a single timeout for the entire connection process
-                await self._interface.wait_for_ready(timeout=60)
+                # The VM should already be ready at this point, so we're just establishing the connection
+                await self._interface.wait_for_ready(timeout=30)
                 self.logger.info("WebSocket interface connected successfully")
             except TimeoutError as e:
-                self.logger.error("Failed to connect to WebSocket interface")
+                self.logger.error(f"Failed to connect to WebSocket interface at {ip_address}")
                 raise TimeoutError(
                     f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}"
                 )
@@ -335,41 +430,26 @@ class Computer:
         start_time = time.time()
 
         try:
-            if self._running:
-                self._running = False
-                self.logger.info("Stopping Computer...")
+            self.logger.info("Stopping Computer...")
 
-            if hasattr(self, "_stop_event"):
-                self._stop_event.set()
-                if hasattr(self, "_keep_alive_task"):
-                    await self._keep_alive_task
-
-            if self._interface:  # Only try to close interface if it exists
-                self.logger.verbose("Closing interface...")
-                # For host computer server, just use normal close to keep the server running
-                if self.use_host_computer_server:
-                    self._interface.close()
-                else:
-                    # For VM mode, force close the connection
-                    if hasattr(self._interface, "force_close"):
-                        self._interface.force_close()
-                    else:
-                        self._interface.close()
-
-            if not self.use_host_computer_server and self._pylume_context:
+            # In VM mode, first explicitly stop the VM, then exit the provider context
+            if not self.use_host_computer_server and self._provider_context and self.config.vm_provider is not None:
                 try:
                     self.logger.info(f"Stopping VM {self.config.name}...")
-                    await self.config.pylume.stop_vm(self.config.name)  # type: ignore[attr-defined]
+                    await self.config.vm_provider.stop_vm(
+                    name=self.config.name,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
                 except Exception as e:
-                    self.logger.verbose(f"Error stopping VM: {e}")  # VM might already be stopped
-                self.logger.verbose("Closing PyLume context...")
-                await self.config.pylume.__aexit__(None, None, None)  # type: ignore[attr-defined]
-                self._pylume_context = None
+                    self.logger.error(f"Error stopping VM: {e}")
+
+                self.logger.verbose("Closing VM provider context...")
+                await self.config.vm_provider.__aexit__(None, None, None)
+                self._provider_context = None
+
             self.logger.info("Computer stopped")
         except Exception as e:
-            self.logger.debug(
-                f"Error during cleanup: {e}"
-            )  # Log as debug since this might be expected
+            self.logger.debug(f"Error during cleanup: {e}")  # Log as debug since this might be expected
         finally:
             # Log stop time for performance monitoring
             duration_ms = (time.time() - start_time) * 1000
@@ -377,14 +457,44 @@ class Computer:
         return
 
     # @property
-    async def get_ip(self) -> str:
-        """Get the IP address of the VM or localhost if using host computer server."""
+    async def get_ip(self, max_retries: int = 15, retry_delay: int = 2) -> str:
+        """Get the IP address of the VM or localhost if using host computer server.
+        
+        This method delegates to the provider's get_ip method, which waits indefinitely 
+        until the VM has a valid IP address.
+        
+        Args:
+            max_retries: Unused parameter, kept for backward compatibility
+            retry_delay: Delay between retries in seconds (default: 2)
+            
+        Returns:
+            IP address of the VM or localhost if using host computer server
+        """
+        # For host computer server, always return localhost immediately
         if self.use_host_computer_server:
             return "127.0.0.1"
-        ip = await self.config.get_ip()
-        return ip or "unknown"  # Return "unknown" if ip is None
+            
+        # Get IP from the provider - each provider implements its own waiting logic
+        if self.config.vm_provider is None:
+            raise RuntimeError("VM provider is not initialized")
+        
+        # Log that we're waiting for the IP
+        self.logger.info(f"Waiting for VM {self.config.name} to get an IP address...")
+        
+        # Call the provider's get_ip method which will wait indefinitely
+        storage_param = "ephemeral" if self.ephemeral else self.storage
+        ip = await self.config.vm_provider.get_ip(
+            name=self.config.name,
+            storage=storage_param,
+            retry_delay=retry_delay
+        )
+        
+        # Log success
+        self.logger.info(f"VM {self.config.name} has IP address: {ip}")
+        return ip
+        
 
-    async def wait_vm_ready(self) -> Optional[Union[Dict[str, Any], "VMStatus"]]:
+    async def wait_vm_ready(self) -> Optional[Dict[str, Any]]:
         """Wait for VM to be ready with an IP address.
 
         Returns:
@@ -407,7 +517,11 @@ class Computer:
 
             try:
                 # Keep polling for VM info
-                vm = await self.config.pylume.get_vm(self.config.name)  # type: ignore[attr-defined]
+                if self.config.vm_provider is None:
+                    self.logger.error("VM provider is not initialized")
+                    vm = None
+                else:
+                    vm = await self.config.vm_provider.get_vm(self.config.name)
 
                 # Log full VM properties for debugging (every 30 attempts)
                 if attempts % 30 == 0:
@@ -447,10 +561,11 @@ class Computer:
                     self.logger.error(f"Persistent error getting VM status: {str(e)}")
                     self.logger.info("Trying to get VM list for debugging...")
                     try:
-                        vms = await self.config.pylume.list_vms()  # type: ignore[attr-defined]
-                        self.logger.info(
-                            f"Available VMs: {[vm.name for vm in vms if hasattr(vm, 'name')]}"
-                        )
+                        if self.config.vm_provider is not None:
+                            vms = await self.config.vm_provider.list_vms()
+                            self.logger.info(
+                                f"Available VMs: {[getattr(vm, 'name', None) for vm in vms if hasattr(vm, 'name')]}"
+                            )
                     except Exception as list_error:
                         self.logger.error(f"Failed to list VMs: {str(list_error)}")
 
@@ -462,9 +577,14 @@ class Computer:
 
         # Try to get final VM status for debugging
         try:
-            vm = await self.config.pylume.get_vm(self.config.name)  # type: ignore[attr-defined]
-            status = getattr(vm, "status", "unknown") if vm else "unknown"
-            ip = getattr(vm, "ip_address", None) if vm else None
+            if self.config.vm_provider is not None:
+                vm = await self.config.vm_provider.get_vm(self.config.name)
+                # VM data is returned as a dictionary from the Lumier provider
+                status = vm.get('status', 'unknown') if vm else "unknown"
+                ip = vm.get('ip_address') if vm else None
+            else:
+                status = "unknown"
+                ip = None
             self.logger.error(f"Final VM status: {status}, IP: {ip}")
         except Exception as e:
             self.logger.error(f"Failed to get final VM status: {str(e)}")
@@ -478,10 +598,18 @@ class Computer:
         self.logger.info(
             f"Updating VM settings: CPU={cpu or self.config.cpu}, Memory={memory or self.config.memory}"
         )
-        update_opts = VMUpdateOpts(
-            cpu=cpu or int(self.config.cpu), memory=memory or self.config.memory
-        )
-        await self.config.pylume.update_vm(self.config.image, update_opts)  # type: ignore[attr-defined]
+        update_opts = {
+            "cpu": cpu or int(self.config.cpu), 
+            "memory": memory or self.config.memory
+        }
+        if self.config.vm_provider is not None:
+                await self.config.vm_provider.update_vm(
+                    name=self.config.name,
+                    update_opts=update_opts,
+                    storage=self.storage  # Pass storage explicitly for clarity
+                )
+        else:
+            raise RuntimeError("VM provider not initialized")
 
     def get_screenshot_size(self, screenshot: bytes) -> Dict[str, int]:
         """Get the dimensions of a screenshot.
