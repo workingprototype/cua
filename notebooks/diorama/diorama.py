@@ -7,7 +7,7 @@ import logging
 import sys
 import io
 from typing import Union
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from draw import capture_all_apps, AppActivationContext, get_frontmost_and_active_app, get_all_windows, get_running_apps
 
@@ -107,7 +107,7 @@ class Diorama:
             with focus_context:
                 try:
                     if action == "screenshot":
-                        app_whitelist = list(args["app_list"]) + ["Window Server", "Dock"]
+                        app_whitelist = list(args["app_list"])
                         logger.info(f"Taking screenshot for apps: {app_whitelist}")
                         result, img = capture_all_apps(
                             app_whitelist=app_whitelist,
@@ -180,7 +180,11 @@ class Diorama:
                 "arguments": {"app_list": self._diorama.app_list, **(arguments or {})},
                 "future": future
             })
-            return await future
+            try:
+                return await future
+            except asyncio.CancelledError:
+                logger.warning(f"Command was cancelled: {action}")
+                return None
 
         async def screenshot(self, as_bytes: bool = True) -> Union[bytes, Image]:
             result, img = await self._send_cmd("screenshot")
@@ -246,18 +250,28 @@ class Diorama:
             if not self._scene_hitboxes:
                 await self.screenshot() # get hitboxes
             # Try all hitboxes
-            for h in self._scene_hitboxes:
-                rect = h.get("hitbox")
-                if not rect or len(rect) != 4:
+            for h in self._scene_hitboxes[::-1]:
+                rect_from = h.get("hitbox")
+                rect_to = h.get("target")
+                if not rect_from or len(rect_from) != 4:
                     continue
-                x0, y0, x1, y1 = rect
-                width = x1 - x0
-                height = y1 - y0
-                abs_x = x0 + x * width
-                abs_y = y0 + y * height
-                # Check if (abs_x, abs_y) is inside this hitbox
-                if x0 <= abs_x <= x1 and y0 <= abs_y <= y1:
-                    return abs_x, abs_y
+                
+                # check if (x, y) is inside rect_from
+                x0, y0, x1, y1 = rect_from
+                if x0 <= x <= x1 and y0 <= y <= y1:
+                    logger.info(f"Found hitbox: {h}")
+                    # remap (x, y) to rect_to
+                    tx0, ty0, tx1, ty1 = rect_to
+                    
+                    # calculate offset from x0, y0
+                    offset_x = x - x0
+                    offset_y = y - y0
+                    
+                    # remap offset to rect_to
+                    tx = tx0 + offset_x
+                    ty = ty0 + offset_y
+                    
+                    return tx, ty
             return x, y
 
         async def to_screenshot_coordinates(self, x: float, y: float) -> tuple[float, float]:
@@ -272,23 +286,34 @@ class Diorama:
             """
             if not self._scene_hitboxes:
                 await self.screenshot() # get hitboxes
-            for h in self._scene_hitboxes:
-                rect = h.get("target")
-                if not rect or len(rect) != 4:
+            # Try all hitboxes
+            for h in self._scene_hitboxes[::-1]:
+                rect_from = h.get("target")
+                rect_to = h.get("hitbox")
+                if not rect_from or len(rect_from) != 4:
                     continue
-                x0, y0, x1, y1 = rect
-                width = x1 - x0
-                height = y1 - y0
+                
+                # check if (x, y) is inside rect_from
+                x0, y0, x1, y1 = rect_from
                 if x0 <= x <= x1 and y0 <= y <= y1:
-                    rel_x = (x - x0) / width if width else 0.0
-                    rel_y = (y - y0) / height if height else 0.0
-                    return rel_x, rel_y
+                    # remap (x, y) to rect_to
+                    tx0, ty0, tx1, ty1 = rect_to
+                    
+                    # calculate offset from x0, y0
+                    offset_x = x - x0
+                    offset_y = y - y0
+                    
+                    # remap offset to rect_to
+                    tx = tx0 + offset_x
+                    ty = ty0 + offset_y
+                    
+                    return tx, ty
             return x, y
 
-async def main():
-    from PIL import Image, ImageDraw
-    from draw import capture_all_apps
+import pyautogui
+import time
 
+async def main():
     desktop1 = Diorama.create_from_apps(["Discord", "Notes"])
     desktop2 = Diorama.create_from_apps(["Terminal"])
 
@@ -297,7 +322,71 @@ async def main():
 
     img1.save("app_screenshots/desktop1.png")
     img2.save("app_screenshots/desktop2.png")
+    # Initialize Diorama desktop
+    desktop3 = Diorama.create_from_apps("Safari")
+    screen_size = await desktop3.interface.get_screen_size()
+    print(screen_size)
 
+    # Take initial screenshot
+    img = await desktop3.interface.screenshot(as_bytes=False)
+    img.save("app_screenshots/desktop3.png")
+
+    # Prepare hitboxes and draw on the single screenshot
+    hitboxes = desktop3.interface._scene_hitboxes[::-1]
+    base_img = img.copy()
+    draw = ImageDraw.Draw(base_img)
+    for h in hitboxes:
+        rect = h.get("hitbox")
+        if not rect or len(rect) != 4:
+            continue
+        draw.rectangle(rect, outline="red", width=2)
+
+    # Track and draw mouse position in real time (single screenshot size)
+    last_mouse_pos = None
+    print("Tracking mouse... Press Ctrl+C to stop.")
+    try:
+        while True:
+            mouse_x, mouse_y = pyautogui.position()
+            if last_mouse_pos != (mouse_x, mouse_y):
+                last_mouse_pos = (mouse_x, mouse_y)
+                # Map to screenshot coordinates
+                sx, sy = await desktop3.interface.to_screenshot_coordinates(mouse_x, mouse_y)
+                # Draw on a copy of the screenshot
+                frame = base_img.copy()
+                frame_draw = ImageDraw.Draw(frame)
+                frame_draw.ellipse((sx-5, sy-5, sx+5, sy+5), fill="blue", outline="blue")
+                # Save the frame
+                frame.save("app_screenshots/desktop3_mouse.png")
+                print(f"Mouse at screen ({mouse_x}, {mouse_y}) -> screenshot ({sx:.1f}, {sy:.1f})")
+            time.sleep(0.05)  # Throttle updates to ~20 FPS
+    except KeyboardInterrupt:
+        print("Stopped tracking.")
+
+        draw.text((rect[0], rect[1]), str(idx), fill="red")
+    
+    canvas.save("app_screenshots/desktop3_hitboxes.png")
+    
+    
+
+    # move mouse in a square spiral around the screen
+    import math
+    import random
+    
+    step = 20  # pixels per move
+    dot_radius = 10
+    width = screen_size["width"]
+    height = screen_size["height"]
+    x, y = 0, 10
+
+    while x < width and y < height:
+        await desktop3.interface.move_cursor(x, y)
+        img = await desktop3.interface.screenshot(as_bytes=False)
+        draw = ImageDraw.Draw(img)
+        draw.ellipse((x-dot_radius, y-dot_radius, x+dot_radius, y+dot_radius), fill="red")
+        img.save("current.png")
+        await asyncio.sleep(0.03)
+        x += step
+        y = math.sin(x / width * math.pi * 2) * 50 + 25
 
 if __name__ == "__main__":
     asyncio.run(main())

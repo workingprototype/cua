@@ -465,7 +465,7 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
         _draw_layer(cg_context, first_pass_windows, app_source_rect, app_target_rect)
         
         hitboxes.append({
-            "hitbox": [0, 0, app_bounds["width"], app_bounds["height"]],
+            "hitbox": [0, menubar_bounds["height"], app_bounds["width"], menubar_bounds["height"] + app_bounds["height"]],
             "target": [
                 app_source_rect.origin.x, 
                 app_source_rect.origin.y, 
@@ -505,6 +505,8 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
                 elif item["subrole"] == "AXMinimizedWindowDockItem":
                     if not any(window["name"] == item["title"] and window["role"] == "app" and window["owner"] in app_whitelist for window in all_windows):
                         continue
+                elif item["subrole"] == "AXFolderDockItem":
+                    continue
 
             # Preserve unscaled (original) source position and size before any modification
             hitbox_position = source_position
@@ -1031,6 +1033,12 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
 
         # DEBUG: Save hitboxes to disk
         if desktop_screenshot and save_to_disk and output_dir:
+            desktop_path = os.path.join(output_dir, "desktop.png")
+            desktop_screenshot.save(desktop_path)
+            result["desktop_screenshot"] = desktop_path
+            
+            logger.info(f"Saved desktop screenshot to {desktop_path}")
+
             if app_whitelist:
                 # Take screenshot without whitelist
                 desktop_screenshot_full, hitboxes_full = draw_desktop_screenshot(
@@ -1053,10 +1061,6 @@ def capture_all_apps(save_to_disk: bool = False, app_whitelist: List[str] = None
                     combined.save(side_by_side_path)
                     result["side_by_side_hitboxes"] = side_by_side_path
             else:
-                desktop_path = os.path.join(output_dir, "desktop.png")
-                desktop_screenshot.save(desktop_path)
-                result["desktop_screenshot"] = desktop_path
-
                 # Overlay hitboxes using new function
                 hitbox_img = _draw_hitboxes(desktop_screenshot.copy(), hitboxes, key="hitbox")
                 hitbox_path = os.path.join(output_dir, "hitboxes.png")
@@ -1099,9 +1103,8 @@ async def run_capture():
                 groups.append(group)
         screenshots = []
         for group in groups:
-            app_whitelist = group + ["Window Server", "Dock"]
-            print(f"Capturing for apps: {app_whitelist}")
-            _, img = capture_all_apps(app_whitelist=app_whitelist)
+            print(f"Capturing for apps: {group}")
+            _, img = capture_all_apps(app_whitelist=group)
             if img:
                 screenshots.append((group, img))
         if not screenshots:
