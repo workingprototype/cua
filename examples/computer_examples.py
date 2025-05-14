@@ -2,7 +2,6 @@ import os
 import asyncio
 from pathlib import Path
 import sys
-import json
 import traceback
 
 # Load environment variables from .env file
@@ -32,15 +31,14 @@ async def main():
             display="1024x768", 
             memory="8GB", 
             cpu="4", 
-            os_type="linux",
-            image="ubuntu-noble-vanilla:latest",
-            name="ubuntu-noble-vanilla_latest",
-            verbosity=LogLevel.NORMAL,  # Use QUIET to suppress most logs
+            os_type="macos",
+            name="macos",
+            verbosity=LogLevel.VERBOSE,
             provider_type=VMProviderType.LUME,
-            # storage="/Users/francescobonacci/repos/trycua/computer/examples/storage",
-            # shared_directories=[
-            #     "/Users/francescobonacci/repos/trycua/computer/examples/shared"
-            # ],
+            storage="/Users/<USER>/repos/trycua/computer/examples/storage",
+            shared_directories=[
+                "/Users/<USER>/repos/trycua/computer/examples/shared"
+            ],
             ephemeral=False,
         )
         

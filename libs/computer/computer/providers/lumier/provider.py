@@ -46,7 +46,7 @@ class LumierProvider(BaseVMProvider):
         self, 
         port: Optional[int] = 7777,
         host: str = "localhost",
-        storage: Optional[str] = None,
+        storage: Optional[str] = None,  # Can be a path or 'ephemeral'
         shared_path: Optional[str] = None,
         image: str = "macos-sequoia-cua:latest",  # VM image to use
         verbose: bool = False,

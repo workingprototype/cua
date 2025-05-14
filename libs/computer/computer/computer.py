@@ -215,53 +215,54 @@ class Computer:
                         provider_type_name = self.provider_type.name if isinstance(self.provider_type, VMProviderType) else self.provider_type
                         self.logger.verbose(f"Initializing {provider_type_name} provider context...")
 
-                        # Configure provider based on initialization parameters
-                        provider_kwargs = {
-                            "verbose": self.verbosity >= LogLevel.DEBUG,
-                            "ephemeral": self.ephemeral,  # Pass ephemeral flag to provider
-                        }
-                        
-                        # Handle storage path separately from ephemeral flag
-                        if self.ephemeral:
-                            self.logger.info("Using ephemeral storage and ephemeral VMs")
-                            # Use ephemeral storage location
-                            provider_kwargs["storage"] = "ephemeral"
-                        else:
-                            # Use explicitly configured storage
-                            provider_kwargs["storage"] = self.storage
-                        
-                        # VM name is already set in self.config.name and will be used when calling provider methods
-                        
-                        # For Lumier provider, add specific configuration
-                        if self.provider_type == VMProviderType.LUMIER:
-                            # Pass VM image to LumierProvider
-                            provider_kwargs["image"] = self.image
-                            self.logger.info(f"Using VM image for Lumier provider: {self.image}")
-                            
-                            # Add shared_path if specified (for file sharing between host and VM)
-                            if self.shared_path:
-                                provider_kwargs["shared_path"] = self.shared_path
-                                self.logger.info(f"Using shared path for Lumier provider: {self.shared_path}")
-                                
-                            # Add noVNC_port if specified (for web interface)
-                            if self.noVNC_port:
-                                provider_kwargs["noVNC_port"] = self.noVNC_port
-                                self.logger.info(f"Using noVNC port for Lumier provider: {self.noVNC_port}")
-                        elif self.port is not None:
-                            # For other providers, set port if specified
-                            provider_kwargs["port"] = self.port
-                            self.logger.verbose(f"Using specified port for provider: {self.port}")
+                        # Explicitly set provider parameters
+                        storage = "ephemeral" if self.ephemeral else self.storage
+                        verbose = self.verbosity >= LogLevel.DEBUG
+                        ephemeral = self.ephemeral
+                        port = self.port if self.port is not None else 7777
+                        host = self.host if self.host else "localhost"
+                        image = self.image
+                        shared_path = self.shared_path
+                        noVNC_port = self.noVNC_port
 
-                        # Set host if specified 
-                        if self.host:
-                            provider_kwargs["host"] = self.host
-                            self.logger.verbose(f"Using specified host for provider: {self.host}")
-
-                        # Create VM provider instance with configured parameters
+                        # Create VM provider instance with explicit parameters
                         try:
-                            self.config.vm_provider = VMProviderFactory.create_provider(
-                                self.provider_type, **provider_kwargs
-                            )
+                            if self.provider_type == VMProviderType.LUMIER:
+                                self.logger.info(f"Using VM image for Lumier provider: {image}")
+                                if shared_path:
+                                    self.logger.info(f"Using shared path for Lumier provider: {shared_path}")
+                                if noVNC_port:
+                                    self.logger.info(f"Using noVNC port for Lumier provider: {noVNC_port}")
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    shared_path=shared_path,
+                                    image=image,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                    noVNC_port=noVNC_port,
+                                )
+                            elif self.provider_type == VMProviderType.LUME:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                )
+                            elif self.provider_type == VMProviderType.CLOUD:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                )
+                            else:
+                                raise ValueError(f"Unsupported provider type: {self.provider_type}")
                             self._provider_context = await self.config.vm_provider.__aenter__()
                             self.logger.verbose("VM provider context initialized successfully")
                         except ImportError as ie:
