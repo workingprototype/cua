@@ -67,7 +67,7 @@ The macOS CUA image contains the default Mac apps and the Computer Server for ea
 ### Step 3: Install Python SDK
 
 ```bash
-pip install cua-computer "cua-agent[all]"
+pip install "cua-computer[all]" "cua-agent[all]"
 ```
 
 Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building from source.
@@ -162,8 +162,8 @@ docker run -it --rm \
 |--------|-------------|---------------|
 | [**Lume**](./libs/lume/README.md) | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
 | [**Lumier**](./libs/lumier/README.md) | Docker interface for macOS and Linux VMs | `docker pull trycua/lumier:latest` |
-| [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install cua-computer` |
-| [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install cua-agent` |
+| [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install "cua-computer[all]"` |
+| [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install "cua-agent[all]"` |
 | [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
 | [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
 | [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` |
