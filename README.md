@@ -161,6 +161,7 @@ docker run -it --rm \
 | Module | Description | Installation |
 |--------|-------------|---------------|
 | [**Lume**](./libs/lume/README.md) | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
+| [**Lumier**](./libs/lumier/README.md) | Docker interface for macOS and Linux VMs | `docker pull trycua/lumier:latest` |
 | [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install cua-computer` |
 | [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install cua-agent` |
 | [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
