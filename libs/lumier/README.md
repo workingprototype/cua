@@ -17,6 +17,10 @@
 
 macOS and Linux virtual machines in a Docker container.
 
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/2ecca01c-cb6f-4c35-a5a7-69bc58bd94e2" width="800" controls></video>
+</div>
+
 ## What is Lumier?
 **Lumier** is an interface for running macOS virtual machines with minimal setup. It uses Docker as a packaging system to deliver a pre-configured environment that connects to the `lume` virtualization service running on your host machine. With Lumier, you get:
 
