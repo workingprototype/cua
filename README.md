@@ -280,17 +280,11 @@ We welcome contributions to CUA! Please refer to our [Contributing Guidelines](C
 
 Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonical are registered trademarks of Canonical Ltd. Microsoft is a registered trademark of Microsoft Corporation. This project is not affiliated with, endorsed by, or sponsored by Apple Inc., Canonical Ltd., or Microsoft Corporation.
 
-## Star History Chart
+## Stargazers
 
 Thank you to all our supporters!
 
-<a href="https://www.star-history.com/#trycua/cua&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=trycua/cua&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=trycua/cua&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=trycua/cua&type=Date" />
- </picture>
-</a>
+[![Stargazers over time](https://starchart.cc/trycua/cua.svg?variant=adaptive)](https://starchart.cc/trycua/cua)
 
 ## Contributors
 
