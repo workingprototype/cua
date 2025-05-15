@@ -137,9 +137,6 @@ class UIElement:
         self.role_description = ""
         self.value = None
         self.max_depth = max_depth
-        self.selected_text = None
-        self.selected_range = None
-        self.focused = False
 
         # Set role
         self.role = element_attribute(element, kAXRoleAttribute)
@@ -158,21 +155,6 @@ class UIElement:
         self.enabled = element_attribute(element, kAXEnabledAttribute)
         if self.enabled is None:
             self.enabled = False
-            
-        # Check if element is focused - using a simpler approach
-        try:
-            # Get the focused state directly from the element if available
-            # focused_attr = element_attribute(element, "AXFocused")
-            # if focused_attr is not None and focused_attr is True:
-            #     self.focused = True
-            
-            # Get the focused element
-            focused_element = element_attribute(element, kAXFocusedUIElementAttribute)
-            if focused_element and Foundation.CFEqual(focused_element, element):
-                self.focused = True
-        except:
-            # If there's an error, assume it's not focused
-            pass
 
         # Set position and size
         position = element_attribute(element, kAXPositionAttribute)
@@ -215,14 +197,6 @@ class UIElement:
             # Check if it's an accessibility element by checking its type ID
             elif Foundation.CFGetTypeID(attribute_value) == AXUIElementGetTypeID():  # type: ignore
                 self.value = UIElement(attribute_value, offset_x, offset_y)
-                
-        # Get selected text if available
-        self.selected_text = element_attribute(element, kAXSelectedTextAttribute)
-        
-        # Get selected text range if available
-        selected_range_value = element_attribute(element, kAXSelectedTextRangeAttribute)
-        if selected_range_value:
-            self.selected_range = element_value(selected_range_value, kAXValueCFRangeType)
 
         # Set children
         if self.max_depth is None or self.max_depth > 0:
@@ -351,7 +325,7 @@ class UIElement:
         else:
             size = ""
             
-        result = {
+        return {
             "id": self.identifier,
             "name": self.name,
             "role": self.role,
@@ -367,18 +341,6 @@ class UIElement:
             "visible_bbox": self.visible_bbox,
             "children": children_to_dict(self.children),
         }
-        
-        # Add selected text information if available
-        if self.selected_text:
-            result["selected_text"] = self.selected_text
-            
-        if self.selected_range:
-            result["selected_range"] = {
-                "location": self.selected_range.location,
-                "length": self.selected_range.length
-            }
-            
-        return result
 
 
 class MacOSAccessibilityHandler(BaseAccessibilityHandler):
