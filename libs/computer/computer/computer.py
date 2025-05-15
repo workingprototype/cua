@@ -21,6 +21,19 @@ OSType = Literal["macos", "linux", "windows"]
 class Computer:
     """Computer is the main class for interacting with the computer."""
 
+    def create_desktop_from_apps(self, apps):
+        """
+        Create a virtual desktop from a list of app names, returning a DioramaComputer
+        that proxies Diorama.Interface but uses diorama_cmds via the computer interface.
+
+        Args:
+            apps (list[str]): List of application names to include in the desktop.
+        Returns:
+            DioramaComputer: A proxy object with the Diorama interface, but using diorama_cmds.
+        """
+        from .diorama_computer import DioramaComputer
+        return DioramaComputer(self, apps)
+
     def __init__(
         self,
         display: Union[Display, Dict[str, int], str] = "1024x768",
