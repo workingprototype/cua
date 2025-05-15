@@ -195,7 +195,7 @@ class Diorama:
         async def press_key(self, key):
             await self._send_cmd("press_key", {"key": key})
 
-        async def hotkey(self, *keys):
+        async def hotkey(self, keys):
             await self._send_cmd("hotkey", {"keys": list(keys)})
 
         async def get_screen_size(self) -> dict[str, int]:
