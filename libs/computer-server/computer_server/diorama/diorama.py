@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 
 from computer_server.diorama.draw import capture_all_apps, AppActivationContext, get_frontmost_and_active_app, get_all_windows, get_running_apps
 
-from diorama_computer import DioramaComputer
+from computer_server.diorama.diorama_computer import DioramaComputer
 from computer_server.handlers.macos import *
 
 # simple, nicely formatted logging
