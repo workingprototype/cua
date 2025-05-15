@@ -1032,7 +1032,8 @@ def create_gradio_ui():
                     os_choice = gr.Radio(
                         label="OS",
                         choices=["macOS", "Ubuntu"],
-                        value="macOS"
+                        value="macOS",
+                        interactive=False # disable until the ubuntu image is ready
                     )
                     start_btn = gr.Button("Initialize Computer")
                 
