@@ -36,8 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("diorama.draw")
 
-
-from safezone import (
+from computer_server.diorama.safezone import (
     get_menubar_bounds,
     get_dock_bounds,
 )
