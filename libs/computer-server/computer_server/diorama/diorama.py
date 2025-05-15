@@ -149,17 +149,20 @@ class Diorama:
                 logger.warning(f"Command was cancelled: {action}")
                 return None
 
-        async def screenshot(self, as_bytes: bool = True) -> Union[bytes, Image]:
+        async def screenshot(self, as_bytes: bool = True) -> Union[str, Image.Image]:
+            import base64
             result, img = await self._send_cmd("screenshot")
             self._scene_hitboxes = result.get("hitboxes", [])
             self._scene_size = img.size
             
             if as_bytes:
-                # PIL Image to bytes
+                # PIL Image to bytes, then base64 encode for JSON
+                import io
                 img_byte_arr = io.BytesIO()
                 img.save(img_byte_arr, format="PNG")
-                img_byte_arr = img_byte_arr.getvalue()
-                return img_byte_arr
+                img_bytes = img_byte_arr.getvalue()
+                img_b64 = base64.b64encode(img_bytes).decode("ascii")
+                return img_b64
             else:
                 return img
 
