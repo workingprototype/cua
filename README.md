@@ -9,6 +9,8 @@
   [![Swift](https://img.shields.io/badge/Swift-F05138?logo=swift&logoColor=white)](#)
   [![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0)](#)
   [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.com/invite/mVnXXpdE85)
+  <br>
+  <a href="https://trendshift.io/repositories/13685" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13685" alt="trycua%2Fcua | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
 **c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
