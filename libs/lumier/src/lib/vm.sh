@@ -127,7 +127,7 @@ lume_get() {
     local debug="${4:-false}"
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
     
     # URL encode the storage path for the query parameter
     # Replace special characters with their URL encoded equivalents
@@ -175,7 +175,7 @@ lume_set() {
     local display="${5:-1024x768}"
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
     
     # Handle memory format for the API
     if [[ "$memory" == *"GB"* ]]; then
@@ -258,7 +258,7 @@ lume_stop() {
     local storage="$2"
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
     
     # Only log in debug mode
     if [[ "$LUMIER_DEBUG" == "1" ]]; then
@@ -297,7 +297,7 @@ lume_pull() {
     local organization="${5:-trycua}" # Organization, default is trycua
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
     
     # Mark that pull is in progress for interrupt handling
     export PULL_IN_PROGRESS=1
@@ -379,7 +379,7 @@ lume_run() {
     done
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
 
     # Only log in debug mode
     if [[ "$LUMIER_DEBUG" == "1" ]]; then
@@ -431,7 +431,7 @@ lume_delete() {
     local storage="$2"
     
     local api_host="${LUME_API_HOST:-host.docker.internal}"
-    local api_port="${LUME_API_PORT:-3000}"
+    local api_port="${LUME_API_PORT:-7777}"
     
     # URL encode the storage path for the query parameter
     # Replace special characters with their URL encoded equivalents

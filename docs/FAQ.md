@@ -105,13 +105,13 @@ This is typically due to known instability issues with the `lume serve` backgrou
 
 ### How do I troubleshoot Computer not connecting to lume daemon?
 
-If you're experiencing connection issues between Computer and the lume daemon, it could be because the port 3000 (used by lume) is already in use by an orphaned process. You can diagnose this issue with:
+If you're experiencing connection issues between Computer and the lume daemon, it could be because the port 7777 (used by lume) is already in use by an orphaned process. You can diagnose this issue with:
 
 ```bash
-sudo lsof -i :3000
+sudo lsof -i :7777
 ```
 
-This command will show all processes using port 3000. If you see a lume process already running, you can terminate it with:
+This command will show all processes using port 7777. If you see a lume process already running, you can terminate it with:
 
 ```bash
 kill <PID>

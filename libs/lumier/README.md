@@ -17,6 +17,10 @@
 
 macOS and Linux virtual machines in a Docker container.
 
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/2ecca01c-cb6f-4c35-a5a7-69bc58bd94e2" width="800" controls></video>
+</div>
+
 ## What is Lumier?
 **Lumier** is an interface for running macOS virtual machines with minimal setup. It uses Docker as a packaging system to deliver a pre-configured environment that connects to the `lume` virtualization service running on your host machine. With Lumier, you get:
 
@@ -36,7 +40,7 @@ Before using Lumier, make sure you have:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
-After installation, Lume runs as a background service and listens on port 3000. This service allows Lumier to create and manage virtual machines. If port 3000 is already in use on your system, you can specify a different port with the `--port` option when running the `install.sh` script.
+After installation, Lume runs as a background service and listens on port 7777. This service allows Lumier to create and manage virtual machines. If port 7777 is already in use on your system, you can specify a different port with the `--port` option when running the `install.sh` script.
 
 ## How It Works
 
@@ -52,14 +56,11 @@ Here's what's happening behind the scenes:
 ## Getting Started
 
 ```bash
-# 1. Navigate to the Lumier directory
-cd libs/lumier
-
-# 2. Run the container with temporary storage (using pre-built image from Docker Hub)
+# Run the container with temporary storage (using pre-built image from Docker Hub)
 docker run -it --rm \
-    --name lumier-vm \
+    --name macos-vm \
     -p 8006:8006 \
-    -e VM_NAME=lumier-vm \
+    -e VM_NAME=macos-vm \
     -e VERSION=ghcr.io/trycua/macos-sequoia-cua:latest \
     -e CPU_CORES=4 \
     -e RAM_SIZE=8192 \

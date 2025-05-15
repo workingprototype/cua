@@ -54,7 +54,7 @@ finally:
 To install the Computer-Use Interface (CUI):
 
 ```bash
-pip install cua-computer
+pip install "cua-computer[all]"
 ```
 
 The `cua-computer` PyPi package pulls automatically the latest executable version of Lume through [pylume](https://github.com/trycua/pylume).

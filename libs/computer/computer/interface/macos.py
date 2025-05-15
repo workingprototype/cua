@@ -17,7 +17,6 @@ class MacOSComputerInterface(BaseComputerInterface):
 
     def __init__(self, ip_address: str, username: str = "lume", password: str = "lume"):
         super().__init__(ip_address, username, password)
-        self.ws_uri = f"ws://{ip_address}:8000/ws"
         self._ws = None
         self._reconnect_task = None
         self._closed = False
@@ -30,6 +29,15 @@ class MacOSComputerInterface(BaseComputerInterface):
 
         # Set logger name for MacOS interface
         self.logger = Logger("cua.interface.macos", LogLevel.NORMAL)
+
+    @property
+    def ws_uri(self) -> str:
+        """Get the WebSocket URI using the current IP address.
+        
+        Returns:
+            WebSocket URI for the Computer API Server
+        """
+        return f"ws://{self.ip_address}:8000/ws"
 
     async def _keep_alive(self):
         """Keep the WebSocket connection alive with automatic reconnection."""

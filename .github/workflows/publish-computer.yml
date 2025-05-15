@@ -26,7 +26,6 @@ jobs:
     runs-on: macos-latest
     outputs:
       version: ${{ steps.get-version.outputs.version }}
-      pylume_version: ${{ steps.update-deps.outputs.pylume_version }}
       core_version: ${{ steps.update-deps.outputs.core_version }}
     steps:
     - uses: actions/checkout@v4
@@ -91,20 +90,16 @@ jobs:
                 return fallback
 
         # Get latest versions
-        print(get_package_version('pylume'))
         print(get_package_version('cua-core'))
         EOF
         
         # Execute the script to get the versions
         VERSIONS=($(python get_latest_versions.py))
-        LATEST_PYLUME=${VERSIONS[0]}
-        LATEST_CORE=${VERSIONS[1]}
+        LATEST_CORE=${VERSIONS[0]}
         
-        echo "Latest pylume version: $LATEST_PYLUME"
         echo "Latest cua-core version: $LATEST_CORE"
         
         # Output the versions for the next job
-        echo "pylume_version=$LATEST_PYLUME" >> $GITHUB_OUTPUT
         echo "core_version=$LATEST_CORE" >> $GITHUB_OUTPUT
         
         # Determine major version for version constraint
@@ -114,17 +109,15 @@ jobs:
         # Update dependencies in pyproject.toml
         if [[ "$OSTYPE" == "darwin"* ]]; then
           # macOS version of sed needs an empty string for -i
-          sed -i '' "s/\"pylume>=.*\"/\"pylume>=$LATEST_PYLUME\"/" pyproject.toml
           sed -i '' "s/\"cua-core>=.*,<.*\"/\"cua-core>=$LATEST_CORE,<$NEXT_CORE_MAJOR.0.0\"/" pyproject.toml
         else
           # Linux version
-          sed -i "s/\"pylume>=.*\"/\"pylume>=$LATEST_PYLUME\"/" pyproject.toml
           sed -i "s/\"cua-core>=.*,<.*\"/\"cua-core>=$LATEST_CORE,<$NEXT_CORE_MAJOR.0.0\"/" pyproject.toml
         fi
         
         # Display the updated dependencies
         echo "Updated dependencies in pyproject.toml:"
-        grep -E "pylume|cua-core" pyproject.toml
+        grep -E "cua-core" pyproject.toml
 
   publish:
     needs: prepare
@@ -144,5 +137,4 @@ jobs:
     steps:
       - name: Set environment variables for use in other jobs
         run: |
-          echo "PYLUME_VERSION=${{ needs.prepare.outputs.pylume_version }}" >> $GITHUB_ENV
           echo "CORE_VERSION=${{ needs.prepare.outputs.core_version }}" >> $GITHUB_ENV 

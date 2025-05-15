@@ -17,7 +17,7 @@ import base64
 from datetime import datetime
 from PIL import Image
 from huggingface_hub import DatasetCard, DatasetCardData
-from computer import Computer
+from computer import Computer, VMProviderType
 from gradio.components import ChatMessage
 import pandas as pd
 from datasets import Dataset, Features, Sequence, concatenate_datasets
@@ -528,21 +528,44 @@ async def execute(name, action, arguments):
     
     return results
 
-async def handle_init_computer():
-    """Initialize the computer instance and tools"""
+async def handle_init_computer(os_choice: str):
+    """Initialize the computer instance and tools for macOS or Ubuntu"""
     global computer, tool_call_logs, tools
-    
-    computer = Computer(os_type="macos", display="1024x768", memory="8GB", cpu="4")
+
+    if os_choice == "Ubuntu":
+        computer = Computer(
+            image="ubuntu-noble-vanilla:latest",
+            os_type="linux",
+            provider_type=VMProviderType.LUME,
+            display="1024x768",
+            memory="8GB",
+            cpu="4"
+        )
+        os_type_str = "linux"
+        image_str = "ubuntu-noble-vanilla:latest"
+    else:
+        computer = Computer(
+            image="macos-sequoia-cua:latest",
+            os_type="macos",
+            provider_type=VMProviderType.LUME,
+            display="1024x768",
+            memory="8GB",
+            cpu="4"
+        )
+        os_type_str = "macos"
+        image_str = "macos-sequoia-cua:latest"
+
     await computer.run()
-    
+
     # Log computer initialization as a tool call
     result = await execute("computer", "initialize", {
-        "os": "macos", 
-        "display": "1024x768", 
-        "memory": "8GB", 
+        "os": os_type_str,
+        "image": image_str,
+        "display": "1024x768",
+        "memory": "8GB",
         "cpu": "4"
     })
-    
+
     return result["screenshot"], json.dumps(tool_call_logs, indent=2)
 
 async def handle_screenshot():
@@ -1004,8 +1027,15 @@ def create_gradio_ui():
                             run_setup_btn = gr.Button("⚙️ Run Task Setup")
                     # Setup status textbox
                     setup_status = gr.Textbox(label="Setup Status", value="")
-                    
-                start_btn = gr.Button("Initialize Computer")
+                
+                with gr.Group():
+                    os_choice = gr.Radio(
+                        label="OS",
+                        choices=["macOS", "Ubuntu"],
+                        value="macOS",
+                        interactive=False # disable until the ubuntu image is ready
+                    )
+                    start_btn = gr.Button("Initialize Computer")
                 
                 with gr.Group():
                     input_text = gr.Textbox(label="Type Text")
@@ -1169,7 +1199,7 @@ def create_gradio_ui():
         )
                 
         img.select(handle_click, inputs=[img, click_type], outputs=[img, action_log])
-        start_btn.click(handle_init_computer, outputs=[img, action_log])
+        start_btn.click(handle_init_computer, inputs=[os_choice], outputs=[img, action_log])
         wait_btn.click(handle_wait, outputs=[img, action_log])
         
         # DONE and FAIL buttons just do a placeholder action

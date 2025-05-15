@@ -64,34 +64,58 @@ fi
 echo "Lumier VM is starting..."
 
 # Cleanup function to ensure VM and noVNC proxy shutdown on container stop
+# Counter for signal handling
+SIGNAL_COUNT=0
+
 cleanup() {
+  local signal_name=$1
   set +e  # Don't exit on error in cleanup
-  echo "[cleanup] Caught signal, shutting down..."
   
-  # Check if we're in the middle of an image pull
-  if [[ "$PULL_IN_PROGRESS" == "1" ]]; then
-    echo "[cleanup] Interrupted during image pull, skipping VM stop."
-  else
-    echo "[cleanup] Stopping VM..."
-    stop_vm true
-  fi
+  # Increment signal counter
+  SIGNAL_COUNT=$((SIGNAL_COUNT + 1))
   
-  # Attempt to clean up ephemeral storage if it's in the /private/tmp directory
-  if [[ "$HOST_STORAGE_PATH" == "ephemeral" ]]; then
-    # First check if VM actually exists
-    VM_INFO=$(lume_get "$VM_NAME" "$HOST_STORAGE_PATH" "json" "false")
+  # If this is the first signal, try graceful shutdown
+  if [ $SIGNAL_COUNT -eq 1 ]; then
+    echo "[cleanup] Caught $signal_name signal, shutting down..."
     
-    # Only try VM deletion if VM exists and not in the middle of a pull
-    if [[ "$PULL_IN_PROGRESS" != "1" && $VM_INFO != *"Virtual machine not found"* ]]; then
-      echo "[cleanup] Cleaning up VM..."
-      lume_delete "$VM_NAME" "$HOST_STORAGE_PATH" > /dev/null 2>&1
+    # Check if we're in the middle of an image pull
+    if [[ "$PULL_IN_PROGRESS" == "1" ]]; then
+      echo "[cleanup] Interrupted during image pull, skipping VM stop."
+    else
+      echo "[cleanup] Stopping VM..."
+      stop_vm true
     fi
+    
+    # Attempt to clean up ephemeral storage if it's in the /private/tmp directory
+    if [[ "$HOST_STORAGE_PATH" == "ephemeral" ]]; then
+      # First check if VM actually exists
+      VM_INFO=$(lume_get "$VM_NAME" "$HOST_STORAGE_PATH" "json" "false")
+      
+      # Only try VM deletion if VM exists and not in the middle of a pull
+      if [[ "$PULL_IN_PROGRESS" != "1" && $VM_INFO != *"Virtual machine not found"* ]]; then
+        echo "[cleanup] Cleaning up VM..."
+        lume_delete "$VM_NAME" "$HOST_STORAGE_PATH" > /dev/null 2>&1
+      fi
+    fi
+  else
+    # For multiple signals, force an immediate exit
+    echo "got $SIGNAL_COUNT SIGTERM/SIGINTs, forcefully exiting"
   fi
   
-  exit 0
+  # If we've received multiple signals, just exit immediately
+  if [ $SIGNAL_COUNT -ge 3 ]; then
+    exit 1
+  fi
+  
+  # Exit with success for the first signal
+  if [ $SIGNAL_COUNT -eq 1 ]; then
+    exit 0
+  fi
 }
 # Ensure we catch all typical container termination signals
-trap cleanup SIGTERM SIGINT SIGHUP
+trap 'cleanup SIGTERM' SIGTERM
+trap 'cleanup SIGINT' SIGINT
+trap 'cleanup SIGHUP' SIGHUP
 
 # Now enable strict error handling after initialization
 set -euo pipefail
@@ -116,4 +140,14 @@ if [ -n "${VNC_PORT:-}" ] && [ -n "${VNC_PASSWORD:-}" ]; then
 fi
 
 echo "Lumier is running. Press Ctrl+C to stop."
-tail -f /dev/null
+
+# Instead of tail -f /dev/null, use a wait loop that can be interrupted by signals
+while true; do
+  # Sleep in small increments to make signal handling more responsive
+  sleep 1 &
+  wait $!
+  # Break the loop if we've received a signal
+  if [ $SIGNAL_COUNT -gt 0 ]; then
+    break
+  fi
+done

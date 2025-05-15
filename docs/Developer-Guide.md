@@ -122,7 +122,7 @@ As an alternative to installing directly on your host machine, you can use Docke
 ### Prerequisites
 
 - Docker installed on your machine
-- Lume server running on your host (port 3000): `lume serve`
+- Lume server running on your host (port 7777): `lume serve`
 
 ### Setup and Usage
 
@@ -156,10 +156,10 @@ The Docker development environment:
 
 - Installs all required Python dependencies in the container
 - Mounts your source code from the host at runtime
-- Automatically configures the connection to use host.docker.internal:3000 for accessing the Lume server on your host machine
+- Automatically configures the connection to use host.docker.internal:7777 for accessing the Lume server on your host machine
 - Preserves your code changes without requiring rebuilds (source code is mounted as a volume)
 
-> **Note**: The Docker container doesn't include the macOS-specific Lume executable. Instead, it connects to the Lume server running on your host machine via host.docker.internal:3000. Make sure to start the Lume server on your host before running examples in the container.
+> **Note**: The Docker container doesn't include the macOS-specific Lume executable. Instead, it connects to the Lume server running on your host machine via host.docker.internal:7777. Make sure to start the Lume server on your host before running examples in the container.
 
 ## Cleanup and Reset
 
