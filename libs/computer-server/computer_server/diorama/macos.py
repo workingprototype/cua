@@ -2,8 +2,8 @@ import platform
 import sys
 import platform
 import inspect
-from .diorama import Diorama
-from .base import BaseDioramaHandler
+from computer_server.diorama.diorama import Diorama
+from computer_server.diorama.base import BaseDioramaHandler
 
 class MacOSDioramaHandler(BaseDioramaHandler):
     """Handler for Diorama commands on macOS, using local diorama module."""

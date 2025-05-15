@@ -9,7 +9,7 @@ import io
 from typing import Union
 from PIL import Image, ImageDraw
 
-from draw import capture_all_apps, AppActivationContext, get_frontmost_and_active_app, get_all_windows, get_running_apps
+from computer_server.diorama.draw import capture_all_apps, AppActivationContext, get_frontmost_and_active_app, get_all_windows, get_running_apps
 
 from diorama_computer import DioramaComputer
 from computer_server.handlers.macos import *
