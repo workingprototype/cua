@@ -19,10 +19,13 @@ class MacOSDioramaHandler(BaseDioramaHandler):
             if not hasattr(interface, action):
                 return {"success": False, "error": f"Unknown diorama action: {action}"}
             method = getattr(interface, action)
+            # Remove app_list from arguments before calling the method
+            filtered_arguments = dict(arguments)
+            filtered_arguments.pop("app_list", None)
             if inspect.iscoroutinefunction(method):
-                result = await method(**(arguments or {}))
+                result = await method(**(filtered_arguments or {}))
             else:
-                result = method(**(arguments or {}))
+                result = method(**(filtered_arguments or {}))
             return {"success": True, "result": result}
         except Exception as e:
             import traceback
