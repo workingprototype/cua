@@ -78,11 +78,11 @@ class Computer:
         self.provider_type = provider_type
         self.ephemeral = ephemeral
 
-        if ephemeral:
-            self.storage = "ephemeral"
-        else:
-            self.storage = storage
-            
+        # The default is currently to use non-ephemeral storage
+        if storage and ephemeral and storage != "ephemeral":
+            raise ValueError("Storage path and ephemeral flag cannot be used together")
+        self.storage = "ephemeral" if ephemeral else storage
+        
         # For Lumier provider, store the first shared directory path to use
         # for VM file sharing
         self.shared_path = None
@@ -279,12 +279,14 @@ class Computer:
                         raise RuntimeError(f"Failed to initialize VM provider: {e}")
 
                 # Check if VM exists or create it
+                is_running = False
                 try:
                     if self.config.vm_provider is None:
                         raise RuntimeError(f"VM provider not initialized for {self.config.name}")
                         
                     vm = await self.config.vm_provider.get_vm(self.config.name)
                     self.logger.verbose(f"Found existing VM: {self.config.name}")
+                    is_running = vm.get("status") == "running"
                 except Exception as e:
                     self.logger.error(f"VM not found: {self.config.name}")
                     self.logger.error(f"Error: {e}")
@@ -292,63 +294,67 @@ class Computer:
                         f"VM {self.config.name} could not be found or created."
                     )
 
-                # Convert paths to dictionary format for shared directories
-                shared_dirs = []
-                for path in self.shared_directories:
-                    self.logger.verbose(f"Adding shared directory: {path}")
-                    path = os.path.abspath(os.path.expanduser(path))
-                    if os.path.exists(path):
-                        # Add path in format expected by Lume API
-                        shared_dirs.append({
-                            "hostPath": path,
-                            "readOnly": False
-                        })
-                    else:
-                        self.logger.warning(f"Shared directory does not exist: {path}")
+                # Start the VM if it's not running
+                if not is_running:
+                    self.logger.info(f"VM {self.config.name} is not running, starting it...")
+
+                    # Convert paths to dictionary format for shared directories
+                    shared_dirs = []
+                    for path in self.shared_directories:
+                        self.logger.verbose(f"Adding shared directory: {path}")
+                        path = os.path.abspath(os.path.expanduser(path))
+                        if os.path.exists(path):
+                            # Add path in format expected by Lume API
+                            shared_dirs.append({
+                                "hostPath": path,
+                                "readOnly": False
+                            })
+                        else:
+                            self.logger.warning(f"Shared directory does not exist: {path}")
+                            
+                    # Prepare run options to pass to the provider
+                    run_opts = {}
+
+                    # Add display information if available
+                    if self.config.display is not None:
+                        display_info = {
+                            "width": self.config.display.width,
+                            "height": self.config.display.height,
+                        }
                         
-                # Prepare run options to pass to the provider
-                run_opts = {}
-
-                # Add display information if available
-                if self.config.display is not None:
-                    display_info = {
-                        "width": self.config.display.width,
-                        "height": self.config.display.height,
-                    }
-                    
-                    # Check if scale_factor exists before adding it
-                    if hasattr(self.config.display, "scale_factor"):
-                        display_info["scale_factor"] = self.config.display.scale_factor
-                    
-                    run_opts["display"] = display_info
-
-                # Add shared directories if available
-                if self.shared_directories:
-                    run_opts["shared_directories"] = shared_dirs.copy()
-
-                # Run the VM with the provider
-                try:
-                    if self.config.vm_provider is None:
-                        raise RuntimeError(f"VM provider not initialized for {self.config.name}")
+                        # Check if scale_factor exists before adding it
+                        if hasattr(self.config.display, "scale_factor"):
+                            display_info["scale_factor"] = self.config.display.scale_factor
                         
-                    # Use the complete run_opts we prepared earlier
-                    # Handle ephemeral storage for run_vm method too
-                    storage_param = "ephemeral" if self.ephemeral else self.storage
-                    
-                    # Log the image being used
-                    self.logger.info(f"Running VM using image: {self.image}")
-                    
-                    # Call provider.run_vm with explicit image parameter
-                    response = await self.config.vm_provider.run_vm(
-                        image=self.image,
-                        name=self.config.name,
-                        run_opts=run_opts,
-                        storage=storage_param
-                    )
-                    self.logger.info(f"VM run response: {response if response else 'None'}")
-                except Exception as run_error:
-                    self.logger.error(f"Failed to run VM: {run_error}")
-                    raise RuntimeError(f"Failed to start VM: {run_error}")
+                        run_opts["display"] = display_info
+
+                    # Add shared directories if available
+                    if self.shared_directories:
+                        run_opts["shared_directories"] = shared_dirs.copy()
+
+                    # Run the VM with the provider
+                    try:
+                        if self.config.vm_provider is None:
+                            raise RuntimeError(f"VM provider not initialized for {self.config.name}")
+                            
+                        # Use the complete run_opts we prepared earlier
+                        # Handle ephemeral storage for run_vm method too
+                        storage_param = "ephemeral" if self.ephemeral else self.storage
+                        
+                        # Log the image being used
+                        self.logger.info(f"Running VM using image: {self.image}")
+                        
+                        # Call provider.run_vm with explicit image parameter
+                        response = await self.config.vm_provider.run_vm(
+                            image=self.image,
+                            name=self.config.name,
+                            run_opts=run_opts,
+                            storage=storage_param
+                        )
+                        self.logger.info(f"VM run response: {response if response else 'None'}")
+                    except Exception as run_error:
+                        self.logger.error(f"Failed to run VM: {run_error}")
+                        raise RuntimeError(f"Failed to start VM: {run_error}")
 
                 # Wait for VM to be ready with a valid IP address
                 self.logger.info("Waiting for VM to be ready with a valid IP address...")
@@ -406,6 +412,9 @@ class Computer:
                 raise TimeoutError(
                     f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}"
                 )
+                # self.logger.warning(
+                #     f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}, expect missing functionality"
+                # )
 
             # Create an event to keep the VM running in background if needed
             if not self.use_host_computer_server:

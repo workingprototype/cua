@@ -168,7 +168,7 @@ class LinuxAutomationHandler(BaseAutomationHandler):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def hotkey(self, *keys: str) -> Dict[str, Any]:
+    async def hotkey(self, keys: List[str]) -> Dict[str, Any]:
         try:
             pyautogui.hotkey(*keys)
             return {"success": True}
