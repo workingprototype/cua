@@ -866,12 +866,17 @@ class AppActivationContext:
             for app in running_apps_list:
                 if app.processIdentifier() == self.active_app_pid:
                     app.activateWithOptions_(0)
+                    # sleep for 0.5 seconds
+                    time.sleep(0.5)
                     break
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.frontmost_app:
+            # sleep for 0.5 seconds
+            time.sleep(0.5)
             self.frontmost_app.activateWithOptions_(0)
+            
 
 def get_frontmost_and_active_app(all_windows, running_apps, app_whitelist):
     from AppKit import NSWorkspace
