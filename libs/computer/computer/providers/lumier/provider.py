@@ -344,9 +344,15 @@ class LumierProvider(BaseVMProvider):
             # Use the VM image passed from the Computer class
             print(f"Using VM image: {self.image}")
             
+            # If ghcr.io is in the image, use the full image name
+            if "ghcr.io" in self.image:
+                vm_image = self.image
+            else:
+                vm_image = f"ghcr.io/trycua/{self.image}"
+
             cmd.extend([
                 "-e", f"VM_NAME={self.container_name}",
-                "-e", f"VERSION=ghcr.io/trycua/{self.image}",
+                "-e", f"VERSION={vm_image}",
                 "-e", f"CPU_CORES={run_opts.get('cpu', '4')}",
                 "-e", f"RAM_SIZE={memory_mb}",
             ])
