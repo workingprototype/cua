@@ -88,7 +88,7 @@ source "$VENV_DIR/bin/activate"
 
 # Install required packages
 echo "📦 Updating CUA packages..."
-pip install -U pip
+pip install -U pip setuptools wheel Cmake
 pip install -U cua-computer "cua-agent[all]"
 
 # Temporary fix for mlx-vlm, see https://github.com/Blaizzy/mlx-vlm/pull/349
