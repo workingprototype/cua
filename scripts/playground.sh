@@ -77,8 +77,12 @@ if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" 
   exit 1
 fi
 
+# --- CUA root directory ---
+CUA_DIR="$HOME/.cua"
+mkdir -p "$CUA_DIR"
+
 # Create a virtual environment
-VENV_DIR="$HOME/.cua-venv"
+VENV_DIR="$CUA_DIR/venv"
 if [ ! -d "$VENV_DIR" ]; then
   $PYTHON_CMD -m venv "$VENV_DIR"
 fi
@@ -88,14 +92,41 @@ source "$VENV_DIR/bin/activate"
 
 # Install required packages
 echo "📦 Updating CUA packages..."
-pip install -U pip setuptools wheel Cmake
+pip install -U pip setuptools wheel cmake
 pip install -U cua-computer "cua-agent[all]"
+
+# --- SentencePiece build & install ---
+SENTENCEPIECE_DIR="$CUA_DIR/sentencepiece"
+cd "$CUA_DIR"
+if [ ! -d "$SENTENCEPIECE_DIR" ] || [ ! -f "$SENTENCEPIECE_DIR/build/src/libsentencepiece.a" ]; then
+  echo "📥 Cloning and building SentencePiece..."
+  git clone --depth 1 https://github.com/google/sentencepiece.git "$SENTENCEPIECE_DIR" || true
+  cd "$SENTENCEPIECE_DIR"
+  mkdir -p build && cd build
+  cmake ..
+  make -j
+  # Use sudo only if not in venv
+  if [ -z "$VIRTUAL_ENV" ]; then
+    sudo make install
+  else
+    make install
+  fi
+  cd ../python
+  source "$VENV_DIR/bin/activate"
+  python setup.py install
+else
+  echo "✅ SentencePiece already built. Skipping build."
+  cd "$SENTENCEPIECE_DIR/python"
+  source "$VENV_DIR/bin/activate"
+fi
+cd "$TMP_DIR"
+# --- End SentencePiece ---
 
 # Temporary fix for mlx-vlm, see https://github.com/Blaizzy/mlx-vlm/pull/349
 pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
 
 # Create a simple demo script
-DEMO_DIR="$HOME/.cua-demo"
+DEMO_DIR="$CUA_DIR/demo"
 mkdir -p "$DEMO_DIR"
 
 cat > "$DEMO_DIR/run_demo.py" << 'EOF'

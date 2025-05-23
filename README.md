@@ -21,28 +21,55 @@
 
 # 🚀 Quick Start
 
-Get started with a Computer-Use Agent UI and a VM with a single command:
+**Recommended for users who want to get started with a VM and Agent UI immediately.**
 
+Serve a ready-to-use Computer-Use Agent UI and VM locally with a single command:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
+<details>
+<summary><strong>What does this command do?</strong></summary>
 
-This script will:
-- Install Lume CLI for VM management (if needed)
-- Pull the latest macOS CUA image (if needed)
-- Set up Python environment and install/update required packages
-- Launch the Computer-Use Agent UI
+You can view the full script source here: [scripts/playground.sh](https://github.com/trycua/cua/blob/main/scripts/playground.sh). To follow along yourself, use the steps below:
+
+1. **Install/Update the [Lume CLI](./libs/lume/README.md)**  
+   Lume is our tool for managing VMs that run efficiently using Apple's Virtualization framework.
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+   ```
+2. **Pull the macOS CUA image from the trycua repo**  
+   This step downloads a prebuilt macOS Sequoia VM image (~30GB disk space required) with a `lume` default user (password: `lume`) and the [CUA Computer Server](https://github.com/trycua/cua/tree/main/libs/computer-server) preinstalled.  
+   The CUA Computer Server allows the VM to be controlled programmatically by the Computer Python SDK.
+   ```bash
+   lume pull macos-sequoia-cua:latest
+   ```
+3. **Start a macOS VM using the pulled image**  
+   ```bash
+   lume run macos-sequoia-cua:latest
+   ```
+   See [Lume docs](./libs/lume/README.md) for more VM management commands.
+4. **Install/Update the [Computer](https://github.com/trycua/cua/tree/main/libs/computer) and [Agent](https://github.com/trycua/cua/tree/main/libs/agent) Python SDKs**  
+   - **Computer** lets Python developers automate Lume VMs using code.
+   - **Agent** provides both a Python and GUI interface for interacting with multiple different computer-use agents.
+   ```bash
+   pip install -U "cua-computer[all]" "cua-agent[all]"
+   ```
+5. **Start the Agent UI**  
+   This launches a chat UI for prompting computer-use agents to control the running macOS VM. Access it at [http://localhost:7860](http://localhost:7860):
+   ```bash
+   python -m agent.ui.gradio.app
+   ```
+</details>
 
 #### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
-- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
-- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
-- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
-- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
+- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Use OpenAI's Computer-Use Preview model (*requires tier 3, select users only*)
+- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Use Anthropic's Computer-Use capabilities
+- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 ### System Requirements
-
 - Mac with Apple Silicon (M1/M2/M3/M4 series)
 - macOS 15 (Sequoia) or newer
 - Disk space for VM images (30GB+ recommended)
@@ -50,55 +77,48 @@ This script will:
 
 # 💻 For Developers
 
-### Step 1: Install Lume CLI
+**For advanced users: use our modules directly in your Python code for custom automation, integration, or research.**
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-```
+1. **Install Lume CLI**
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+   ```
+2. **Pull the macOS CUA image**
+   ```bash
+   lume pull macos-sequoia-cua:latest
+   ```
+3. **Install the Python SDKs**
+   ```bash
+   pip install -U "cua-computer[all]" "cua-agent[all]"
+   ```
+4. **Import and use in your Python code:**
+   ```python
+   from computer import Computer
+   from agent import ComputerAgent, LLM
 
-Lume CLI manages high-performance macOS/Linux VMs with near-native speed on Apple Silicon.
+    async def main():
+        # Start a local macOS VM with a 1024x768 display
+        async with Computer(os_type="macos", display="1024x768") as computer:
 
-### Step 2: Pull the macOS CUA Image
+            # Example: Direct control of a macOS VM with Computer
+            await computer.interface.left_click(100, 200)
+            await computer.interface.type_text("Hello, world!")
+            screenshot_bytes = await computer.interface.screenshot()
+            
+            # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
+            agent = ComputerAgent(
+              computer=computer,
+              loop="UITARS",
+              model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
+            )
+            await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
-```bash
-lume pull macos-sequoia-cua:latest
-```
+    main()
+   ```
+   See the [Developer Guide](./docs/Developer-Guide.md) for advanced usage and building from source.
 
-The macOS CUA image contains the default Mac apps and the Computer Server for easy automation.
+---
 
-### Step 3: Install Python SDK
-
-```bash
-pip install "cua-computer[all]" "cua-agent[all]"
-```
-
-Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building from source.
-
-### Step 4: Use in Your Code
-
-```python
-from computer import Computer
-from agent import ComputerAgent, LLM
-
-async def main():
-    # Start a local macOS VM with a 1024x768 display
-    async with Computer(os_type="macos", display="1024x768") as computer:
-
-        # Example: Direct control of a macOS VM with Computer
-        await computer.interface.left_click(100, 200)
-        await computer.interface.type_text("Hello, world!")
-        screenshot_bytes = await computer.interface.screenshot()
-        
-        # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
-        agent = ComputerAgent(
-          computer=computer,
-          loop="UITARS",
-          model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
-        )
-        await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
-
-main()
-```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
 
