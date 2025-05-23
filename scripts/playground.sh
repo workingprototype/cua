@@ -95,24 +95,6 @@ echo "📦 Updating CUA packages..."
 pip install -U pip setuptools wheel cmake
 pip install -U cua-computer "cua-agent[all]"
 
-# --- SentencePiece build & install ---
-SENTENCEPIECE_DIR="$CUA_DIR/sentencepiece"
-cd "$CUA_DIR"
-if [ ! -d "$SENTENCEPIECE_DIR" ] || [ ! -f "$SENTENCEPIECE_DIR/build/src/libsentencepiece.a" ]; then
-  echo "📥 Cloning and building SentencePiece..."
-  git clone --depth 1 https://github.com/google/sentencepiece.git "$SENTENCEPIECE_DIR" || true
-  cd "$SENTENCEPIECE_DIR"
-  mkdir -p build && cd build
-  cmake ..
-  make -j
-else
-  echo "✅ SentencePiece already built. Skipping build."
-fi
-cd "$SENTENCEPIECE_DIR/python"
-source "$VENV_DIR/bin/activate"
-python setup.py install
-cd "$TMP_DIR"
-# --- End SentencePiece ---
 
 # Temporary fix for mlx-vlm, see https://github.com/Blaizzy/mlx-vlm/pull/349
 pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
