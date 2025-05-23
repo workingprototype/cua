@@ -105,20 +105,12 @@ if [ ! -d "$SENTENCEPIECE_DIR" ] || [ ! -f "$SENTENCEPIECE_DIR/build/src/libsent
   mkdir -p build && cd build
   cmake ..
   make -j
-  # Use sudo only if not in venv
-  if [ -z "$VIRTUAL_ENV" ]; then
-    sudo make install
-  else
-    make install
-  fi
-  cd ../python
-  source "$VENV_DIR/bin/activate"
-  python setup.py install
 else
   echo "✅ SentencePiece already built. Skipping build."
-  cd "$SENTENCEPIECE_DIR/python"
-  source "$VENV_DIR/bin/activate"
 fi
+cd "$SENTENCEPIECE_DIR/python"
+source "$VENV_DIR/bin/activate"
+python setup.py install
 cd "$TMP_DIR"
 # --- End SentencePiece ---
 
