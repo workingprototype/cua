@@ -62,7 +62,7 @@ Refer to the [Lume README](../libs/lume/docs/Development.md) for instructions on
 
 ## Python Development
 
-There are two ways to instal Lume:
+There are two ways to install Lume:
 
 ### Run the build script
 
@@ -91,7 +91,7 @@ To install with PDM, simply run:
 pdm install -G:all
 ```
 
-This installs all the dependencies for development, testing, and building the docs. If you'd oly like development dependencies, you can run:
+This installs all the dependencies for development, testing, and building the docs. If you'd only like development dependencies, you can run:
 
 ```console
 pdm install -d
