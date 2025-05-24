@@ -78,6 +78,8 @@ class Computer:
         self.os_type = os_type
         self.provider_type = provider_type
         self.ephemeral = ephemeral
+        
+        self.api_key = api_key
 
         # The default is currently to use non-ephemeral storage
         if storage and ephemeral and storage != "ephemeral":
