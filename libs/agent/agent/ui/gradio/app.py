@@ -290,7 +290,7 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         model_name_to_use = cleaned_model_name
         # agent_loop remains AgentLoop.OMNI
     elif agent_loop == AgentLoop.UITARS:
-        # For UITARS, use MLXVLM provider for the MLX models, OAICOMPAT for custom
+        # For UITARS, use MLXVLM for mlx-community models, OAICOMPAT for custom
         if model_name == "Custom model (OpenAI compatible API)":
             provider = LLMProvider.OAICOMPAT
             model_name_to_use = "tgi"
@@ -333,12 +333,25 @@ def get_ollama_models() -> List[str]:
         logging.error(f"Error getting Ollama models: {e}")
         return []
 
-def create_computer_instance(verbosity: int = logging.INFO) -> Computer:
+
+def create_computer_instance(
+    verbosity: int = logging.INFO,
+    os_type: str = "macos",
+    provider_type: str = "lume",
+    name: Optional[str] = None,
+    api_key: Optional[str] = None
+) -> Computer:
     """Create or get the global Computer instance."""
     global global_computer
 
     if global_computer is None:
-        global_computer = Computer(verbosity=verbosity)
+        global_computer = Computer(
+            verbosity=verbosity,
+            os_type=os_type,
+            provider_type=provider_type,
+            name=name if name else "",
+            api_key=api_key
+        )
 
     return global_computer
 
@@ -353,12 +366,22 @@ def create_agent(
     verbosity: int = logging.INFO,
     use_oaicompat: bool = False,
     provider_base_url: Optional[str] = None,
+    computer_os: str = "macos",
+    computer_provider: str = "lume",
+    computer_name: Optional[str] = None,
+    computer_api_key: Optional[str] = None,
 ) -> ComputerAgent:
     """Create or update the global agent with the specified parameters."""
     global global_agent
 
     # Create the computer if not already done
-    computer = create_computer_instance(verbosity=verbosity)
+    computer = create_computer_instance(
+        verbosity=verbosity,
+        os_type=computer_os,
+        provider_type=computer_provider,
+        name=computer_name,
+        api_key=computer_api_key
+    )
 
     # Get API key from environment if not provided
     if api_key is None:
@@ -401,6 +424,7 @@ def create_agent(
 
     return global_agent
 
+
 def create_gradio_ui(
     provider_name: str = "openai",
     model_name: str = "gpt-4o",
@@ -439,6 +463,9 @@ def create_gradio_ui(
     # Check if API keys are available
     has_openai_key = bool(openai_api_key)
     has_anthropic_key = bool(anthropic_api_key)
+    
+    print("has_openai_key", has_openai_key)
+    print("has_anthropic_key", has_anthropic_key)
 
     # Get Ollama models for OMNI
     ollama_models = get_ollama_models()
@@ -473,7 +500,7 @@ def create_gradio_ui(
         elif initial_loop == "ANTHROPIC":
             initial_model = anthropic_models[0] if anthropic_models else "No models available"
         else:  # OMNI
-            initial_model = omni_models[0] if omni_models else "No models available"
+            initial_model = omni_models[0] if omni_models else "Custom model (OpenAI compatible API)"
             if "Custom model (OpenAI compatible API)" in available_models_for_loop:
                 initial_model = (
                     "Custom model (OpenAI compatible API)"  # Default to custom if available and no other default fits
@@ -494,7 +521,7 @@ def create_gradio_ui(
     ]
     
     # Function to generate Python code based on configuration and tasks
-    def generate_python_code(agent_loop_choice, provider, model_name, tasks, provider_url, recent_images=3, save_trajectory=True):
+    def generate_python_code(agent_loop_choice, provider, model_name, tasks, provider_url, recent_images=3, save_trajectory=True, computer_os="macos", computer_provider="lume", vm_name="", cua_cloud_api_key=""):
         """Generate Python code for the current configuration and tasks.
         
         Args:
@@ -505,6 +532,10 @@ def create_gradio_ui(
             provider_url: The provider base URL for OAICOMPAT providers
             recent_images: Number of recent images to keep in context
             save_trajectory: Whether to save the agent trajectory
+            computer_os: Operating system type for the computer
+            computer_provider: Provider type for the computer
+            vm_name: Optional VM name
+            cua_cloud_api_key: Optional CUA Cloud API key
             
         Returns:
             Formatted Python code as a string
@@ -515,13 +546,29 @@ def create_gradio_ui(
             if task and task.strip():
                 tasks_str += f'            "{task}",\n'
         
-        # Create the Python code template
+        # Create the Python code template with computer configuration
+        computer_args = []
+        if computer_os != "macos":
+            computer_args.append(f'os_type="{computer_os}"')
+        if computer_provider != "lume":
+            computer_args.append(f'provider_type="{computer_provider}"')
+        if vm_name:
+            computer_args.append(f'name="{vm_name}"')
+        if cua_cloud_api_key:
+            computer_args.append(f'api_key="{cua_cloud_api_key}"')
+        
+        computer_args_str = ", ".join(computer_args)
+        if computer_args_str:
+            computer_args_str = f"({computer_args_str})"
+        else:
+            computer_args_str = "()"
+        
         code = f'''import asyncio
 from computer import Computer
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
 async def main():
-    async with Computer() as macos_computer:
+    async with Computer{computer_args_str} as macos_computer:
         agent = ComputerAgent(
             computer=macos_computer,
             loop=AgentLoop.{agent_loop_choice},
@@ -660,12 +707,49 @@ if __name__ == "__main__":
                             LLMProvider.OPENAI, 
                             "gpt-4o", 
                             [],
-                            "https://openrouter.ai/api/v1"
+                            "https://openrouter.ai/api/v1",
+                            3,  # recent_images default
+                            True,  # save_trajectory default
+                            "macos",
+                            "lume",
+                            "",
+                            ""
                         ),
                         interactive=False,
                     )
                     
-                with gr.Accordion("Configuration", open=True):
+                with gr.Accordion("Computer Configuration", open=True):
+                    # Computer configuration options
+                    computer_os = gr.Dropdown(
+                        choices=["macos", "linux"],
+                        label="Operating System",
+                        value="macos",
+                        info="Select the operating system for the computer",
+                    )
+                    
+                    computer_provider = gr.Dropdown(
+                        choices=["cloud", "lume"],
+                        label="Provider",
+                        value="lume",
+                        info="Select the computer provider",
+                    )
+                    
+                    vm_name = gr.Textbox(
+                        label="VM Name",
+                        placeholder="Enter VM name (optional)",
+                        value="",
+                        info="Optional name for the virtual machine",
+                    )
+                    
+                    cua_cloud_api_key = gr.Textbox(
+                        label="CUA Cloud API Key",
+                        placeholder="Enter your CUA Cloud API key",
+                        value="",
+                        type="password",
+                        info="Required for cloud provider",
+                    )
+                    
+                with gr.Accordion("Agent Configuration", open=True):
                     # Configuration options
                     agent_loop = gr.Dropdown(
                         choices=["OPENAI", "ANTHROPIC", "OMNI", "UITARS"],
@@ -986,6 +1070,10 @@ if __name__ == "__main__":
                     custom_api_key=None,
                     openai_key_input=None,
                     anthropic_key_input=None,
+                    computer_os="macos",
+                    computer_provider="lume",
+                    vm_name="",
+                    cua_cloud_api_key="",
                 ):
                     if not history:
                         yield history
@@ -1092,6 +1180,10 @@ if __name__ == "__main__":
                             "provider_base_url": custom_url_value,
                             "save_trajectory": save_traj,
                             "recent_images": recent_imgs,
+                            "computer_os": computer_os,
+                            "computer_provider": computer_provider,
+                            "vm_name": vm_name,
+                            "cua_cloud_api_key": cua_cloud_api_key,
                         }
                         save_settings(current_settings)
                         # --- End Save Settings ---
@@ -1109,6 +1201,10 @@ if __name__ == "__main__":
                             use_oaicompat=is_oaicompat,  # Set flag if custom model was selected
                             # Pass custom URL only if custom model was selected
                             provider_base_url=custom_url_value if is_oaicompat else None,
+                            computer_os=computer_os,
+                            computer_provider=computer_provider,
+                            computer_name=vm_name,
+                            computer_api_key=cua_cloud_api_key,
                             verbosity=logging.DEBUG,  # Added verbosity here
                         )
 
@@ -1235,6 +1331,10 @@ if __name__ == "__main__":
                         provider_api_key,
                         openai_api_key_input,
                         anthropic_api_key_input,
+                        computer_os,
+                        computer_provider,
+                        vm_name,
+                        cua_cloud_api_key,
                     ],
                     outputs=[chatbot_history],
                     queue=True,
@@ -1253,82 +1353,20 @@ if __name__ == "__main__":
 
 
                 # Function to update the code display based on configuration and chat history
-                def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val):
+                def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val, computer_os, computer_provider, vm_name, cua_cloud_api_key):
                     # Extract messages from chat history
                     messages = []
                     if chat_history:
                         for msg in chat_history:
-                            if msg.get("role") == "user":
+                            if isinstance(msg, dict) and msg.get("role") == "user":
                                 messages.append(msg.get("content", ""))
                     
-                    # Determine if this is a custom model selection and which type
-                    is_custom_openai_api = model_choice_val == "Custom model (OpenAI compatible API)"
-                    is_custom_ollama = model_choice_val == "Custom model (ollama)"
-                    is_custom_model_selected = is_custom_openai_api or is_custom_ollama
+                    # Determine provider and model based on current selection
+                    provider, model_name, _ = get_provider_and_model(
+                        model_choice_val or custom_model_val or "gpt-4o", 
+                        agent_loop
+                    )
                     
-                    # Determine provider and model name based on agent loop
-                    if agent_loop == "OPENAI":
-                        # For OPENAI loop, always use OPENAI provider with computer-use-preview
-                        provider = LLMProvider.OPENAI
-                        model_name = "computer-use-preview"
-                    elif agent_loop == "ANTHROPIC":
-                        # For ANTHROPIC loop, always use ANTHROPIC provider
-                        provider = LLMProvider.ANTHROPIC
-                        # Extract model name from the UI string
-                        if model_choice_val.startswith("Anthropic: Claude "):
-                            # Extract the model name based on the UI string
-                            model_parts = model_choice_val.replace("Anthropic: Claude ", "").split(" (")
-                            version = model_parts[0]  # e.g., "3.7 Sonnet"
-                            date = model_parts[1].replace(")", "") if len(model_parts) > 1 else ""  # e.g., "20250219"
-                            
-                            # Format as claude-3-7-sonnet-20250219 or claude-3-5-sonnet-20240620
-                            version = version.replace(".", "-").replace(" ", "-").lower()
-                            model_name = f"claude-{version}-{date}"
-                        else:
-                            # Use the model_choice_val directly if it doesn't match the expected format
-                            model_name = model_choice_val
-                    elif agent_loop == "UITARS":
-                        # For UITARS, use MLXVLM for mlx-community models, OAICOMPAT for custom
-                        if model_choice_val == "Custom model (OpenAI compatible API)":
-                            provider = LLMProvider.OAICOMPAT
-                            model_name = custom_model_val
-                        else:
-                            provider = LLMProvider.MLXVLM
-                            model_name = model_choice_val
-                    elif agent_loop == "OMNI":
-                        # For OMNI, provider can be OPENAI, ANTHROPIC, OLLAMA, or OAICOMPAT
-                        if is_custom_openai_api:
-                            provider = LLMProvider.OAICOMPAT
-                            model_name = custom_model_val
-                        elif is_custom_ollama:
-                            provider = LLMProvider.OLLAMA
-                            model_name = custom_model_val
-                        elif model_choice_val.startswith("OMNI: OpenAI "):
-                            provider = LLMProvider.OPENAI
-                            # Extract model name from UI string (e.g., "OMNI: OpenAI GPT-4o" -> "gpt-4o")
-                            model_name = model_choice_val.replace("OMNI: OpenAI ", "").lower().replace(" ", "-")
-                        elif model_choice_val.startswith("OMNI: Claude "):
-                            provider = LLMProvider.ANTHROPIC
-                            # Extract model name from UI string (similar to ANTHROPIC loop case)
-                            model_parts = model_choice_val.replace("OMNI: Claude ", "").split(" (")
-                            version = model_parts[0]  # e.g., "3.7 Sonnet"
-                            date = model_parts[1].replace(")", "") if len(model_parts) > 1 else ""  # e.g., "20250219"
-                            
-                            # Format as claude-3-7-sonnet-20250219 or claude-3-5-sonnet-20240620
-                            version = version.replace(".", "-").replace(" ", "-").lower()
-                            model_name = f"claude-{version}-{date}"
-                        elif model_choice_val.startswith("OMNI: Ollama "):
-                            provider = LLMProvider.OLLAMA
-                            # Extract model name from UI string (e.g., "OMNI: Ollama llama3" -> "llama3")
-                            model_name = model_choice_val.replace("OMNI: Ollama ", "")
-                        else:
-                            # Fallback to get_provider_and_model for any other cases
-                            provider, model_name, _ = get_provider_and_model(model_choice_val, agent_loop)
-                    else:
-                        # Fallback for any other agent loop
-                        provider, model_name, _ = get_provider_and_model(model_choice_val, agent_loop)
-                    
-                    # Generate and return the code
                     return generate_python_code(
                         agent_loop, 
                         provider, 
@@ -1336,38 +1374,62 @@ if __name__ == "__main__":
                         messages, 
                         provider_base_url,
                         recent_images_val,
-                        save_trajectory_val
+                        save_trajectory_val,
+                        computer_os,
+                        computer_provider,
+                        vm_name,
+                        cua_cloud_api_key
                     )
                 
                 # Update code display when configuration changes
                 agent_loop.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 model_choice.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 custom_model.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 chatbot_history.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 recent_images.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 save_trajectory.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    outputs=[code_display]
+                )
+                computer_os.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    outputs=[code_display]
+                )
+                computer_provider.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    outputs=[code_display]
+                )
+                vm_name.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    outputs=[code_display]
+                )
+                cua_cloud_api_key.change(
+                    update_code_display,
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
 
