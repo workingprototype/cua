@@ -38,7 +38,8 @@ class Computer:
         noVNC_port: Optional[int] = 8006,
         host: str = os.environ.get("PYLUME_HOST", "localhost"),
         storage: Optional[str] = None,
-        ephemeral: bool = False
+        ephemeral: bool = False,
+        api_key: Optional[str] = None
     ):
         """Initialize a new Computer instance.
 
@@ -256,9 +257,7 @@ class Computer:
                             elif self.provider_type == VMProviderType.CLOUD:
                                 self.config.vm_provider = VMProviderFactory.create_provider(
                                     self.provider_type,
-                                    port=port,
-                                    host=host,
-                                    storage=storage,
+                                    api_key=self.api_key,
                                     verbose=verbose,
                                 )
                             else:
