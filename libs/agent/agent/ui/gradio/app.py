@@ -720,14 +720,14 @@ if __name__ == "__main__":
                     
                 with gr.Accordion("Computer Configuration", open=True):
                     # Computer configuration options
-                    computer_os = gr.Dropdown(
+                    computer_os = gr.Radio(
                         choices=["macos", "linux"],
                         label="Operating System",
                         value="macos",
                         info="Select the operating system for the computer",
                     )
                     
-                    computer_provider = gr.Dropdown(
+                    computer_provider = gr.Radio(
                         choices=["cloud", "lume"],
                         label="Provider",
                         value="lume",
