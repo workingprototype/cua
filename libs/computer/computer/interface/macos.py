@@ -37,7 +37,8 @@ class MacOSComputerInterface(BaseComputerInterface):
         Returns:
             WebSocket URI for the Computer API Server
         """
-        return f"ws://{self.ip_address}:8000/ws"
+        protocol = "wss" if self.api_key else "ws"
+        return f"{protocol}://{self.ip_address}:8000/ws" 
 
     async def _keep_alive(self):
         """Keep the WebSocket connection alive with automatic reconnection."""
