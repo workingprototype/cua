@@ -49,13 +49,13 @@ async def websocket_endpoint(websocket: WebSocket):
     # WebSocket message size is configured at the app or endpoint level, not on the instance
     await manager.connect(websocket)
     
-    # Check if VM_NAME is set (indicating cloud provider)
-    vm_name = os.environ.get("VM_NAME")
+    # Check if CONTAINER_NAME is set (indicating cloud provider)
+    container_name = os.environ.get("CONTAINER_NAME")
     
     # If cloud provider, perform authentication handshake
-    if vm_name:
+    if container_name:
         try:
-            logger.info(f"Cloud provider detected. VM_NAME: {vm_name}. Waiting for authentication...")
+            logger.info(f"Cloud provider detected. CONTAINER_NAME: {container_name}. Waiting for authentication...")
             
             # Wait for authentication message
             auth_data = await websocket.receive_json()
@@ -72,11 +72,11 @@ async def websocket_endpoint(websocket: WebSocket):
             
             # Extract credentials
             client_api_key = auth_data.get("params", {}).get("api_key")
-            client_vm_name = auth_data.get("params", {}).get("vm_name")
+            client_container_name = auth_data.get("params", {}).get("container_name")
             
             # Layer 1: VM Identity Verification
-            if client_vm_name != vm_name:
-                logger.warning(f"VM name mismatch. Expected: {vm_name}, Got: {client_vm_name}")
+            if client_container_name != container_name:
+                logger.warning(f"VM name mismatch. Expected: {container_name}, Got: {client_container_name}")
                 await websocket.send_json({
                     "success": False,
                     "error": "VM name mismatch"
@@ -103,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     }
                     
                     async with session.get(
-                        f"https://www.trycua.com/api/vm/auth?vm_name={vm_name}",
+                        f"https://www.trycua.com/api/vm/auth?container_name={container_name}",
                         headers=headers,
                     ) as resp:
                         if resp.status != 200:
@@ -120,7 +120,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         # If we get a 200 response with VNC URL, the VM exists and user has access
                         vnc_url = (await resp.text()).strip()
                         if not vnc_url:
-                            logger.warning(f"No VNC URL returned for VM: {vm_name}")
+                            logger.warning(f"No VNC URL returned for VM: {container_name}")
                             await websocket.send_json({
                                 "success": False,
                                 "error": "VM not found"
@@ -129,7 +129,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             manager.disconnect(websocket)
                             return
                         
-                        logger.info(f"Authentication successful for VM: {vm_name}")
+                        logger.info(f"Authentication successful for VM: {container_name}")
                         await websocket.send_json({
                             "success": True,
                             "message": "Authenticated"

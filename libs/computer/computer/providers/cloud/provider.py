@@ -65,7 +65,7 @@ class CloudProvider(BaseVMProvider):
 
     async def get_ip(self, name: Optional[str] = None, storage: Optional[str] = None, retry_delay: int = 2) -> str:
         """
-        Return the VM's IP address as '{vm_name}.containers.cloud.trycua.com'.
+        Return the VM's IP address as '{container_name}.containers.cloud.trycua.com'.
         Uses the provided 'name' argument (the VM name requested by the caller),
         falling back to self.name only if 'name' is None.
         Retries up to 3 times with retry_delay seconds if hostname is not available.

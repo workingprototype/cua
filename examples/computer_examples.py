@@ -45,7 +45,7 @@ async def main():
         # computer = Computer(
         #     os_type="linux",
         #     api_key=os.getenv("CUA_API_KEY"),
-        #     name=os.getenv("VM_NAME"),
+        #     name=os.getenv("CONTAINER_NAME"),
         #     provider_type=VMProviderType.CLOUD,
         # )
         

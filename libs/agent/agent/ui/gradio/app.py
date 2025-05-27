@@ -521,7 +521,7 @@ def create_gradio_ui(
     ]
     
     # Function to generate Python code based on configuration and tasks
-    def generate_python_code(agent_loop_choice, provider, model_name, tasks, provider_url, recent_images=3, save_trajectory=True, computer_os="macos", computer_provider="lume", vm_name="", cua_cloud_api_key=""):
+    def generate_python_code(agent_loop_choice, provider, model_name, tasks, provider_url, recent_images=3, save_trajectory=True, computer_os="macos", computer_provider="lume", container_name="", cua_cloud_api_key=""):
         """Generate Python code for the current configuration and tasks.
         
         Args:
@@ -534,7 +534,7 @@ def create_gradio_ui(
             save_trajectory: Whether to save the agent trajectory
             computer_os: Operating system type for the computer
             computer_provider: Provider type for the computer
-            vm_name: Optional VM name
+            container_name: Optional VM name
             cua_cloud_api_key: Optional CUA Cloud API key
             
         Returns:
@@ -552,8 +552,8 @@ def create_gradio_ui(
             computer_args.append(f'os_type="{computer_os}"')
         if computer_provider != "lume":
             computer_args.append(f'provider_type="{computer_provider}"')
-        if vm_name:
-            computer_args.append(f'name="{vm_name}"')
+        if container_name:
+            computer_args.append(f'name="{container_name}"')
         if cua_cloud_api_key:
             computer_args.append(f'api_key="{cua_cloud_api_key}"')
         
@@ -734,11 +734,11 @@ if __name__ == "__main__":
                         info="Select the computer provider",
                     )
                     
-                    vm_name = gr.Textbox(
-                        label="VM Name",
-                        placeholder="Enter VM name (optional)",
+                    container_name = gr.Textbox(
+                        label="Container Name",
+                        placeholder="Enter container name (optional)",
                         value="",
-                        info="Optional name for the virtual machine",
+                        info="Optional name for the container",
                     )
                     
                     cua_cloud_api_key = gr.Textbox(
@@ -1072,7 +1072,7 @@ if __name__ == "__main__":
                     anthropic_key_input=None,
                     computer_os="macos",
                     computer_provider="lume",
-                    vm_name="",
+                    container_name="",
                     cua_cloud_api_key="",
                 ):
                     if not history:
@@ -1182,7 +1182,7 @@ if __name__ == "__main__":
                             "recent_images": recent_imgs,
                             "computer_os": computer_os,
                             "computer_provider": computer_provider,
-                            "vm_name": vm_name,
+                            "container_name": container_name,
                             "cua_cloud_api_key": cua_cloud_api_key,
                         }
                         save_settings(current_settings)
@@ -1203,7 +1203,7 @@ if __name__ == "__main__":
                             provider_base_url=custom_url_value if is_oaicompat else None,
                             computer_os=computer_os,
                             computer_provider=computer_provider,
-                            computer_name=vm_name,
+                            computer_name=container_name,
                             computer_api_key=cua_cloud_api_key,
                             verbosity=logging.DEBUG,  # Added verbosity here
                         )
@@ -1333,7 +1333,7 @@ if __name__ == "__main__":
                         anthropic_api_key_input,
                         computer_os,
                         computer_provider,
-                        vm_name,
+                        container_name,
                         cua_cloud_api_key,
                     ],
                     outputs=[chatbot_history],
@@ -1353,7 +1353,7 @@ if __name__ == "__main__":
 
 
                 # Function to update the code display based on configuration and chat history
-                def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val, computer_os, computer_provider, vm_name, cua_cloud_api_key):
+                def update_code_display(agent_loop, model_choice_val, custom_model_val, chat_history, provider_base_url, recent_images_val, save_trajectory_val, computer_os, computer_provider, container_name, cua_cloud_api_key):
                     # Extract messages from chat history
                     messages = []
                     if chat_history:
@@ -1377,59 +1377,59 @@ if __name__ == "__main__":
                         save_trajectory_val,
                         computer_os,
                         computer_provider,
-                        vm_name,
+                        container_name,
                         cua_cloud_api_key
                     )
                 
                 # Update code display when configuration changes
                 agent_loop.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 model_choice.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 custom_model.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 chatbot_history.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 recent_images.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 save_trajectory.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 computer_os.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 computer_provider.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
-                vm_name.change(
+                container_name.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
                 cua_cloud_api_key.change(
                     update_code_display,
-                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, vm_name, cua_cloud_api_key],
+                    inputs=[agent_loop, model_choice, custom_model, chatbot_history, provider_base_url, recent_images, save_trajectory, computer_os, computer_provider, container_name, cua_cloud_api_key],
                     outputs=[code_display]
                 )
 
