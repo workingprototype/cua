@@ -95,7 +95,7 @@ class MacOSComputerInterface(BaseComputerInterface):
                                 "command": "authenticate",
                                 "params": {
                                     "api_key": self.api_key,
-                                    "vm_name": self.vm_name
+                                    "container_name": self.vm_name
                                 }
                             }
                             await self._ws.send(json.dumps(auth_message))
