@@ -76,41 +76,6 @@ Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building
 
 ### Step 4: Use in Your Code
 
-#### 🚀 Recommended: CloudProvider (TryCua Cloud)
-
-```python
-from computer import Computer
-from agent import ComputerAgent, LLM
-
-async def main():
-    # Connect to a cloud-hosted macOS VM (recommended for scale, speed, and reliability)
-    async with Computer(
-        os_type="macos",
-        display="1024x768",
-        provider_type="cloud",
-        api_key="YOUR_CUA_API_KEY",
-        name="my-macos-vm",
-    ) as computer:
-        # Example: Direct control of a cloud macOS VM
-        await computer.interface.left_click(100, 200)
-        await computer.interface.type_text("Hello, world!")
-        screenshot_bytes = await computer.interface.screenshot()
-
-        # Example: Run an agent on the cloud VM
-        agent = ComputerAgent(
-            computer=computer,
-            loop="UITARS",
-            model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
-        )
-        await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
-
-main()
-```
-
----
-
-#### Local VM (Apple Silicon Only)
-
 ```python
 from computer import Computer
 from agent import ComputerAgent, LLM
