@@ -98,10 +98,13 @@ async def websocket_endpoint(websocket: WebSocket):
             # Validate with TryCUA API
             try:
                 async with aiohttp.ClientSession() as session:
-                    headers = {"Authorization": f"Bearer {client_api_key}"}
+                    headers = {
+                        "Authorization": f"Bearer {client_api_key}",
+                        "Origin": f"https://{vm_name}.containers.cloud.trycua.com",
+                    }
                     
                     async with session.get(
-                        f"https://www.trycua.com/api/vm-host?vm_name={vm_name}",
+                        f"https://www.trycua.com/api/vm/auth",
                         headers=headers,
                     ) as resp:
                         if resp.status != 200:

@@ -16,7 +16,7 @@ import aiohttp
 from urllib.parse import urlparse
 
 class CloudProvider(BaseVMProvider):
-    """Cloud VM Provider implementation using /api/vm-host endpoint."""
+    """Cloud VM Provider implementation."""
     def __init__(
         self,
         api_key: str,
@@ -45,29 +45,13 @@ class CloudProvider(BaseVMProvider):
 
     async def get_vm(self, name: str, storage: Optional[str] = None) -> Dict[str, Any]:
         """Get VM VNC URL by name using the cloud API."""
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://www.trycua.com/api/vm-host?vm_name={name}", headers=headers) as resp:
-                if resp.status == 200:
-                    vnc_url = (await resp.text()).strip()
-                    parsed = urlparse(vnc_url)
-                    hostname = parsed.hostname or ""
-                    return {"name": name, "status": "available", "vnc_url": vnc_url, "hostname": hostname}
-                else:
-                    try:
-                        error = await resp.json()
-                    except Exception:
-                        error = {"error": await resp.text()}
-                    return {"name": name, "status": "error", **error}
+        return {"name": name, "hostname": f"{name}.containers.cloud.trycua.com"}
 
     async def list_vms(self) -> List[Dict[str, Any]]:
         logger.warning("CloudProvider.list_vms is not implemented")
         return []
 
     async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
-        vm = await self.get_vm(name=name)
-        if vm["status"] == "available":
-            return vm
         logger.warning("CloudProvider.run_vm is not implemented")
         return {"name": name, "status": "unavailable", "message": "CloudProvider is not implemented"}
 
@@ -81,22 +65,11 @@ class CloudProvider(BaseVMProvider):
 
     async def get_ip(self, name: Optional[str] = None, storage: Optional[str] = None, retry_delay: int = 2) -> str:
         """
-        Return the VM's IP address as '{vm_name}.us.vms.trycua.com'.
+        Return the VM's IP address as '{vm_name}.containers.cloud.trycua.com'.
         Uses the provided 'name' argument (the VM name requested by the caller),
         falling back to self.name only if 'name' is None.
         Retries up to 3 times with retry_delay seconds if hostname is not available.
         """
         if name is None:
             raise ValueError("VM name is required for CloudProvider.get_ip")
-            
-        attempts = 3
-        last_error = None
-        for attempt in range(attempts):
-            result = await self.get_vm(name=name, storage=storage)
-            hostname = result.get("hostname")
-            if hostname:
-                return hostname
-            last_error = result.get("error") or result
-            if attempt < attempts - 1:
-                await asyncio.sleep(retry_delay)
-        raise RuntimeError(f"Failed to get VM hostname after {attempts} attempts: {last_error}")
+        return f"{name}.containers.cloud.trycua.com"
