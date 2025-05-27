@@ -42,11 +42,22 @@ async def main():
             ephemeral=False,
         )
         
+        # computer = Computer(
+        #     os_type="linux",
+        #     api_key=os.getenv("CUA_API_KEY"),
+        #     name=os.getenv("CONTAINER_NAME"),
+        #     provider_type=VMProviderType.CLOUD,
+        # )
+        
         try:
             # Run the computer with default parameters
             await computer.run()
             
-            await computer.interface.hotkey("command", "space")
+            screenshot = await computer.interface.screenshot()
+            with open(Path("~/cua/examples/screenshot.png").expanduser(), "wb") as f:
+                f.write(screenshot)
+            
+            # await computer.interface.hotkey("command", "space")
 
             # res = await computer.interface.run_command("touch ./Downloads/empty_file")
             # print(f"Run command result: {res}")
