@@ -66,6 +66,9 @@ class CloudProvider(BaseVMProvider):
         return []
 
     async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
+        vm = await self.get_vm(name=name)
+        if vm["status"] == "available":
+            return vm
         logger.warning("CloudProvider.run_vm is not implemented")
         return {"name": name, "status": "unavailable", "message": "CloudProvider is not implemented"}
 
