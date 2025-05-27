@@ -99,12 +99,11 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 async with aiohttp.ClientSession() as session:
                     headers = {
-                        "Authorization": f"Bearer {client_api_key}",
-                        "Origin": f"https://{vm_name}.containers.cloud.trycua.com",
+                        "Authorization": f"Bearer {client_api_key}"
                     }
                     
                     async with session.get(
-                        f"https://www.trycua.com/api/vm/auth",
+                        f"https://www.trycua.com/api/vm/auth?vm_name={vm_name}",
                         headers=headers,
                     ) as resp:
                         if resp.status != 200:
