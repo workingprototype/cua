@@ -52,7 +52,6 @@ class CloudProvider(BaseVMProvider):
                     vnc_url = (await resp.text()).strip()
                     parsed = urlparse(vnc_url)
                     hostname = parsed.hostname or ""
-                    hostname = hostname.replace(".us.vms.trycua.com", ".containers.cloud.trycua.com")
                     return {"name": name, "status": "available", "vnc_url": vnc_url, "hostname": hostname}
                 else:
                     try:
