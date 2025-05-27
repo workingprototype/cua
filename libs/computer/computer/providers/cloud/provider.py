@@ -20,7 +20,6 @@ class CloudProvider(BaseVMProvider):
     def __init__(
         self,
         api_key: str,
-        endpoint_url: str = "https://trycua.com/api/vm-host",
         verbose: bool = False,
         **kwargs,
     ):
@@ -28,12 +27,10 @@ class CloudProvider(BaseVMProvider):
         Args:
             api_key: API key for authentication
             name: Name of the VM
-            endpoint_url: Endpoint for the VM host API
             verbose: Enable verbose logging
         """
         assert api_key, "api_key required for CloudProvider"
         self.api_key = api_key
-        self.endpoint_url = endpoint_url
         self.verbose = verbose
 
     @property
@@ -49,9 +46,8 @@ class CloudProvider(BaseVMProvider):
     async def get_vm(self, name: str, storage: Optional[str] = None) -> Dict[str, Any]:
         """Get VM VNC URL by name using the cloud API."""
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        params = {"vm_name": name}
         async with aiohttp.ClientSession() as session:
-            async with session.get(self.endpoint_url, headers=headers, params=params) as resp:
+            async with session.get(f"https://www.trycua.com/api/vm-host?vm_name={name}", headers=headers) as resp:
                 if resp.status == 200:
                     vnc_url = (await resp.text()).strip()
                     parsed = urlparse(vnc_url)
