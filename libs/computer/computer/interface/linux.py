@@ -15,8 +15,8 @@ from .models import Key, KeyType
 class LinuxComputerInterface(BaseComputerInterface):
     """Interface for Linux."""
 
-    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume"):
-        super().__init__(ip_address, username, password)
+    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None):
+        super().__init__(ip_address, username, password, api_key, vm_name)
         self._ws = None
         self._reconnect_task = None
         self._closed = False
@@ -86,6 +86,32 @@ class LinuxComputerInterface(BaseComputerInterface):
                             timeout=30,
                         )
                         self.logger.info("WebSocket connection established")
+                        
+                        # If api_key and vm_name are provided, perform authentication handshake
+                        if self.api_key and self.vm_name:
+                            self.logger.info("Performing authentication handshake...")
+                            auth_message = {
+                                "command": "authenticate",
+                                "params": {
+                                    "api_key": self.api_key,
+                                    "vm_name": self.vm_name
+                                }
+                            }
+                            await self._ws.send(json.dumps(auth_message))
+                            
+                            # Wait for authentication response
+                            auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
+                            auth_result = json.loads(auth_response)
+                            
+                            if not auth_result.get("success"):
+                                error_msg = auth_result.get("error", "Authentication failed")
+                                self.logger.error(f"Authentication failed: {error_msg}")
+                                await self._ws.close()
+                                self._ws = None
+                                raise ConnectionError(f"Authentication failed: {error_msg}")
+                            
+                            self.logger.info("Authentication successful")
+                        
                         self._reconnect_delay = 1  # Reset reconnect delay on successful connection
                         self._last_ping = time.time()
                         retry_count = 0  # Reset retry count on successful connection

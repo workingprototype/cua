@@ -19,7 +19,7 @@ class CloudProvider(BaseVMProvider):
     """Cloud VM Provider implementation using /api/vm-host endpoint."""
     def __init__(
         self,
-        api_key: str = None,
+        api_key: str,
         endpoint_url: str = "https://trycua.com/api/vm-host",
         verbose: bool = False,
         **kwargs,
@@ -56,13 +56,13 @@ class CloudProvider(BaseVMProvider):
                     vnc_url = (await resp.text()).strip()
                     parsed = urlparse(vnc_url)
                     hostname = parsed.hostname
-                    return {"name": vm_name, "status": "available", "vnc_url": vnc_url, "hostname": hostname}
+                    return {"name": name, "status": "available", "vnc_url": vnc_url, "hostname": hostname}
                 else:
                     try:
                         error = await resp.json()
                     except Exception:
                         error = {"error": await resp.text()}
-                    return {"name": vm_name, "status": "error", **error}
+                    return {"name": name, "status": "error", **error}
 
     async def list_vms(self) -> List[Dict[str, Any]]:
         logger.warning("CloudProvider.list_vms is not implemented")
@@ -83,9 +83,13 @@ class CloudProvider(BaseVMProvider):
     async def get_ip(self, name: Optional[str] = None, storage: Optional[str] = None, retry_delay: int = 2) -> str:
         """
         Return the VM's IP address as '{vm_name}.us.vms.trycua.com'.
-        Uses the provided 'name' argument (the VM name requested by the caller).
+        Uses the provided 'name' argument (the VM name requested by the caller),
+        falling back to self.name only if 'name' is None.
         Retries up to 3 times with retry_delay seconds if hostname is not available.
         """
+        if name is None:
+            raise ValueError("VM name is required for CloudProvider.get_ip")
+            
         attempts = 3
         last_error = None
         for attempt in range(attempts):

@@ -393,12 +393,25 @@ class Computer:
             self.logger.info(f"Initializing interface for {self.os_type} at {ip_address}")
             from .interface.base import BaseComputerInterface
 
-            self._interface = cast(
-                BaseComputerInterface,
-                InterfaceFactory.create_interface_for_os(
-                    os=self.os_type, ip_address=ip_address  # type: ignore[arg-type]
-                ),
-            )
+            # Pass authentication credentials if using cloud provider
+            if self.provider_type == VMProviderType.CLOUD and self.api_key and self.config.name:
+                self._interface = cast(
+                    BaseComputerInterface,
+                    InterfaceFactory.create_interface_for_os(
+                        os=self.os_type, 
+                        ip_address=ip_address,
+                        api_key=self.api_key,
+                        vm_name=self.config.name
+                    ),
+                )
+            else:
+                self._interface = cast(
+                    BaseComputerInterface,
+                    InterfaceFactory.create_interface_for_os(
+                        os=self.os_type, 
+                        ip_address=ip_address
+                    ),
+                )
 
             # Wait for the WebSocket interface to be ready
             self.logger.info("Connecting to WebSocket interface...")
@@ -493,6 +506,11 @@ class Computer:
         
         # Call the provider's get_ip method which will wait indefinitely
         storage_param = "ephemeral" if self.ephemeral else self.storage
+        
+        # Log the image being used
+        self.logger.info(f"Running VM using image: {self.image}")
+        
+        # Call provider.get_ip with explicit image parameter
         ip = await self.config.vm_provider.get_ip(
             name=self.config.name,
             storage=storage_param,
