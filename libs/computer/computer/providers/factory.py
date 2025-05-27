@@ -102,11 +102,7 @@ class VMProviderFactory:
         elif provider_type == VMProviderType.CLOUD:
             try:
                 from .cloud import CloudProvider
-                # Extract api_key from kwargs
-                api_key_final = kwargs.get('api_key')
-                assert api_key_final, "api_key required for CloudProvider"
                 return CloudProvider(
-                    api_key=api_key_final,
                     verbose=verbose,
                     **kwargs,
                 )
