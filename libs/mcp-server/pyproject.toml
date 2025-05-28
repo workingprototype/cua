@@ -13,8 +13,8 @@ authors = [
 ]
 dependencies = [
     "mcp>=1.6.0,<2.0.0",
-    "cua-agent[all]>=0.1.0,<0.2.0",
-    "cua-computer>=0.1.0,<0.2.0",
+    "cua-agent[all]>=0.2.0,<0.3.0",
+    "cua-computer>=0.2.0,<0.3.0",
 ]
 
 [project.scripts]
