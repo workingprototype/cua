@@ -21,42 +21,33 @@
 
 # 🚀 Quick Start with a Computer-Use Agent UI
 
-### macOS (Local VMs + Cloud Containers)
+**Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
-Get started with a Computer-Use Agent UI with a single command:
-
+**macOS:**
 ```bash
+# Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
-This script will:
-- Prompt you to choose between [C/ua Cloud Containers](https://trycua.com) or local macOS VMs
-- Install Lume CLI for VM management (if needed)
-- Pull the latest macOS CUA image (if needed)
-- Set up Python environment and install/update required packages
-- Launch the Computer-Use Agent UI
+<details>
+<summary>What does this script do?</summary>
 
-**System Requirements:**
-- Mac with Apple Silicon (M1/M2/M3/M4 series)
-- macOS 15 (Sequoia) or newer
-- Disk space for VM images (30GB+ recommended)
+1. **Asks if you want to use local VMs?**
+   - **If yes:**
+     1. Install VM management CLI
+     2. `lume pull macos-sequoia-cua:latest` - Download macOS image
+     3. `lume run macos-sequoia-cua:latest` - Start VM
+2. `pip install "cua-computer[all]" "cua-agent[all]"` - Install packages
+3. `python -m agent.ui.gradio.app` - Launch UI
+</details>
 
-### Windows/Linux (Cloud Containers Only)
-
-Get started with a Computer-Use Agent UI with a single command:
-
+**Windows/Linux:**
 ```bash
+# Requires Python 3.11+ and C/ua Cloud API key
 pip install "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
 ```
 
-This will:
-- Install the required Python packages
-- Launch the Computer-Use Agent UI
-- Connect to cloud containers through [trycua.com](https://www.trycua.com/)
-
-**System Requirements:**
-- Python 3.11+
-- Internet connection for cloud container access
+*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
 
 ## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
