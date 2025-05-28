@@ -43,11 +43,11 @@
 
 **Windows/Linux:**
 ```bash
-# Requires Python 3.11+ and C/ua Cloud API key
+# Requires Python 3.11+ and C/ua API key
 pip install -U "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
 ```
 
-*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
 
 ## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
