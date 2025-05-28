@@ -130,6 +130,9 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
             )
 
 
+# Detect if current device is MacOS
+is_mac = platform.system().lower() == "darwin"
+
 # Map model names to specific provider model names
 MODEL_MAPPINGS = {
     "openai": {
@@ -166,7 +169,7 @@ MODEL_MAPPINGS = {
     },
     "uitars": {
         # UI-TARS models using MLXVLM provider
-        "default": "mlx-community/UI-TARS-1.5-7B-4bit",
+        "default": "mlx-community/UI-TARS-1.5-7B-4bit" if is_mac else "tgi",
         "mlx-community/UI-TARS-1.5-7B-4bit": "mlx-community/UI-TARS-1.5-7B-4bit",
         "mlx-community/UI-TARS-1.5-7B-6bit": "mlx-community/UI-TARS-1.5-7B-6bit"
     },
@@ -476,16 +479,18 @@ def create_gradio_ui(
     if ollama_models:
         omni_models += ollama_models
 
+    # Detect if current device is MacOS
+    is_mac = platform.system().lower() == "darwin"
+    
     # Format model choices
     provider_to_models = {
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model (OpenAI compatible API)", "Custom model (ollama)"],  # Add custom model options
-        "UITARS": [
+        "UITARS": ([
             "mlx-community/UI-TARS-1.5-7B-4bit",
             "mlx-community/UI-TARS-1.5-7B-6bit",
-            "Custom model (OpenAI compatible API)"
-        ],  # UI-TARS options with MLX models
+        ] if is_mac else []) + ["Custom model (OpenAI compatible API)"],  # UI-TARS options with MLX models
     }
 
     # --- Apply Saved Settings (override defaults if available) ---
