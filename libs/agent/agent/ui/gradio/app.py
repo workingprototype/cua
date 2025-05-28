@@ -1450,7 +1450,7 @@ if __name__ == "__main__":
 def test_cua():
     """Standalone function to launch the Gradio app."""
     demo = create_gradio_ui()
-    demo.launch(share=False)  # Don't create a public link
+    demo.launch(share=False, inbrowser=True)  # Don't create a public link
 
 
 if __name__ == "__main__":
