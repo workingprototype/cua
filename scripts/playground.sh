@@ -175,9 +175,9 @@ mkdir -p "$DEMO_DIR"
 # Create .env.local file with API keys (only if it doesn't exist)
 if [[ ! -f "$DEMO_DIR/.env.local" ]]; then
   cat > "$DEMO_DIR/.env.local" << EOF
-# Add your API keys here
-OPENAI_API_KEY=your_openai_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# Uncomment and add your API keys here
+# OPENAI_API_KEY=your_openai_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
 CUA_API_KEY=your_cua_api_key_here
 EOF
   echo "📝 Created .env.local file with API key placeholders"
