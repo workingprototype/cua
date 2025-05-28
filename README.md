@@ -19,7 +19,9 @@
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
 </div>
 
-# 🚀 Quick Start
+# 🚀 Quick Start with a Computer-Use Agent UI
+
+### macOS (Local VMs + Cloud Containers)
 
 Get started with a Computer-Use Agent UI with a single command:
 
@@ -34,17 +36,33 @@ This script will:
 - Set up Python environment and install/update required packages
 - Launch the Computer-Use Agent UI
 
-#### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+**System Requirements:**
+- Mac with Apple Silicon (M1/M2/M3/M4 series)
+- macOS 15 (Sequoia) or newer
+- Disk space for VM images (30GB+ recommended)
+
+### Windows/Linux (Cloud Containers Only)
+
+Get started with a Computer-Use Agent UI with a single command:
+
+```bash
+pip install "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
+```
+
+This will:
+- Install the required Python packages
+- Launch the Computer-Use Agent UI
+- Connect to cloud containers through [trycua.com](https://www.trycua.com/)
+
+**System Requirements:**
+- Python 3.11+
+- Internet connection for cloud container access
+
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
-
-### System Requirements
-
-- Mac with Apple Silicon (M1/M2/M3/M4 series)
-- macOS 15 (Sequoia) or newer
-- Disk space for VM images (30GB+ recommended)
 
 
 # 💻 For Developers
