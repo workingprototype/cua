@@ -38,7 +38,8 @@ class LinuxComputerInterface(BaseComputerInterface):
             WebSocket URI for the Computer API Server
         """
         protocol = "wss" if self.api_key else "ws"
-        return f"{protocol}://{self.ip_address}:8000/ws" 
+        port = "8443" if self.api_key else "8000"
+        return f"{protocol}://{self.ip_address}:{port}/ws" 
 
     async def _keep_alive(self):
         """Keep the WebSocket connection alive with automatic reconnection."""
