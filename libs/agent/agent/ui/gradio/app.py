@@ -31,6 +31,7 @@ import os
 import asyncio
 import logging
 import json
+import platform
 from pathlib import Path
 from typing import Dict, List, Optional, AsyncGenerator, Any, Tuple, Union
 import gradio as gr
@@ -727,10 +728,14 @@ if __name__ == "__main__":
                         info="Select the operating system for the computer",
                     )
                     
+                    # Detect if current device is MacOS
+                    is_mac = platform.system().lower() == "darwin"
+                    
                     computer_provider = gr.Radio(
                         choices=["cloud", "lume"],
                         label="Provider",
-                        value="lume",
+                        value="lume" if is_mac else "cloud",
+                        visible=is_mac,
                         info="Select the computer provider",
                     )
                     
