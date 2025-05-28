@@ -446,7 +446,8 @@ def create_gradio_ui(
     # Check for API keys
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-
+    cua_api_key = os.environ.get("CUA_API_KEY", "")
+    
     # Always show models regardless of API key availability
     openai_models = ["OpenAI: Computer-Use Preview"]
     anthropic_models = [
@@ -464,9 +465,11 @@ def create_gradio_ui(
     # Check if API keys are available
     has_openai_key = bool(openai_api_key)
     has_anthropic_key = bool(anthropic_api_key)
+    has_cua_key = bool(cua_api_key)
     
     print("has_openai_key", has_openai_key)
     print("has_anthropic_key", has_anthropic_key)
+    print("has_cua_key", has_cua_key)
 
     # Get Ollama models for OMNI
     ollama_models = get_ollama_models()
@@ -752,6 +755,7 @@ if __name__ == "__main__":
                         value="",
                         type="password",
                         info="Required for cloud provider",
+                        visible=(not has_cua_key)
                     )
                     
                 with gr.Accordion("Agent Configuration", open=True):
@@ -1176,6 +1180,8 @@ if __name__ == "__main__":
                         else:
                             # For Ollama or default OAICOMPAT (without custom key), no key needed/expected
                             api_key = ""
+                            
+                        cua_cloud_api_key = cua_cloud_api_key or os.environ.get("CUA_API_KEY", "")
 
                         # --- Save Settings Before Running Agent ---
                         current_settings = {
