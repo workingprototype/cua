@@ -26,6 +26,7 @@ class LinuxComputerInterface(BaseComputerInterface):
         self._reconnect_delay = 1  # Start with 1 second delay
         self._max_reconnect_delay = 30  # Maximum delay between reconnection attempts
         self._log_connection_attempts = True  # Flag to control connection attempt logging
+        self._authenticated = False  # Track authentication status
 
         # Set logger name for Linux interface
         self.logger = Logger("cua.interface.linux", LogLevel.NORMAL)
@@ -89,34 +90,14 @@ class LinuxComputerInterface(BaseComputerInterface):
                         )
                         self.logger.info("WebSocket connection established")
                         
-                        # If api_key and vm_name are provided, perform authentication handshake
-                        if self.api_key and self.vm_name:
-                            self.logger.info("Performing authentication handshake...")
-                            auth_message = {
-                                "command": "authenticate",
-                                "params": {
-                                    "api_key": self.api_key,
-                                    "container_name": self.vm_name
-                                }
-                            }
-                            await self._ws.send(json.dumps(auth_message))
-                            
-                            # Wait for authentication response
-                            auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
-                            auth_result = json.loads(auth_response)
-                            
-                            if not auth_result.get("success"):
-                                error_msg = auth_result.get("error", "Authentication failed")
-                                self.logger.error(f"Authentication failed: {error_msg}")
-                                await self._ws.close()
-                                self._ws = None
-                                raise ConnectionError(f"Authentication failed: {error_msg}")
-                            
-                            self.logger.info("Authentication successful")
+                        # Authentication will be handled by the first command that needs it
+                        # Don't do authentication here to avoid recv conflicts
                         
                         self._reconnect_delay = 1  # Reset reconnect delay on successful connection
                         self._last_ping = time.time()
                         retry_count = 0  # Reset retry count on successful connection
+                        self._authenticated = False  # Reset auth status on new connection
+
                     except (asyncio.TimeoutError, websockets.exceptions.WebSocketException) as e:
                         next_retry = self._reconnect_delay
 
@@ -139,13 +120,6 @@ class LinuxComputerInterface(BaseComputerInterface):
                             except:
                                 pass
                         self._ws = None
-
-                        # Use exponential backoff for connection retries
-                        await asyncio.sleep(self._reconnect_delay)
-                        self._reconnect_delay = min(
-                            self._reconnect_delay * 2, self._max_reconnect_delay
-                        )
-                        continue
 
                 # Regular ping to check connection
                 if self._ws and self._ws.state == websockets.protocol.State.OPEN:
@@ -225,6 +199,31 @@ class LinuxComputerInterface(BaseComputerInterface):
                 if not self._ws:
                     raise ConnectionError("WebSocket connection is not established")
 
+                # Handle authentication if needed
+                if self.api_key and self.vm_name and not self._authenticated:
+                    self.logger.info("Performing authentication handshake...")
+                    auth_message = {
+                        "command": "authenticate",
+                        "params": {
+                            "api_key": self.api_key,
+                            "container_name": self.vm_name
+                        }
+                    }
+                    await self._ws.send(json.dumps(auth_message))
+                    
+                    # Wait for authentication response
+                    auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
+                    auth_result = json.loads(auth_response)
+                    
+                    if not auth_result.get("success"):
+                        error_msg = auth_result.get("error", "Authentication failed")
+                        self.logger.error(f"Authentication failed: {error_msg}")
+                        self._authenticated = False
+                        raise ConnectionError(f"Authentication failed: {error_msg}")
+                    
+                    self.logger.info("Authentication successful")
+                    self._authenticated = True
+
                 message = {"command": command, "params": params or {}}
                 await self._ws.send(json.dumps(message))
                 response = await asyncio.wait_for(self._ws.recv(), timeout=30)
@@ -245,9 +244,7 @@ class LinuxComputerInterface(BaseComputerInterface):
                         f"Failed to send command '{command}' after {max_retries} retries"
                     )
                     self.logger.debug(f"Command failure details: {e}")
-                    raise
-
-        raise last_error if last_error else RuntimeError("Failed to send command")
+                raise last_error if last_error else RuntimeError("Failed to send command")
 
     async def wait_for_ready(self, timeout: int = 60, interval: float = 1.0):
         """Wait for WebSocket connection to become available."""
