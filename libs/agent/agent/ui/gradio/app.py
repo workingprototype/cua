@@ -31,6 +31,7 @@ import os
 import asyncio
 import logging
 import json
+import platform
 from pathlib import Path
 from typing import Dict, List, Optional, AsyncGenerator, Any, Tuple, Union
 import gradio as gr
@@ -129,6 +130,9 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
             )
 
 
+# Detect if current device is MacOS
+is_mac = platform.system().lower() == "darwin"
+
 # Map model names to specific provider model names
 MODEL_MAPPINGS = {
     "openai": {
@@ -165,7 +169,7 @@ MODEL_MAPPINGS = {
     },
     "uitars": {
         # UI-TARS models using MLXVLM provider
-        "default": "mlx-community/UI-TARS-1.5-7B-4bit",
+        "default": "mlx-community/UI-TARS-1.5-7B-4bit" if is_mac else "tgi",
         "mlx-community/UI-TARS-1.5-7B-4bit": "mlx-community/UI-TARS-1.5-7B-4bit",
         "mlx-community/UI-TARS-1.5-7B-6bit": "mlx-community/UI-TARS-1.5-7B-6bit"
     },
@@ -475,16 +479,18 @@ def create_gradio_ui(
     if ollama_models:
         omni_models += ollama_models
 
+    # Detect if current device is MacOS
+    is_mac = platform.system().lower() == "darwin"
+    
     # Format model choices
     provider_to_models = {
         "OPENAI": openai_models,
         "ANTHROPIC": anthropic_models,
         "OMNI": omni_models + ["Custom model (OpenAI compatible API)", "Custom model (ollama)"],  # Add custom model options
-        "UITARS": [
+        "UITARS": ([
             "mlx-community/UI-TARS-1.5-7B-4bit",
             "mlx-community/UI-TARS-1.5-7B-6bit",
-            "Custom model (OpenAI compatible API)"
-        ],  # UI-TARS options with MLX models
+        ] if is_mac else []) + ["Custom model (OpenAI compatible API)"],  # UI-TARS options with MLX models
     }
 
     # --- Apply Saved Settings (override defaults if available) ---
@@ -730,10 +736,14 @@ if __name__ == "__main__":
                         info="Select the operating system for the computer",
                     )
                     
+                    # Detect if current device is MacOS
+                    is_mac = platform.system().lower() == "darwin"
+                    
                     computer_provider = gr.Radio(
                         choices=["cloud", "lume"],
                         label="Provider",
-                        value="lume",
+                        value="lume" if is_mac else "cloud",
+                        visible=is_mac,
                         info="Select the computer provider",
                     )
                     
@@ -1445,7 +1455,7 @@ if __name__ == "__main__":
 def test_cua():
     """Standalone function to launch the Gradio app."""
     demo = create_gradio_ui()
-    demo.launch(share=False)  # Don't create a public link
+    demo.launch(share=False, inbrowser=True)  # Don't create a public link
 
 
 if __name__ == "__main__":

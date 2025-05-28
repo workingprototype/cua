@@ -19,32 +19,41 @@
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
 </div>
 
-# 🚀 Quick Start
+# 🚀 Quick Start with a Computer-Use Agent UI
 
-Get started with a Computer-Use Agent UI with a single command:
+**Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
+**macOS:**
 ```bash
+# Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
-This script will:
-- Prompt you to choose between [C/ua Cloud Containers](https://trycua.com) or local macOS VMs
-- Install Lume CLI for VM management (if needed)
-- Pull the latest macOS CUA image (if needed)
-- Set up Python environment and install/update required packages
-- Launch the Computer-Use Agent UI
+<details>
+<summary>What does this script do?</summary>
 
-#### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+1. **Asks if you want to use local VMs?**
+   - **If yes:**
+     1. Install VM management CLI
+     2. `lume pull macos-sequoia-cua:latest` - Download macOS image
+     3. `lume run macos-sequoia-cua:latest` - Start VM
+2. `pip install "cua-computer[all]" "cua-agent[all]"` - Install packages
+3. `python -m agent.ui.gradio.app` - Launch UI
+</details>
+
+**Windows/Linux:**
+```bash
+# Requires Python 3.11+ and C/ua API key
+pip install -U "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
+```
+
+*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
-
-### System Requirements
-
-- Mac with Apple Silicon (M1/M2/M3/M4 series)
-- macOS 15 (Sequoia) or newer
-- Disk space for VM images (30GB+ recommended)
 
 
 # 💻 For Developers
