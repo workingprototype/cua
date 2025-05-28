@@ -1,11 +1,11 @@
 """Base provider interface for VM backends."""
 
 import abc
-from enum import Enum
+from enum import StrEnum
 from typing import Dict, List, Optional, Any, AsyncContextManager
 
 
-class VMProviderType(str, Enum):
+class VMProviderType(StrEnum):
     """Enum of supported VM provider types."""
     LUME = "lume"
     LUMIER = "lumier"

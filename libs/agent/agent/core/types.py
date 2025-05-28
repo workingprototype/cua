@@ -1,18 +1,18 @@
 """Core type definitions."""
 
 from typing import Any, Dict, List, Optional, TypedDict, Union
-from enum import Enum, StrEnum, auto
+from enum import StrEnum
 from dataclasses import dataclass
 
 
-class AgentLoop(Enum):
+class AgentLoop(StrEnum):
     """Enumeration of available loop types."""
 
-    ANTHROPIC = auto()  # Anthropic implementation
-    OMNI = auto()  # OmniLoop implementation
-    OPENAI = auto()  # OpenAI implementation
-    OLLAMA = auto()  # OLLAMA implementation
-    UITARS = auto()  # UI-TARS implementation
+    ANTHROPIC = "anthropic"  # Anthropic implementation
+    OMNI = "omni"  # OmniLoop implementation
+    OPENAI = "openai"  # OpenAI implementation
+    OLLAMA = "ollama"  # OLLAMA implementation
+    UITARS = "uitars"  # UI-TARS implementation
     # Add more loop types as needed
 
 

@@ -22,7 +22,7 @@ Supported Agent Loops and Models:
 Requirements:
     - Mac with Apple Silicon (M1/M2/M3/M4)
     - macOS 14 (Sonoma) or newer
-    - Python 3.10+
+    - Python 3.11+
     - Lume CLI installed (https://github.com/trycua/cua)
     - OpenAI or Anthropic API key
 """

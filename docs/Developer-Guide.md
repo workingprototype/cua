@@ -200,11 +200,11 @@ The formatting configuration is defined in the root `pyproject.toml` file:
 ```toml
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 select = ["E", "F", "B", "I"]
 fix = true
 
@@ -213,7 +213,7 @@ docstring-code-format = true
 
 [tool.mypy]
 strict = true
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 disallow_untyped_defs = true
 check_untyped_defs = true
@@ -225,7 +225,7 @@ warn_unused_ignores = false
 #### Key Formatting Rules
 
 - **Line Length**: Maximum of 100 characters
-- **Python Version**: Code should be compatible with Python 3.10+
+- **Python Version**: Code should be compatible with Python 3.11+
 - **Imports**: Automatically sorted (using Ruff's "I" rule)
 - **Type Hints**: Required for all function definitions (strict mypy mode)
 
