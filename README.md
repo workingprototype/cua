@@ -13,7 +13,7 @@
   <a href="https://trendshift.io/repositories/13685" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13685" alt="trycua%2Fcua | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-**c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
+**c/ua** ("koo-ah") is Docker for [Computer-Use Agents](https://www.oneusefulthing.org/p/when-you-give-a-claude-a-mouse) - it enables AI agents to control full operating systems in virtual containers and deploy them locally or to the cloud.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
@@ -21,15 +21,14 @@
 
 # 🚀 Quick Start
 
-Get started with a Computer-Use Agent UI and a VM with a single command:
-
+Get started with a Computer-Use Agent UI with a single command:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
-
 This script will:
+- Prompt you to choose between [C/ua Cloud Containers](https://trycua.com) or local macOS VMs
 - Install Lume CLI for VM management (if needed)
 - Pull the latest macOS CUA image (if needed)
 - Set up Python environment and install/update required packages
@@ -81,21 +80,28 @@ from computer import Computer
 from agent import ComputerAgent, LLM
 
 async def main():
-    # Start a local macOS VM with a 1024x768 display
-    async with Computer(os_type="macos", display="1024x768") as computer:
+    # Start a local macOS VM
+    computer = Computer(os_type="macos")
 
-        # Example: Direct control of a macOS VM with Computer
-        await computer.interface.left_click(100, 200)
-        await computer.interface.type_text("Hello, world!")
-        screenshot_bytes = await computer.interface.screenshot()
-        
-        # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
-        agent = ComputerAgent(
-          computer=computer,
-          loop="UITARS",
-          model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
-        )
-        await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+    # Or with C/ua Cloud Container
+    computer = Computer(
+      os_type="linux",
+      api_key="your_cua_api_key_here",
+      name="your_container_name_here"
+    )
+
+    # Example: Direct control of a macOS VM with Computer
+    await computer.interface.left_click(100, 200)
+    await computer.interface.type_text("Hello, world!")
+    screenshot_bytes = await computer.interface.screenshot()
+    
+    # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
+    agent = ComputerAgent(
+      computer=computer,
+      loop="UITARS",
+      model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
+    )
+    await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
 main()
 ```
