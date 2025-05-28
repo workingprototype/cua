@@ -82,6 +82,7 @@ from agent import ComputerAgent, LLM
 async def main():
     # Start a local macOS VM
     computer = Computer(os_type="macos")
+    await computer.run()
 
     # Or with C/ua Cloud Container
     computer = Computer(
