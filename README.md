@@ -44,7 +44,7 @@
 **Windows/Linux:**
 ```bash
 # Requires Python 3.11+ and C/ua Cloud API key
-pip install "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
+pip install -U "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
 ```
 
 *How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
