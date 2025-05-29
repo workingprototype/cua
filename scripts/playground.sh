@@ -2,10 +2,14 @@
 
 set -e
 
-echo "🚀 Setting up C/ua playground environment..."
+echo "🚀 Launching C/ua Computer-Use Agent UI..."
 
 # Save the original working directory
 ORIGINAL_DIR="$(pwd)"
+
+# Directories used by the script
+DEMO_DIR="$HOME/.cua-demo"
+VENV_DIR="$DEMO_DIR/venv"
 
 # Function to clean up on exit
 cleanup() {
@@ -33,7 +37,6 @@ if [[ "$CHOICE" == "1" ]]; then
   echo ""
   
   # Check if existing .env.local already has CUA_API_KEY (check current dir and demo dir)
-  DEMO_DIR="$HOME/.cua-demo"
   # Look for .env.local in the original working directory (before cd to temp dir)
   CURRENT_ENV_FILE="$ORIGINAL_DIR/.env.local"
   DEMO_ENV_FILE="$DEMO_DIR/.env.local"
@@ -152,7 +155,6 @@ if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" 
 fi
 
 # Create a virtual environment
-VENV_DIR="$HOME/.cua-venv"
 if [ ! -d "$VENV_DIR" ]; then
   $PYTHON_CMD -m venv "$VENV_DIR"
 fi
@@ -169,7 +171,6 @@ pip install -U cua-computer "cua-agent[all]"
 pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
 
 # Create a simple demo script
-DEMO_DIR="$HOME/.cua-demo"
 mkdir -p "$DEMO_DIR"
 
 # Create .env.local file with API keys (only if it doesn't exist)
@@ -198,13 +199,13 @@ if [[ "$USE_CLOUD" == "true" ]]; then
 fi
 
 # Create a convenience script to run the demo
-cat > "$DEMO_DIR/start_demo.sh" << EOF
+cat > "$DEMO_DIR/start_ui.sh" << EOF
 #!/bin/bash
 source "$VENV_DIR/bin/activate"
 cd "$DEMO_DIR"
 python run_demo.py
 EOF
-chmod +x "$DEMO_DIR/start_demo.sh"
+chmod +x "$DEMO_DIR/start_ui.sh"
 
 echo "✅ Setup complete!"
 
@@ -276,7 +277,7 @@ fi
 
 echo "☁️  CUA Cloud Container setup complete!"
 echo "📝 Edit $DEMO_DIR/.env.local to update your API keys"
-echo "🖥️  Start the playground by running: $DEMO_DIR/start_demo.sh"
+echo "🖥️  Start the playground by running: $DEMO_DIR/start_ui.sh"
 
 # Check if the VM is running (only for local setup)
 if [[ "$USE_CLOUD" == "false" ]]; then
@@ -296,10 +297,10 @@ fi
 
 # Ask if the user wants to start the demo now
 echo
-read -p "Would you like to start the CUA playground now? (y/n) " -n 1 -r
+read -p "Would you like to start the C/ua Computer-Use Agent UI now? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo "🚀 Starting the CUA playground..."
+  echo "🚀 Starting the C/ua Computer-Use Agent UI..."
   echo ""
-  "$DEMO_DIR/start_demo.sh"
+  "$DEMO_DIR/start_ui.sh"
 fi
