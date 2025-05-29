@@ -141,15 +141,29 @@ fi
 
 # Create a Python virtual environment
 echo "🐍 Setting up Python environment..."
-PYTHON_CMD="python3"
 
-# Check if Python 3.11+ is available
-PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | cut -d" " -f2)
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+# Try different Python commands in order of preference
+PYTHON_CMD=""
+for cmd in python3.11 python3 python; do
+  if command -v $cmd &> /dev/null; then
+    # Check if this Python version is 3.11+
+    PYTHON_VERSION=$($cmd --version 2>&1 | cut -d" " -f2)
+    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+    
+    if [ "$PYTHON_MAJOR" -gt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 11 ]); then
+      PYTHON_CMD=$cmd
+      echo "✅ Found suitable Python: $cmd (version $PYTHON_VERSION)"
+      break
+    else
+      echo "⚠️  Found $cmd (version $PYTHON_VERSION) but it's too old, trying next..."
+    fi
+  fi
+done
 
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
-  echo "❌ Python 3.11+ is required. You have $PYTHON_VERSION."
+# If no suitable Python was found, error out
+if [ -z "$PYTHON_CMD" ]; then
+  echo "❌ Python 3.11+ is required but not found."
   echo "Please install Python 3.11+ and try again."
   exit 1
 fi
