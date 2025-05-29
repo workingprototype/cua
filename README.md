@@ -18,45 +18,99 @@
 <div align="center">
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
 </div>
+<details>
+<summary><b>Check out more demos of the Computer-Use Agent in action
+</b></summary>
+
+<details open>
+<summary><b>MCP Server: Work with Claude Desktop and Tableau</b></summary>
+<br>
+<div align="center">
+    <video src="https://github.com/user-attachments/assets/9f573547-5149-493e-9a72-396f3cff29df" width="800" controls></video>
+</div>
+</details>
+
+<details>
+<summary><b>AI-Gradio: Multi-app workflow with browser, VS Code and terminal</b></summary>
+<br>
+<div align="center">
+    <video src="https://github.com/user-attachments/assets/723a115d-1a07-4c8e-b517-88fbdf53ed0f" width="800" controls></video>
+</div>
+</details>
+
+<details>
+<summary><b>Notebook: Fix GitHub issue in Cursor</b></summary>
+<br>
+<div align="center">
+    <video src="https://github.com/user-attachments/assets/f67f0107-a1e1-46dc-aa9f-0146eb077077" width="800" controls></video>
+</div>
+</details>
+</details><br/>
 
 # 🚀 Quick Start with a Computer-Use Agent UI
 
 **Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
-**macOS:**
+
+
+### Option 1: Fully-managed install (recommended)
+*I want to be totally guided in the process*
+
+**macOS/Linux/Windows (via WSL):**
 ```bash
 # Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
+This script will:
+- Ask if you want to use local VMs or C/ua Cloud Containers
+- Install necessary dependencies (Lume CLI for local VMs)
+- Download VM images if needed
+- Install Python packages
+- Launch the Computer-Use Agent UI
+
+### Option 2: Key manual steps
 <details>
-<summary>What does this script do?</summary>
+<summary>If you are skeptical running one-install scripts</summary>
 
-1. **Asks if you want to use local VMs?**
-   - **If yes:**
-     1. Install VM management CLI
-     2. `lume pull macos-sequoia-cua:latest` - Download macOS image
-     3. `lume run macos-sequoia-cua:latest` - Start VM
-2. `pip install "cua-computer[all]" "cua-agent[all]"` - Install packages
-3. `python -m agent.ui.gradio.app` - Launch UI
-</details>
-
-**Windows/Linux:**
+**For C/ua Agent UI (any system, cloud VMs only):**
 ```bash
 # Requires Python 3.11+ and C/ua API key
-pip install -U "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
+pip install -U "cua-computer[all]" "cua-agent[all]"
+python -m agent.ui.gradio.app
 ```
 
-*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+**For Local macOS/Linux VMs (Apple Silicon only):**
+```bash
+# 1. Install Lume CLI
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 
-## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+# 2. Pull macOS image
+lume pull macos-sequoia-cua:latest
+
+# 3. Start VM
+lume run macos-sequoia-cua:latest
+
+# 4. Install packages and launch UI
+pip install -U "cua-computer[all]" "cua-agent[all]"
+python -m agent.ui.gradio.app
+```
+</details>
+
+---
+
+*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module provides local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 
-# 💻 For Developers
+
+# 💻 Developer Guide
+
+Follow these steps to use C/ua in your own code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 1: Install Lume CLI
 
@@ -79,8 +133,6 @@ The macOS CUA image contains the default Mac apps and the Computer Server for ea
 ```bash
 pip install "cua-computer[all]" "cua-agent[all]"
 ```
-
-Alternatively, see the [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 4: Use in Your Code
 
@@ -252,33 +304,6 @@ ComputerAgent(
 )
 ```
 
-## Demos
-
-Check out these demos of the Computer-Use Agent in action:
-
-<details open>
-<summary><b>MCP Server: Work with Claude Desktop and Tableau</b></summary>
-<br>
-<div align="center">
-    <video src="https://github.com/user-attachments/assets/9f573547-5149-493e-9a72-396f3cff29df" width="800" controls></video>
-</div>
-</details>
-
-<details>
-<summary><b>AI-Gradio: Multi-app workflow with browser, VS Code and terminal</b></summary>
-<br>
-<div align="center">
-    <video src="https://github.com/user-attachments/assets/723a115d-1a07-4c8e-b517-88fbdf53ed0f" width="800" controls></video>
-</div>
-</details>
-
-<details>
-<summary><b>Notebook: Fix GitHub issue in Cursor</b></summary>
-<br>
-<div align="center">
-    <video src="https://github.com/user-attachments/assets/f67f0107-a1e1-46dc-aa9f-0146eb077077" width="800" controls></video>
-</div>
-</details>
 
 ## Community
 
