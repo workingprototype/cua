@@ -13,66 +13,47 @@
   <a href="https://trendshift.io/repositories/13685" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13685" alt="trycua%2Fcua | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-**c/ua** (pronounced "koo-ah") enables AI agents to control full operating systems in high-performance virtual containers with near-native speed on Apple Silicon.
+**c/ua** ("koo-ah") is Docker for [Computer-Use Agents](https://www.oneusefulthing.org/p/when-you-give-a-claude-a-mouse) - it enables AI agents to control full operating systems in virtual containers and deploy them locally or to the cloud.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
 </div>
 
-# 🚀 Quick Start
+# 🚀 Quick Start with a Computer-Use Agent UI
 
-**Recommended for users who want to get started with a VM and Agent UI immediately.**
+**Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
-Serve a ready-to-use Computer-Use Agent UI and VM locally with a single command:
-
+**macOS:**
 ```bash
+# Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
 <details>
-<summary><strong>What does this command do?</strong></summary>
+<summary>What does this script do?</summary>
 
-You can view the full script source here: [scripts/playground.sh](https://github.com/trycua/cua/blob/main/scripts/playground.sh). To follow along yourself, use the steps below:
-
-1. **Install/Update the [Lume CLI](./libs/lume/README.md)**  
-   Lume is our tool for managing VMs that run efficiently using Apple's Virtualization framework.
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-   ```
-2. **Pull the macOS CUA image from the trycua repo**  
-   This step downloads a prebuilt macOS Sequoia VM image (~30GB disk space required) with a `lume` default user (password: `lume`) and the [CUA Computer Server](https://github.com/trycua/cua/tree/main/libs/computer-server) preinstalled.  
-   The CUA Computer Server allows the VM to be controlled programmatically by the Computer Python SDK.
-   ```bash
-   lume pull macos-sequoia-cua:latest
-   ```
-3. **Start a macOS VM using the pulled image**  
-   ```bash
-   lume run macos-sequoia-cua:latest
-   ```
-   See [Lume docs](./libs/lume/README.md) for more VM management commands.
-4. **Install/Update the [Computer](https://github.com/trycua/cua/tree/main/libs/computer) and [Agent](https://github.com/trycua/cua/tree/main/libs/agent) Python SDKs**  
-   - **Computer** lets Python developers automate Lume VMs using code.
-   - **Agent** provides both a Python and GUI interface for interacting with multiple different computer-use agents.
-   ```bash
-   pip install -U "cua-computer[all]" "cua-agent[all]"
-   ```
-5. **Start the Agent UI**  
-   This launches a chat UI for prompting computer-use agents to control the running macOS VM. Access it at [http://localhost:7860](http://localhost:7860):
-   ```bash
-   python -m agent.ui.gradio.app
-   ```
+1. **Asks if you want to use local VMs?**
+   - **If yes:**
+     1. Install VM management CLI
+     2. `lume pull macos-sequoia-cua:latest` - Download macOS image
+     3. `lume run macos-sequoia-cua:latest` - Start VM
+2. `pip install "cua-computer[all]" "cua-agent[all]"` - Install packages
+3. `python -m agent.ui.gradio.app` - Launch UI
 </details>
 
-#### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
-- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Run locally on Apple Silicon with MLX, or use cloud providers
-- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Use OpenAI's Computer-Use Preview model (*requires tier 3, select users only*)
-- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Use Anthropic's Computer-Use capabilities
-- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops): Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
+**Windows/Linux:**
+```bash
+# Requires Python 3.11+ and C/ua API key
+pip install -U "cua-computer[all]" "cua-agent[all]" ; python -m agent.ui.gradio.app
+```
 
-### System Requirements
-- Mac with Apple Silicon (M1/M2/M3/M4 series)
-- macOS 15 (Sequoia) or newer
-- Disk space for VM images (30GB+ recommended)
+*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module handles local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
+- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
+- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 
 # 💻 For Developers
@@ -96,22 +77,30 @@ You can view the full script source here: [scripts/playground.sh](https://github
    from computer import Computer
    from agent import ComputerAgent, LLM
 
-    async def main():
-        # Start a local macOS VM with a 1024x768 display
-        async with Computer(os_type="macos", display="1024x768") as computer:
+async def main():
+    # Start a local macOS VM
+    computer = Computer(os_type="macos")
+    await computer.run()
 
-            # Example: Direct control of a macOS VM with Computer
-            await computer.interface.left_click(100, 200)
-            await computer.interface.type_text("Hello, world!")
-            screenshot_bytes = await computer.interface.screenshot()
-            
-            # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
-            agent = ComputerAgent(
-              computer=computer,
-              loop="UITARS",
-              model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
-            )
-            await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+    # Or with C/ua Cloud Container
+    computer = Computer(
+      os_type="linux",
+      api_key="your_cua_api_key_here",
+      name="your_container_name_here"
+    )
+
+    # Example: Direct control of a macOS VM with Computer
+    await computer.interface.left_click(100, 200)
+    await computer.interface.type_text("Hello, world!")
+    screenshot_bytes = await computer.interface.screenshot()
+    
+    # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
+    agent = ComputerAgent(
+      computer=computer,
+      loop="UITARS",
+      model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
+    )
+    await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
     main()
    ```
@@ -338,6 +327,7 @@ Thank you to all our supporters!
       <td align="center" valign="top" width="14.28%"><a href="https://mjspeck.github.io/"><img src="https://avatars.githubusercontent.com/u/20689127?v=4?s=100" width="100px;" alt="Matt Speck"/><br /><sub><b>Matt Speck</b></sub></a><br /><a href="#code-mjspeck" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/FinnBorge"><img src="https://avatars.githubusercontent.com/u/9272726?v=4?s=100" width="100px;" alt="FinnBorge"/><br /><sub><b>FinnBorge</b></sub></a><br /><a href="#code-FinnBorge" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/jklapacz"><img src="https://avatars.githubusercontent.com/u/5343758?v=4?s=100" width="100px;" alt="Jakub Klapacz"/><br /><sub><b>Jakub Klapacz</b></sub></a><br /><a href="#code-jklapacz" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/evnsnclr"><img src="https://avatars.githubusercontent.com/u/139897548?v=4?s=100" width="100px;" alt="Evan smith"/><br /><sub><b>Evan smith</b></sub></a><br /><a href="#code-evnsnclr" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

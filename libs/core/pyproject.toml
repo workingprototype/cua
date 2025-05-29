@@ -15,7 +15,7 @@ dependencies = [
     "httpx>=0.24.0",
     "posthog>=3.20.0"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.pdm]
 distribution = true
@@ -26,11 +26,11 @@ source-includes = ["tests/", "README.md", "LICENSE"]
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 select = ["E", "F", "B", "I"]
 fix = true
 
@@ -39,7 +39,7 @@ docstring-code-format = true
 
 [tool.mypy]
 strict = true
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 disallow_untyped_defs = true
 check_untyped_defs = true

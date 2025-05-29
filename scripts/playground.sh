@@ -2,63 +2,140 @@
 
 set -e
 
-echo "🚀 Setting up CUA playground environment..."
+echo "🚀 Launching C/ua Computer-Use Agent UI..."
 
-# Check for Apple Silicon Mac
-if [[ $(uname -s) != "Darwin" || $(uname -m) != "arm64" ]]; then
-  echo "❌ This script requires an Apple Silicon Mac (M1/M2/M3/M4)."
-  exit 1
-fi
+# Save the original working directory
+ORIGINAL_DIR="$(pwd)"
 
-# Check for macOS 15 (Sequoia) or newer
-OSVERSION=$(sw_vers -productVersion)
-if [[ $(echo "$OSVERSION 15.0" | tr " " "\n" | sort -V | head -n 1) != "15.0" ]]; then
-  echo "❌ This script requires macOS 15 (Sequoia) or newer. You have $OSVERSION."
-  exit 1
-fi
-
-# Create a temporary directory for our work
-TMP_DIR=$(mktemp -d)
-cd "$TMP_DIR"
+# Directories used by the script
+DEMO_DIR="$HOME/.cua-demo"
+VENV_DIR="$DEMO_DIR/venv"
 
 # Function to clean up on exit
 cleanup() {
   cd ~
-  rm -rf "$TMP_DIR"
+  rm -rf "$TMP_DIR" 2>/dev/null || true
 }
+
+# Create a temporary directory for our work
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
 trap cleanup EXIT
 
-# Install Lume if not already installed
-if ! command -v lume &> /dev/null; then
-  echo "📦 Installing Lume CLI..."
-  curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
+# Ask user to choose between local macOS VMs or C/ua Cloud Containers
+echo ""
+echo "Choose your C/ua setup:"
+echo "1) ☁️  C/ua Cloud Containers (works on any system)"
+echo "2) 🖥️  Local macOS VMs (requires Apple Silicon Mac + macOS 15+)"
+echo ""
+read -p "Enter your choice (1 or 2): " CHOICE
+
+if [[ "$CHOICE" == "1" ]]; then
+  # C/ua Cloud Container setup
+  echo ""
+  echo "☁️ Setting up C/ua Cloud Containers..."
+  echo ""
   
-  # Add lume to PATH for this session if it's not already there
-  if ! command -v lume &> /dev/null; then
-    export PATH="$PATH:$HOME/.local/bin"
+  # Check if existing .env.local already has CUA_API_KEY (check current dir and demo dir)
+  # Look for .env.local in the original working directory (before cd to temp dir)
+  CURRENT_ENV_FILE="$ORIGINAL_DIR/.env.local"
+  DEMO_ENV_FILE="$DEMO_DIR/.env.local"
+  
+  CUA_API_KEY=""
+  
+  # First check current directory
+  if [[ -f "$CURRENT_ENV_FILE" ]] && grep -q "CUA_API_KEY=" "$CURRENT_ENV_FILE"; then
+    EXISTING_CUA_KEY=$(grep "CUA_API_KEY=" "$CURRENT_ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" | xargs)
+    if [[ -n "$EXISTING_CUA_KEY" && "$EXISTING_CUA_KEY" != "your_cua_api_key_here" && "$EXISTING_CUA_KEY" != "" ]]; then
+      CUA_API_KEY="$EXISTING_CUA_KEY"
+    fi
   fi
+  
+  # Then check demo directory if not found in current dir
+  if [[ -z "$CUA_API_KEY" ]] && [[ -f "$DEMO_ENV_FILE" ]] && grep -q "CUA_API_KEY=" "$DEMO_ENV_FILE"; then
+    EXISTING_CUA_KEY=$(grep "CUA_API_KEY=" "$DEMO_ENV_FILE" | cut -d'=' -f2- | tr -d '"' | tr -d "'" | xargs)
+    if [[ -n "$EXISTING_CUA_KEY" && "$EXISTING_CUA_KEY" != "your_cua_api_key_here" && "$EXISTING_CUA_KEY" != "" ]]; then
+      CUA_API_KEY="$EXISTING_CUA_KEY"
+    fi
+  fi
+  
+  # If no valid API key found, prompt for one
+  if [[ -z "$CUA_API_KEY" ]]; then
+    echo "To use C/ua Cloud Containers, you need to:"
+    echo "1. Sign up at https://trycua.com"
+    echo "2. Create a Cloud Container"
+    echo "3. Generate an Api Key"
+    echo ""
+    read -p "Enter your C/ua Api Key: " CUA_API_KEY
+    
+    if [[ -z "$CUA_API_KEY" ]]; then
+      echo "❌ C/ua Api Key is required for Cloud Containers."
+      exit 1
+    fi
+  fi
+  
+  USE_CLOUD=true
+
+elif [[ "$CHOICE" == "2" ]]; then
+  # Local macOS VM setup
+  echo ""
+  echo "🖥️ Setting up local macOS VMs..."
+  
+  # Check for Apple Silicon Mac
+  if [[ $(uname -s) != "Darwin" || $(uname -m) != "arm64" ]]; then
+    echo "❌ Local macOS VMs require an Apple Silicon Mac (M1/M2/M3/M4)."
+    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    exit 1
+  fi
+
+  # Check for macOS 15 (Sequoia) or newer
+  OSVERSION=$(sw_vers -productVersion)
+  if [[ $(echo "$OSVERSION 15.0" | tr " " "\n" | sort -V | head -n 1) != "15.0" ]]; then
+    echo "❌ Local macOS VMs require macOS 15 (Sequoia) or newer. You have $OSVERSION."
+    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    exit 1
+  fi
+
+  USE_CLOUD=false
+
+else
+  echo "❌ Invalid choice. Please run the script again and choose 1 or 2."
+  exit 1
 fi
 
-# Pull the macOS CUA image if not already present
-if ! lume ls | grep -q "macos-sequoia-cua"; then
-  # Check available disk space
-  IMAGE_SIZE_GB=30
-  AVAILABLE_SPACE_KB=$(df -k $HOME | tail -1 | awk '{print $4}')
-  AVAILABLE_SPACE_GB=$(($AVAILABLE_SPACE_KB / 1024 / 1024))
-  
-  echo "📊 The macOS CUA image will use approximately ${IMAGE_SIZE_GB}GB of disk space."
-  echo "   You currently have ${AVAILABLE_SPACE_GB}GB available on your system."
-  
-  # Prompt for confirmation
-  read -p "   Continue? [y]/n: " CONTINUE
-  CONTINUE=${CONTINUE:-y}
-  
-  if [[ $CONTINUE =~ ^[Yy]$ ]]; then
-    echo "📥 Pulling macOS CUA image (this may take a while)..."
-    lume pull macos-sequoia-cua:latest
-  else
-    echo "❌ Installation cancelled."
-    exit 1
+# Install Lume if not already installed (only for local VMs)
+if [[ "$USE_CLOUD" == "false" ]]; then
+  if ! command -v lume &> /dev/null; then
+    echo "📦 Installing Lume CLI..."
+    curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh | bash
+    
+    # Add lume to PATH for this session if it's not already there
+    if ! command -v lume &> /dev/null; then
+      export PATH="$PATH:$HOME/.local/bin"
+    fi
+  fi
+
+  # Pull the macOS CUA image if not already present
+  if ! lume ls | grep -q "macos-sequoia-cua"; then
+    # Check available disk space
+    IMAGE_SIZE_GB=30
+    AVAILABLE_SPACE_KB=$(df -k $HOME | tail -1 | awk '{print $4}')
+    AVAILABLE_SPACE_GB=$(($AVAILABLE_SPACE_KB / 1024 / 1024))
+    
+    echo "📊 The macOS CUA image will use approximately ${IMAGE_SIZE_GB}GB of disk space."
+    echo "   You currently have ${AVAILABLE_SPACE_GB}GB available on your system."
+    
+    # Prompt for confirmation
+    read -p "   Continue? [y]/n: " CONTINUE
+    CONTINUE=${CONTINUE:-y}
+    
+    if [[ $CONTINUE =~ ^[Yy]$ ]]; then
+      echo "📥 Pulling macOS CUA image (this may take a while)..."
+      lume pull macos-sequoia-cua:latest
+    else
+      echo "❌ Installation cancelled."
+      exit 1
+    fi
   fi
 fi
 
@@ -82,7 +159,6 @@ CUA_DIR="$HOME/.cua"
 mkdir -p "$CUA_DIR"
 
 # Create a virtual environment
-VENV_DIR="$CUA_DIR/venv"
 if [ ! -d "$VENV_DIR" ]; then
   $PYTHON_CMD -m venv "$VENV_DIR"
 fi
@@ -91,8 +167,8 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Install required packages
-echo "📦 Updating CUA packages..."
-pip install -U pip setuptools wheel cmake
+echo "📦 Updating C/ua packages..."
+pip install -U pip setuptools wheel Cmake
 pip install -U cua-computer "cua-agent[all]"
 
 
@@ -100,58 +176,136 @@ pip install -U cua-computer "cua-agent[all]"
 pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
 
 # Create a simple demo script
-DEMO_DIR="$CUA_DIR/demo"
 mkdir -p "$DEMO_DIR"
 
-cat > "$DEMO_DIR/run_demo.py" << 'EOF'
-import asyncio
-import os
-from computer import Computer
-from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
-from agent.ui.gradio.app import create_gradio_ui
-
-# Try to load API keys from environment
-api_key = os.environ.get("OPENAI_API_KEY", "")
-if not api_key:
-    print("\n⚠️  No OpenAI API key found. You'll need to provide one in the UI.")
-
-# Launch the Gradio UI and open it in the browser
-app = create_gradio_ui()
-app.launch(share=False, inbrowser=True)
+# Create .env.local file with API keys (only if it doesn't exist)
+if [[ ! -f "$DEMO_DIR/.env.local" ]]; then
+  cat > "$DEMO_DIR/.env.local" << EOF
+# Uncomment and add your API keys here
+# OPENAI_API_KEY=your_openai_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+CUA_API_KEY=your_cua_api_key_here
 EOF
+  echo "📝 Created .env.local file with API key placeholders"
+else
+  echo "📝 Found existing .env.local file - keeping your current settings"
+fi
+
+if [[ "$USE_CLOUD" == "true" ]]; then
+  # Add CUA API key to .env.local if not already present
+  if ! grep -q "CUA_API_KEY" "$DEMO_DIR/.env.local"; then
+    echo "CUA_API_KEY=$CUA_API_KEY" >> "$DEMO_DIR/.env.local"
+    echo "🔑 Added CUA_API_KEY to .env.local"
+  elif grep -q "CUA_API_KEY=your_cua_api_key_here" "$DEMO_DIR/.env.local"; then
+    # Update placeholder with actual key
+    sed -i.bak "s/CUA_API_KEY=your_cua_api_key_here/CUA_API_KEY=$CUA_API_KEY/" "$DEMO_DIR/.env.local"
+    echo "🔑 Updated CUA_API_KEY in .env.local"
+  fi
+fi
 
 # Create a convenience script to run the demo
-cat > "$DEMO_DIR/start_demo.sh" << EOF
+cat > "$DEMO_DIR/start_ui.sh" << EOF
 #!/bin/bash
 source "$VENV_DIR/bin/activate"
 cd "$DEMO_DIR"
 python run_demo.py
 EOF
-chmod +x "$DEMO_DIR/start_demo.sh"
+chmod +x "$DEMO_DIR/start_ui.sh"
 
 echo "✅ Setup complete!"
-echo "🖥️  You can start the CUA playground by running: $DEMO_DIR/start_demo.sh"
 
-# Check if the VM is running
-echo "🔍 Checking if the macOS CUA VM is running..."
-VM_RUNNING=$(lume ls | grep "macos-sequoia-cua" | grep "running" || echo "")
+if [[ "$USE_CLOUD" == "true" ]]; then
+  # Create run_demo.py for cloud containers
+  cat > "$DEMO_DIR/run_demo.py" << 'EOF'
+import asyncio
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from computer import Computer
+from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+from agent.ui.gradio.app import create_gradio_ui
 
-if [ -z "$VM_RUNNING" ]; then
-  echo "🚀 Starting the macOS CUA VM in the background..."
-  lume run macos-sequoia-cua:latest &
-  # Wait a moment for the VM to initialize
-  sleep 5
-  echo "✅ VM started successfully."
+# Load environment variables from .env.local
+load_dotenv(Path(__file__).parent / ".env.local")
+
+# Check for required API keys
+cua_api_key = os.environ.get("CUA_API_KEY", "")
+if not cua_api_key:
+    print("\n❌ CUA_API_KEY not found in .env.local file.")
+    print("Please add your CUA API key to the .env.local file.")
+    exit(1)
+
+openai_key = os.environ.get("OPENAI_API_KEY", "")
+anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+if not openai_key and not anthropic_key:
+    print("\n⚠️  No OpenAI or Anthropic API keys found in .env.local.")
+    print("Please add at least one API key to use AI agents.")
+
+print("🚀 Starting CUA playground with Cloud Containers...")
+print("📝 Edit .env.local to update your API keys")
+
+# Launch the Gradio UI and open it in the browser
+app = create_gradio_ui()
+app.launch(share=False, inbrowser=True)
+EOF
 else
-  echo "✅ macOS CUA VM is already running."
+  # Create run_demo.py for local macOS VMs
+  cat > "$DEMO_DIR/run_demo.py" << 'EOF'
+import asyncio
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from computer import Computer
+from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+from agent.ui.gradio.app import create_gradio_ui
+
+# Load environment variables from .env.local
+load_dotenv(Path(__file__).parent / ".env.local")
+
+# Try to load API keys from environment
+openai_key = os.environ.get("OPENAI_API_KEY", "")
+anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+if not openai_key and not anthropic_key:
+    print("\n⚠️  No OpenAI or Anthropic API keys found in .env.local.")
+    print("Please add at least one API key to use AI agents.")
+
+print("🚀 Starting CUA playground with local macOS VMs...")
+print("📝 Edit .env.local to update your API keys")
+
+# Launch the Gradio UI and open it in the browser
+app = create_gradio_ui()
+app.launch(share=False, inbrowser=True)
+EOF
+fi
+
+echo "☁️  CUA Cloud Container setup complete!"
+echo "📝 Edit $DEMO_DIR/.env.local to update your API keys"
+echo "🖥️  Start the playground by running: $DEMO_DIR/start_ui.sh"
+
+# Check if the VM is running (only for local setup)
+if [[ "$USE_CLOUD" == "false" ]]; then
+  echo "🔍 Checking if the macOS CUA VM is running..."
+  VM_RUNNING=$(lume ls | grep "macos-sequoia-cua" | grep "running" || echo "")
+
+  if [ -z "$VM_RUNNING" ]; then
+    echo "🚀 Starting the macOS CUA VM in the background..."
+    lume run macos-sequoia-cua:latest &
+    # Wait a moment for the VM to initialize
+    sleep 5
+    echo "✅ VM started successfully."
+  else
+    echo "✅ macOS CUA VM is already running."
+  fi
 fi
 
 # Ask if the user wants to start the demo now
 echo
-read -p "Would you like to start the CUA playground now? (y/n) " -n 1 -r
+read -p "Would you like to start the C/ua Computer-Use Agent UI now? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo "🚀 Starting the CUA playground..."
+  echo "🚀 Starting the C/ua Computer-Use Agent UI..."
   echo ""
-  "$DEMO_DIR/start_demo.sh"
+  "$DEMO_DIR/start_ui.sh"
 fi
