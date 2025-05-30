@@ -243,3 +243,57 @@ class LinuxAutomationHandler(BaseAutomationHandler):
             return {"success": True, "stdout": process.stdout, "stderr": process.stderr, "return_code": process.returncode}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    async def get_screen_data(self, getter_types: Optional[List[str]] = None, **kwargs) -> Dict[str, Any]:
+        """Get screen data using specified getter types.
+        
+        Args:
+            getter_types: List of getter types to use (e.g., ['accessibility_tree', 'ocr', 'dom'])
+                         If None, defaults to ['accessibility_tree']
+            **kwargs: Additional parameters for specific getter types
+            
+        Returns:
+            Dict containing the requested screen data from all getters
+        """
+        try:
+            # Default to accessibility_tree if no getter types specified
+            if getter_types is None:
+                getter_types = ["accessibility_tree"]
+            
+            # Collect data from all requested getters
+            all_data = {}
+            errors = []
+            
+            for getter_type in getter_types:
+                try:
+                    if getter_type == "accessibility_tree":
+                        # Use the existing accessibility handler
+                        accessibility_handler = LinuxAccessibilityHandler()
+                        tree_data = await accessibility_handler.get_accessibility_tree()
+                        all_data["accessibility_tree"] = tree_data
+                    elif getter_type == "screenshot":
+                        # Take a screenshot and return as base64
+                        screenshot_result = await self.screenshot()
+                        if screenshot_result.get("success"):
+                            all_data["screenshot"] = {
+                                "base64": screenshot_result.get("image_data"),
+                                "format": "png"
+                            }
+                        else:
+                            errors.append(f"Screenshot failed: {screenshot_result.get('error')}")
+                    else:
+                        # Future: Add support for application-specific getters
+                        # For now, record unsupported getter types
+                        errors.append(f"Unsupported getter type: {getter_type}")
+                except Exception as e:
+                    errors.append(f"Error with getter '{getter_type}': {str(e)}")
+            
+            return {
+                "success": len(all_data) > 0,
+                "data": all_data,
+                "getter_types": getter_types,
+                "errors": errors if errors else None,
+                "supported_types": ["accessibility_tree", "screenshot"]  # List of currently supported types
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "getter_types": getter_types}

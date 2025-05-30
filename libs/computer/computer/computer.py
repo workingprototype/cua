@@ -424,7 +424,7 @@ class Computer:
             except TimeoutError as e:
                 self.logger.error(f"Failed to connect to WebSocket interface at {ip_address}")
                 raise TimeoutError(
-                    f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}"
+                    f"Could not connect to WebSocket interface at {ip_address}: {str(e)}"
                 )
                 # self.logger.warning(
                 #     f"Could not connect to WebSocket interface at {ip_address}:8000/ws: {str(e)}, expect missing functionality"

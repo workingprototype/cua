@@ -178,6 +178,7 @@ async def websocket_endpoint(websocket: WebSocket):
         "copy_to_clipboard": manager.automation_handler.copy_to_clipboard,
         "set_clipboard": manager.automation_handler.set_clipboard,
         "run_command": manager.automation_handler.run_command,
+        "get_screen_data": manager.automation_handler.get_screen_data,
     }
 
     try:

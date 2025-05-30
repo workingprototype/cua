@@ -1,7 +1,7 @@
 """Base interface for computer control."""
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple, List, Union
 from ..logger import Logger, LogLevel
 
 
@@ -201,5 +201,23 @@ class BaseComputerInterface(ABC):
 
         Returns:
             tuple[float, float]: (x, y) coordinates in screenshot space
+        """
+        pass
+
+    # Data Extraction Actions
+    @abstractmethod
+    async def extract(self, prompt: str, schema: Optional[Dict[str, Any]] = None, getter_types: Union[str, List[str]] = "all") -> Dict[str, Any]:
+        """Extract structured data from the screen using an LLM.
+
+        Args:
+            prompt: Natural language prompt describing what to extract
+            schema: Optional JSON schema to constrain/validate the output
+            getter_types: Data sources to use. Can be:
+                - "auto": Let the system decide based on the prompt
+                - "all": Use all available getters
+                - List[str]: Specific getter types (e.g., ["accessibility_tree", "screenshot"])
+
+        Returns:
+            Dict containing the extracted data
         """
         pass

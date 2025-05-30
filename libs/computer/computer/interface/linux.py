@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from PIL import Image
 
 import websockets
@@ -245,6 +245,24 @@ class LinuxComputerInterface(BaseComputerInterface):
                     )
                     self.logger.debug(f"Command failure details: {e}")
                 raise last_error if last_error else RuntimeError("Failed to send command")
+
+    def _remove_ids(self, data: Any) -> Any:
+        """Recursively remove 'id' keys from accessibility tree data."""
+        if isinstance(data, dict):
+            # Create a new dict without the 'id' key
+            cleaned = {k: self._remove_ids(v) for k, v in data.items() if k not in [
+                "id",
+                "position",
+                "absolute_position",
+                "visible_bbox"
+            ]}
+            return cleaned
+        elif isinstance(data, list):
+            # Process each item in the list
+            return [self._remove_ids(item) for item in data]
+        else:
+            # Return primitive values as-is
+            return data
 
     async def wait_for_ready(self, timeout: int = 60, interval: float = 1.0):
         """Wait for WebSocket connection to become available."""
@@ -554,7 +572,7 @@ class LinuxComputerInterface(BaseComputerInterface):
 
     async def run_command(self, command: str) -> Tuple[str, str]:
         result = await self._send_command("run_command", {"command": command})
-        if not result.get("success", False):
+        if not result.get("success"):
             raise RuntimeError(result.get("error", "Failed to run command"))
         return result.get("stdout", ""), result.get("stderr", "")
 
@@ -562,8 +580,8 @@ class LinuxComputerInterface(BaseComputerInterface):
     async def get_accessibility_tree(self) -> Dict[str, Any]:
         """Get the accessibility tree of the current screen."""
         result = await self._send_command("get_accessibility_tree")
-        if not result.get("success", False):
-            raise RuntimeError(result.get("error", "Failed to get accessibility tree"))
+        if not result.get("success"):
+            return {"error": result.get("error", "Unknown error")}
         return result
 
     async def get_active_window_bounds(self) -> Dict[str, int]:
@@ -622,3 +640,136 @@ class LinuxComputerInterface(BaseComputerInterface):
         screenshot_y = y * height_scale
 
         return screenshot_x, screenshot_y
+
+    async def extract(self, prompt: str, schema: Optional[Dict[str, Any]] = None, getter_types: Union[str, List[str]] = "all") -> Dict[str, Any]:
+        """Extract structured data from the screen using an LLM.
+
+        Args:
+            prompt: Natural language prompt describing what to extract
+            schema: Optional JSON schema to constrain/validate the output
+            getter_types: Data sources to use. Can be:
+                - "auto": Let the system decide based on the prompt
+                - "all": Use all available getters
+                - List[str]: Specific getter types (e.g., ["accessibility_tree", "screenshot"])
+
+        Returns:
+            Dict containing the extracted data
+        """
+        try:
+            # Step 1: Determine which getter types to use
+            if getter_types in ["auto", "all"]:
+                # Use all available getters
+                getter_list = ["accessibility_tree", "screenshot"]
+            elif isinstance(getter_types, list):
+                # Use the specified list
+                getter_list = getter_types
+            else:
+                # Default to accessibility tree
+                getter_list = ["accessibility_tree"]
+            
+            # Step 2: Get screen data from the server
+            response = await self._send_command("get_screen_data", {
+                "getter_types": getter_list
+            })
+            
+            if not response.get("success"):
+                return {"error": response.get("error", "Unknown error")}
+            
+            screen_data = response.get("data", {})
+            
+            # Clean the accessibility tree data by removing IDs
+            if "accessibility_tree" in screen_data:
+                screen_data["accessibility_tree"] = self._remove_ids(screen_data["accessibility_tree"])
+            
+            # Step 2: Pass data to LLM for extraction
+            # Basic implementation using OpenAI (can be extended to support other providers)
+            import os
+            import json
+            
+            # Check if OpenAI API key is available
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                # Return error if no API key
+                return {"error": "OpenAI API key not found. Set OPENAI_API_KEY environment variable to enable LLM extraction."}
+            
+            try:
+                # Import OpenAI client
+                try:
+                    from openai import AsyncOpenAI
+                    from openai._types import NOT_GIVEN
+                except ImportError:
+                    return {"error": "OpenAI library not installed. Run: pip install openai"}
+                
+                # Initialize OpenAI client
+                client = AsyncOpenAI(api_key=api_key)
+                
+                # Check if we have screenshot data
+                has_screenshot = "screenshot" in screen_data.get("accessibility_tree", {}) or "screenshot" in screen_data
+                
+                # Prepare the system message
+                system_message = "You are a helpful assistant that extracts structured data from screen information."
+                if has_screenshot:
+                    system_message = "You are a helpful assistant that analyzes screenshots and extracts structured data from visual information."
+                if schema:
+                    system_message += f"\n\nPlease extract data according to this JSON schema:\n{json.dumps(schema, indent=2)}"
+                    system_message += "\n\nReturn only valid JSON that conforms to the schema."
+                
+                # Prepare the messages based on available data
+                messages: list = [{"role": "system", "content": system_message}]
+                
+                # Handle different types of screen data
+                if has_screenshot and "screenshot" in screen_data:
+                    # For screenshot data, use vision model
+                    screenshot_data = screen_data["screenshot"]
+                    
+                    # Prepare content with image
+                    user_content: list = [
+                        {"type": "text", "text": prompt}
+                    ]
+                    
+                    # Add screenshot if available
+                    if screenshot_data.get("base64"):
+                        user_content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{screenshot_data['base64']}"
+                            }
+                        })
+                    
+                    messages.append({"role": "user", "content": user_content})
+                    
+                    # Use vision-capable model for screenshots
+                    model = "gpt-4o-mini"  # This model supports vision
+                else:
+                    # For accessibility tree data, use text
+                    user_message = f"{prompt}\n\nScreen data:\n{json.dumps(screen_data, indent=2)}"
+                    messages.append({"role": "user", "content": user_message})
+                    model = "gpt-4o-mini"
+                
+                # Make the API call
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.0,  # Use low temperature for consistent extraction
+                    response_format={"type": "json_object"} if schema else NOT_GIVEN
+                )
+                
+                # Parse the response
+                llm_output = response.choices[0].message.content
+                
+                # Try to parse as JSON
+                try:
+                    extracted_data = json.loads(llm_output) if llm_output else {"error": "No content in response"}
+                except json.JSONDecodeError:
+                    # If not valid JSON, return as text
+                    extracted_data = {"text": llm_output}
+                
+                return extracted_data
+                
+            except Exception as e:
+                # If LLM processing fails, return error
+                return {"error": f"LLM processing failed: {str(e)}"}
+            
+        except Exception as e:
+            # Return error if something goes wrong
+            return {"error": f"Extract failed: {str(e)}"}

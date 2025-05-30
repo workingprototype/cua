@@ -39,6 +39,7 @@ import re
 import json
 import copy
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
+from ..getters import get_available_getters, execute_getter
 
 
 def CFAttributeToPyObject(attrValue):
@@ -692,3 +693,64 @@ class MacOSAutomationHandler(BaseAutomationHandler):
             return {"success": True, "stdout": process.stdout, "stderr": process.stderr}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    async def get_screen_data(self, getter_types: Optional[List[str]] = None, **kwargs) -> Dict[str, Any]:
+        """Get screen data using specified getter types.
+        
+        Args:
+            getter_types: List of getter types to use (e.g., ['accessibility_tree', 'ocr', 'dom'])
+                         If None, defaults to ['accessibility_tree']
+            **kwargs: Additional parameters for specific getter types
+            
+        Returns:
+            Dict containing the requested screen data from all getters
+        """
+        try:
+            # Default to accessibility_tree if no getter types specified
+            if getter_types is None:
+                getter_types = ["accessibility_tree"]
+            
+            # Collect data from all requested getters
+            all_data = {}
+            errors = []
+            
+            for getter_type in getter_types:
+                try:
+                    if getter_type == "accessibility_tree":
+                        # Use the existing accessibility handler
+                        accessibility_handler = MacOSAccessibilityHandler()
+                        tree_data = await accessibility_handler.get_accessibility_tree()
+                        all_data["accessibility_tree"] = tree_data
+                    elif getter_type == "screenshot":
+                        # Take a screenshot and return as base64
+                        screenshot_result = await self.screenshot()
+                        if screenshot_result.get("success"):
+                            all_data["screenshot"] = {
+                                "base64": screenshot_result.get("image_data"),
+                                "format": "png"
+                            }
+                        else:
+                            errors.append(f"Screenshot failed: {screenshot_result.get('error')}")
+                    else:
+                        # Check if it's a custom getter
+                        getter_result = execute_getter(getter_type, **kwargs)
+                        if "error" in getter_result:
+                            errors.append(f"{getter_type}: {getter_result['error']}")
+                        else:
+                            all_data[getter_type] = getter_result.get("data", getter_result)
+                except Exception as e:
+                    errors.append(f"Error with getter '{getter_type}': {str(e)}")
+            
+            # Get list of all available getters
+            available_getters = get_available_getters("macos")
+            supported_types = ["accessibility_tree", "screenshot"] + [g["name"] for g in available_getters]
+            
+            return {
+                "success": len(all_data) > 0,
+                "data": all_data,
+                "getter_types": getter_types,
+                "errors": errors if errors else None,
+                "supported_types": supported_types
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "getter_types": getter_types}

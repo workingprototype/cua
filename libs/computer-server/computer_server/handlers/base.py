@@ -114,6 +114,21 @@ class BaseAutomationHandler(ABC):
         """Get the current cursor position."""
         pass
 
+    # Data Extraction Actions
+    @abstractmethod
+    async def get_screen_data(self, getter_types: Optional[List[str]] = None, **kwargs) -> Dict[str, Any]:
+        """Get screen data using specified getter types.
+        
+        Args:
+            getter_types: List of getter types to use (e.g., ['accessibility_tree', 'ocr', 'dom'])
+                         If None, defaults to ['accessibility_tree']
+            **kwargs: Additional parameters for specific getter types
+            
+        Returns:
+            Dict containing the requested screen data from all getters
+        """
+        pass
+
     # Clipboard Actions
     @abstractmethod
     async def copy_to_clipboard(self) -> Dict[str, Any]:
