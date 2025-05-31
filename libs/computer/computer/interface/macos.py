@@ -346,6 +346,10 @@ class MacOSComputerInterface(BaseComputerInterface):
             asyncio.create_task(self._ws.close())
             self._ws = None
 
+    async def diorama_cmd(self, action: str, arguments: Optional[dict] = None) -> dict:
+        """Send a diorama command to the server (macOS only)."""
+        return await self._send_command("diorama_cmd", {"action": action, "arguments": arguments or {}})
+
     # Mouse Actions
     async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         await self._send_command("left_click", {"x": x, "y": y})
@@ -568,7 +572,7 @@ class MacOSComputerInterface(BaseComputerInterface):
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to get accessibility tree"))
         return result
-
+    
     async def get_active_window_bounds(self) -> Dict[str, int]:
         """Get the bounds of the currently active window."""
         result = await self._send_command("get_active_window_bounds")

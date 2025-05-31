@@ -21,6 +21,20 @@ OSType = Literal["macos", "linux", "windows"]
 class Computer:
     """Computer is the main class for interacting with the computer."""
 
+    def create_desktop_from_apps(self, apps):
+        """
+        Create a virtual desktop from a list of app names, returning a DioramaComputer
+        that proxies Diorama.Interface but uses diorama_cmds via the computer interface.
+
+        Args:
+            apps (list[str]): List of application names to include in the desktop.
+        Returns:
+            DioramaComputer: A proxy object with the Diorama interface, but using diorama_cmds.
+        """
+        assert "app-use" in self.experiments, "App Usage is an experimental feature. Enable it by passing experiments=['app-use'] to Computer()"
+        from .diorama_computer import DioramaComputer
+        return DioramaComputer(self, apps)
+
     def __init__(
         self,
         display: Union[Display, Dict[str, int], str] = "1024x768",
@@ -39,7 +53,8 @@ class Computer:
         host: str = os.environ.get("PYLUME_HOST", "localhost"),
         storage: Optional[str] = None,
         ephemeral: bool = False,
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
+        experiments: Optional[List[str]] = None
     ):
         """Initialize a new Computer instance.
 
@@ -65,6 +80,8 @@ class Computer:
             host: Host to use for VM provider connections (e.g. "localhost", "host.docker.internal")
             storage: Optional path for persistent VM storage (Lumier provider)
             ephemeral: Whether to use ephemeral storage
+            api_key: Optional API key for cloud providers
+            experiments: Optional list of experimental features to enable (e.g. ["app-use"])
         """
 
         self.logger = Logger("cua.computer", verbosity)
@@ -80,6 +97,10 @@ class Computer:
         self.ephemeral = ephemeral
         
         self.api_key = api_key
+        self.experiments = experiments or []
+        
+        if "app-use" in self.experiments:
+            assert self.os_type == "macos", "App use experiment is only supported on macOS"
 
         # The default is currently to use non-ephemeral storage
         if storage and ephemeral and storage != "ephemeral":

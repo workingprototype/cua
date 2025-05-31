@@ -2,11 +2,13 @@ import platform
 import subprocess
 from typing import Tuple, Type
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
+from computer_server.diorama.base import BaseDioramaHandler
 
 # Conditionally import platform-specific handlers
 system = platform.system().lower()
 if system == 'darwin':
     from .macos import MacOSAccessibilityHandler, MacOSAutomationHandler
+    from computer_server.diorama.macos import MacOSDioramaHandler
 elif system == 'linux':
     from .linux import LinuxAccessibilityHandler, LinuxAutomationHandler
 
@@ -38,13 +40,13 @@ class HandlerFactory:
             raise RuntimeError(f"Failed to determine current OS: {str(e)}")
     
     @staticmethod
-    def create_handlers() -> Tuple[BaseAccessibilityHandler, BaseAutomationHandler]:
+    def create_handlers() -> Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler]:
         """Create and return appropriate handlers for the current OS.
         
         Returns:
-            Tuple[BaseAccessibilityHandler, BaseAutomationHandler]: A tuple containing
-            the appropriate accessibility and automation handlers for the current OS.
-            
+            Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler]: A tuple containing
+            the appropriate accessibility, automation, and diorama handlers for the current OS.
+        
         Raises:
             NotImplementedError: If the current OS is not supported
             RuntimeError: If unable to determine the current OS
@@ -52,8 +54,8 @@ class HandlerFactory:
         os_type = HandlerFactory._get_current_os()
         
         if os_type == 'darwin':
-            return MacOSAccessibilityHandler(), MacOSAutomationHandler()
+            return MacOSAccessibilityHandler(), MacOSAutomationHandler(), MacOSDioramaHandler()
         elif os_type == 'linux':
-            return LinuxAccessibilityHandler(), LinuxAutomationHandler()
+            return LinuxAccessibilityHandler(), LinuxAutomationHandler(), BaseDioramaHandler()
         else:
             raise NotImplementedError(f"OS '{os_type}' is not supported") 

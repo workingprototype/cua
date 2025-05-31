@@ -31,7 +31,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         # Create OS-specific handlers
-        self.accessibility_handler, self.automation_handler = HandlerFactory.create_handlers()
+        self.accessibility_handler, self.automation_handler, self.diorama_handler = HandlerFactory.create_handlers()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -178,6 +178,7 @@ async def websocket_endpoint(websocket: WebSocket):
         "copy_to_clipboard": manager.automation_handler.copy_to_clipboard,
         "set_clipboard": manager.automation_handler.set_clipboard,
         "run_command": manager.automation_handler.run_command,
+        "diorama_cmd": manager.diorama_handler.diorama_cmd,
     }
 
     try:

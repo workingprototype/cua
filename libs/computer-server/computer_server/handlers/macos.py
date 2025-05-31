@@ -33,12 +33,19 @@ from ApplicationServices import (
     AXValueGetValue,  # type: ignore
     kAXVisibleChildrenAttribute,  # type: ignore
     kAXRoleDescriptionAttribute,  # type: ignore
+    kAXFocusedApplicationAttribute,  # type: ignore
+    kAXFocusedUIElementAttribute,  # type: ignore
+    kAXSelectedTextAttribute,  # type: ignore
+    kAXSelectedTextRangeAttribute,  # type: ignore
 )
 import objc
 import re
 import json
 import copy
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def CFAttributeToPyObject(attrValue):
@@ -317,7 +324,7 @@ class UIElement:
             size = f"{self.size.width:.0f};{self.size.height:.0f}"
         else:
             size = ""
-
+            
         return {
             "id": self.identifier,
             "name": self.name,
@@ -329,6 +336,7 @@ class UIElement:
             "position": position,
             "size": size,
             "enabled": self.enabled,
+            "focused": self.focused,
             "bbox": self.bbox,
             "visible_bbox": self.visible_bbox,
             "children": children_to_dict(self.children),
@@ -444,7 +452,9 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
                         try:
                             window_element = UIElement(window)
                             window_trees.append(window_element.to_dict())
-                        except:
+                        except Exception as e:
+                            logger.error(f"Failed to process window {window}: {e}")
+                            window_trees.append({"error": str(e)})
                             continue
 
                     processed_windows.append(
@@ -514,7 +524,6 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
 
         except Exception as e:
             return {"success": False, "error": str(e)}
-
 
 class MacOSAutomationHandler(BaseAutomationHandler):
     # Mouse Actions
