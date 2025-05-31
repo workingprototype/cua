@@ -98,6 +98,9 @@ class Computer:
         
         self.api_key = api_key
         self.experiments = experiments or []
+        
+        if "app-use" in self.experiments:
+            assert self.os_type == "macos", "App use experiment is only supported on macOS"
 
         # The default is currently to use non-ephemeral storage
         if storage and ephemeral and storage != "ephemeral":
