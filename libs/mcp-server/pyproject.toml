@@ -6,15 +6,15 @@ build-backend = "pdm.backend"
 name = "cua-mcp-server"
 description = "MCP Server for Computer-Use Agent (CUA)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 version = "0.1.0"
 authors = [
     {name = "TryCua", email = "gh@trycua.com"}
 ]
 dependencies = [
     "mcp>=1.6.0,<2.0.0",
-    "cua-agent[all]>=0.1.0,<0.2.0",
-    "cua-computer>=0.1.0,<0.2.0",
+    "cua-agent[all]>=0.2.0,<0.3.0",
+    "cua-computer>=0.2.0,<0.3.0",
 ]
 
 [project.scripts]
@@ -31,10 +31,10 @@ dev = [
 
 [tool.black]
 line-length = 100
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 select = ["E", "F", "B", "I"]
 fix = true

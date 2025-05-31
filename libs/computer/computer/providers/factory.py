@@ -22,7 +22,8 @@ class VMProviderFactory:
         image: Optional[str] = None,
         verbose: bool = False,
         ephemeral: bool = False,
-        noVNC_port: Optional[int] = None
+        noVNC_port: Optional[int] = None,
+        **kwargs,
     ) -> BaseVMProvider:
         """Create a VM provider of the specified type.
         
@@ -101,12 +102,9 @@ class VMProviderFactory:
         elif provider_type == VMProviderType.CLOUD:
             try:
                 from .cloud import CloudProvider
-                # Return the stub implementation of CloudProvider
                 return CloudProvider(
-                    host=host,
-                    port=port,
-                    storage=storage,
-                    verbose=verbose
+                    verbose=verbose,
+                    **kwargs,
                 )
             except ImportError as e:
                 logger.error(f"Failed to import CloudProvider: {e}")

@@ -16,17 +16,18 @@ load_dotenv(env_file)
 pythonpath = os.environ.get("PYTHONPATH", "")
 for path in pythonpath.split(":"):
     if path and path not in sys.path:
-        sys.path.append(path)
+        sys.path.insert(0, path)  # Insert at beginning to prioritize
         print(f"Added to sys.path: {path}")
 
-from computer import Computer, VMProviderType
+from computer.computer import Computer
+from computer.providers.base import VMProviderType
 from computer.logger import LogLevel
 
 async def main():
     try:
         print("\n=== Using direct initialization ===")
 
-        # Create computer with configured host
+        # Create a local macOS computer
         computer = Computer(
             display="1024x768", 
             memory="8GB", 
@@ -41,12 +42,31 @@ async def main():
             ],
             ephemeral=False,
         )
+
+        # Create a remote Linux computer with C/ua
+        # computer = Computer(
+        #     os_type="linux",
+        #     api_key=os.getenv("CUA_API_KEY"),
+        #     name=os.getenv("CONTAINER_NAME"),
+        #     provider_type=VMProviderType.CLOUD,
+        # )
         
         try:
             # Run the computer with default parameters
             await computer.run()
             
-            await computer.interface.hotkey("command", "space")
+            screenshot = await computer.interface.screenshot()
+            
+            # Create output directory if it doesn't exist
+            output_dir = Path("./output")
+            output_dir.mkdir(exist_ok=True)
+            
+            screenshot_path = output_dir / "screenshot.png"
+            with open(screenshot_path, "wb") as f:
+                f.write(screenshot)
+            print(f"Screenshot saved to: {screenshot_path.absolute()}")
+            
+            # await computer.interface.hotkey("command", "space")
 
             # res = await computer.interface.run_command("touch ./Downloads/empty_file")
             # print(f"Run command result: {res}")

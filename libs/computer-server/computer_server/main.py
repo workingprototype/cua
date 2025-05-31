@@ -8,11 +8,11 @@ import traceback
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 from .handlers.factory import HandlerFactory
+import os
+import aiohttp
 
 # Set up logging with more detail
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure WebSocket with larger message size
@@ -48,6 +48,112 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket):
     # WebSocket message size is configured at the app or endpoint level, not on the instance
     await manager.connect(websocket)
+    
+    # Check if CONTAINER_NAME is set (indicating cloud provider)
+    container_name = os.environ.get("CONTAINER_NAME")
+    
+    # If cloud provider, perform authentication handshake
+    if container_name:
+        try:
+            logger.info(f"Cloud provider detected. CONTAINER_NAME: {container_name}. Waiting for authentication...")
+            
+            # Wait for authentication message
+            auth_data = await websocket.receive_json()
+            
+            # Validate auth message format
+            if auth_data.get("command") != "authenticate":
+                await websocket.send_json({
+                    "success": False,
+                    "error": "First message must be authentication"
+                })
+                await websocket.close()
+                manager.disconnect(websocket)
+                return
+            
+            # Extract credentials
+            client_api_key = auth_data.get("params", {}).get("api_key")
+            client_container_name = auth_data.get("params", {}).get("container_name")
+            
+            # Layer 1: VM Identity Verification
+            if client_container_name != container_name:
+                logger.warning(f"VM name mismatch. Expected: {container_name}, Got: {client_container_name}")
+                await websocket.send_json({
+                    "success": False,
+                    "error": "VM name mismatch"
+                })
+                await websocket.close()
+                manager.disconnect(websocket)
+                return
+            
+            # Layer 2: API Key Validation with TryCUA API
+            if not client_api_key:
+                await websocket.send_json({
+                    "success": False,
+                    "error": "API key required"
+                })
+                await websocket.close()
+                manager.disconnect(websocket)
+                return
+            
+            # Validate with TryCUA API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    headers = {
+                        "Authorization": f"Bearer {client_api_key}"
+                    }
+                    
+                    async with session.get(
+                        f"https://www.trycua.com/api/vm/auth?container_name={container_name}",
+                        headers=headers,
+                    ) as resp:
+                        if resp.status != 200:
+                            error_msg = await resp.text()
+                            logger.warning(f"API validation failed: {error_msg}")
+                            await websocket.send_json({
+                                "success": False,
+                                "error": "Authentication failed"
+                            })
+                            await websocket.close()
+                            manager.disconnect(websocket)
+                            return
+                        
+                        # If we get a 200 response with VNC URL, the VM exists and user has access
+                        vnc_url = (await resp.text()).strip()
+                        if not vnc_url:
+                            logger.warning(f"No VNC URL returned for VM: {container_name}")
+                            await websocket.send_json({
+                                "success": False,
+                                "error": "VM not found"
+                            })
+                            await websocket.close()
+                            manager.disconnect(websocket)
+                            return
+                        
+                        logger.info(f"Authentication successful for VM: {container_name}")
+                        await websocket.send_json({
+                            "success": True,
+                            "message": "Authenticated"
+                        })
+            
+            except Exception as e:
+                logger.error(f"Error validating with TryCUA API: {e}")
+                await websocket.send_json({
+                    "success": False,
+                    "error": "Authentication service unavailable"
+                })
+                await websocket.close()
+                manager.disconnect(websocket)
+                return
+
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            await websocket.send_json({
+                "success": False,
+                "error": "Authentication failed"
+            })
+            await websocket.close()
+            manager.disconnect(websocket)
+            return
 
     # Map commands to appropriate handler methods
     handlers = {

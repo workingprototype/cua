@@ -1,10 +1,10 @@
 """Tool-related type definitions."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, ConfigDict
 
-class ToolInvocationState(str, Enum):
+class ToolInvocationState(StrEnum):
     """States for tool invocation."""
     CALL = 'call'
     PARTIAL_CALL = 'partial-call'

@@ -27,6 +27,16 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         default="info",
         help="Logging level (default: info)",
     )
+    parser.add_argument(
+        "--ssl-keyfile",
+        type=str,
+        help="Path to SSL private key file (enables HTTPS)",
+    )
+    parser.add_argument(
+        "--ssl-certfile", 
+        type=str,
+        help="Path to SSL certificate file (enables HTTPS)",
+    )
 
     return parser.parse_args(args)
 
@@ -43,7 +53,21 @@ def main() -> None:
 
     # Create and start the server
     logger.info(f"Starting CUA Computer API server on {args.host}:{args.port}...")
-    server = Server(host=args.host, port=args.port, log_level=args.log_level)
+    
+    # Handle SSL configuration
+    ssl_args = {}
+    if args.ssl_keyfile and args.ssl_certfile:
+        ssl_args = {
+            "ssl_keyfile": args.ssl_keyfile,
+            "ssl_certfile": args.ssl_certfile,
+        }
+        logger.info("HTTPS mode enabled with SSL certificates")
+    elif args.ssl_keyfile or args.ssl_certfile:
+        logger.warning("Both --ssl-keyfile and --ssl-certfile are required for HTTPS. Running in HTTP mode.")
+    else:
+        logger.info("HTTP mode (no SSL certificates provided)")
+    
+    server = Server(host=args.host, port=args.port, log_level=args.log_level, **ssl_args)
 
     try:
         server.start()

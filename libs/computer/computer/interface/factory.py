@@ -1,6 +1,6 @@
 """Factory for creating computer interfaces."""
 
-from typing import Literal
+from typing import Literal, Optional
 from .base import BaseComputerInterface
 
 class InterfaceFactory:
@@ -9,13 +9,17 @@ class InterfaceFactory:
     @staticmethod
     def create_interface_for_os(
         os: Literal['macos', 'linux'],
-        ip_address: str
+        ip_address: str,
+        api_key: Optional[str] = None,
+        vm_name: Optional[str] = None
     ) -> BaseComputerInterface:
         """Create an interface for the specified OS.
         
         Args:
             os: Operating system type ('macos' or 'linux')
             ip_address: IP address of the computer to control
+            api_key: Optional API key for cloud authentication
+            vm_name: Optional VM name for cloud authentication
             
         Returns:
             BaseComputerInterface: The appropriate interface for the OS
@@ -28,8 +32,8 @@ class InterfaceFactory:
         from .linux import LinuxComputerInterface
         
         if os == 'macos':
-            return MacOSComputerInterface(ip_address)
+            return MacOSComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
         elif os == 'linux':
-            return LinuxComputerInterface(ip_address)
+            return LinuxComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
         else:
             raise ValueError(f"Unsupported OS type: {os}")
