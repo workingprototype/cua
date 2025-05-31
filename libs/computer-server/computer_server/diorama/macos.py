@@ -4,10 +4,11 @@ import platform
 import inspect
 from computer_server.diorama.diorama import Diorama
 from computer_server.diorama.base import BaseDioramaHandler
+from typing import Optional
 
 class MacOSDioramaHandler(BaseDioramaHandler):
     """Handler for Diorama commands on macOS, using local diorama module."""
-    async def diorama_cmd(self, action: str, arguments: dict = None) -> dict:
+    async def diorama_cmd(self, action: str, arguments: Optional[dict] = None) -> dict:
         if platform.system().lower() != "darwin":
             return {"success": False, "error": "Diorama is only supported on macOS."}
         try:

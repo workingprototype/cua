@@ -55,7 +55,7 @@ class HandlerFactory:
         
         if os_type == 'darwin':
             return MacOSAccessibilityHandler(), MacOSAutomationHandler(), MacOSDioramaHandler()
-        else:
+        elif os_type == 'linux':
             return LinuxAccessibilityHandler(), LinuxAutomationHandler(), BaseDioramaHandler()
-
+        else:
             raise NotImplementedError(f"OS '{os_type}' is not supported") 

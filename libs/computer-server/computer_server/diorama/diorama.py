@@ -97,6 +97,14 @@ class Diorama:
                             await automation_handler.drag_to(x, y, duration=duration)
                         if future:
                             future.set_result(None)
+                    elif action in ["scroll_up", "scroll_down"]:
+                        clicks = args.get("clicks", 1)
+                        if action == "scroll_up":
+                            await automation_handler.scroll_up(clicks)
+                        else:
+                            await automation_handler.scroll_down(clicks)
+                        if future:
+                            future.set_result(None)
                     # Keyboard actions
                     elif action == "type_text":
                         text = args.get("text")
@@ -197,6 +205,12 @@ class Diorama:
 
         async def hotkey(self, keys):
             await self._send_cmd("hotkey", {"keys": list(keys)})
+
+        async def scroll_up(self, clicks: int = 1):
+            await self._send_cmd("scroll_up", {"clicks": clicks})
+
+        async def scroll_down(self, clicks: int = 1):
+            await self._send_cmd("scroll_down", {"clicks": clicks})
 
         async def get_screen_size(self) -> dict[str, int]:
             if not self._scene_size:

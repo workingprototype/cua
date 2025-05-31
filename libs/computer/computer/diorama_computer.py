@@ -26,7 +26,6 @@ class DioramaComputerInterface:
     def __init__(self, computer, apps):
         self.computer = computer
         self.apps = apps
-        self._scene_hitboxes = []
         self._scene_size = None
 
     async def _send_cmd(self, action, arguments=None):
@@ -43,11 +42,10 @@ class DioramaComputerInterface:
 
     async def screenshot(self, as_bytes=True):
         from PIL import Image
+        import base64
         result = await self._send_cmd("screenshot")
-        img_bytes = result.get("image_bytes")
-        hitboxes = result.get("hitboxes", [])
-        self._scene_hitboxes = hitboxes
-        # Assume server returns PNG bytes
+        # assume result is a b64 string of an image
+        img_bytes = base64.b64decode(result)
         import io
         img = Image.open(io.BytesIO(img_bytes))
         self._scene_size = img.size
@@ -69,6 +67,12 @@ class DioramaComputerInterface:
 
     async def double_click(self, x=None, y=None):
         await self._send_cmd("double_click", {"x": x, "y": y})
+
+    async def scroll_up(self, clicks=1):
+        await self._send_cmd("scroll_up", {"clicks": clicks})
+
+    async def scroll_down(self, clicks=1):
+        await self._send_cmd("scroll_down", {"clicks": clicks})
 
     async def drag_to(self, x, y, duration=0.5):
         await self._send_cmd("drag_to", {"x": x, "y": y, "duration": duration})
