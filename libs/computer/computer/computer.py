@@ -796,6 +796,10 @@ class Computer:
             # Remove common leading whitespace (dedent)
             func_source = textwrap.dedent(source).strip()
             
+            # Remove decorators
+            while func_source.lstrip().startswith("@"):
+                func_source = func_source.split("\n", 1)[1].strip()
+            
             # Get function name for execution
             func_name = python_func.__name__
             

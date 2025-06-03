@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import traceback
 import time
+from functools import wraps
 
 # Load environment variables from .env file
 project_root = Path(__file__).parent.parent
@@ -27,16 +28,41 @@ from computer.logger import LogLevel
 # Assuming these exist based on your request
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
+# Global reference to computer instance (will be set in main)
+_computer = None
+
+def remote(venv_name="eval_env"):
+    """
+    Decorator that wraps a function to be executed remotely via computer.venv_exec
+    
+    Args:
+        venv_name: Name of the virtual environment to execute in
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if _computer is None:
+                raise RuntimeError("Computer instance not initialized. Call this after computer.run()")
+            return await _computer.venv_exec(venv_name, func, *args, **kwargs)
+        return wrapper
+    return decorator
+
 async def main():
+    global _computer, remote
+    
     try:
         print("\n=== Using cloud container ===")
-        # Create a remote Linux computer with CUA
-        computer = Computer(
-            os_type="linux",
-            api_key=os.getenv("CUA_API_KEY"),
-            name=str(os.getenv("CUA_CONTAINER_NAME")),
-            provider_type=VMProviderType.CLOUD,
-        )
+        # # Create a remote Linux computer with CUA
+        # computer = Computer(
+        #     os_type="linux",
+        #     api_key=os.getenv("CUA_API_KEY"),
+        #     name=str(os.getenv("CUA_CONTAINER_NAME")),
+        #     provider_type=VMProviderType.CLOUD,
+        # )
+        
+        # Connect to local macOS computer
+        computer = Computer()
+        _computer = computer  # Set global reference
         
         try:
             # Run the computer with default parameters
@@ -47,33 +73,40 @@ async def main():
 
             # Helper functions for wikirace
             async def open_wiki(page):
-                await computer.interface.run_command(f"firefox https://en.wikipedia.org/wiki/{page.replace(' ', '_')} &")
+                await computer.interface.run_command(f"open https://en.wikipedia.org/wiki/{page.replace(' ', '_')} &")
                 await asyncio.sleep(2)  # Wait for page to load
 
-            # Remote functions for wikirace
+            # Remote functions for wikirace - using @remote decorator
+            @remote("eval_env")
             def get_open_wikis():
                 import pywinctl
                 titles = pywinctl.getAllTitles()
                 wiki_titles = [title.split(" - Wikipedia")[0] for title in titles if "Wikipedia" in title]
                 return wiki_titles
 
+            @remote("eval_env")
             def get_current_wiki_page():
                 import pywinctl
                 titles = pywinctl.getAllTitles()
-                wiki_titles = [title for title in titles if "Wikipedia" in title and "Mozilla Firefox" in title]
+                wiki_titles = [title for title in titles if "Wikipedia" in title]
                 if wiki_titles:
                     return wiki_titles[0].split(" - Wikipedia")[0]
                 return None
 
             # Wikirace setup
+            max_steps = 15
             start_page = "Albert Einstein"
             target_page = "Pizza"
-            max_steps = 10
             
             print(f"\nStarting Wikirace: {start_page} → {target_page}")
             
             # Open starting page
             await open_wiki(start_page)
+            
+            # Check current page using decorated function
+            current_page = await get_current_wiki_page()
+            print(f"Starting page: {current_page}")
+            assert current_page == start_page, f"Expected {start_page}, got {current_page}"
             
             # Create agent
             agent = ComputerAgent(
@@ -100,26 +133,23 @@ async def main():
             Look at the current page and click on a link that might lead you closer to {target_page}.
             """
             
-            async for step_result in agent.run(prompt):
+            async for result in agent.run(prompt):    
                 steps += 1
-                print(f"Step {steps}: {step_result}")
-                
-                # Check current page
-                current_page = await computer.venv_exec("eval_env", get_current_wiki_page)
-                print(f"Current page: {current_page}")
-                
-                # Check if we reached the target
-                if current_page and target_page.lower() in current_page.lower():
-                    success = True
-                    print(f"🎉 SUCCESS! Reached {target_page} in {steps} steps!")
-                    break
+                print(f"Step {steps}: {result}")
                 
                 # Safety check
                 if steps >= max_steps:
                     print(f"❌ Failed: Reached maximum steps ({max_steps})")
                     break
                 
-                await asyncio.sleep(1)  # Brief pause between steps
+            # Check current page using decorated function
+            current_page = await get_current_wiki_page()
+            print(f"Current page: {current_page}")
+            
+            # Check if we reached the target
+            if current_page and target_page.lower() in current_page.lower():
+                success = True
+                print(f"🎉 SUCCESS! Reached {target_page} in {steps} steps!")
             
             end_time = time.time()
             duration = end_time - start_time
@@ -132,13 +162,14 @@ async def main():
             print(f"Success: {success}")
             print(f"Duration: {duration:.2f} seconds")
             
-            # Get final page list
-            final_wikis = await computer.venv_exec("eval_env", get_open_wikis)
+            # Get final page list - now using decorated function
+            final_wikis = await get_open_wikis()
             print(f"Open Wikipedia pages: {final_wikis}")
 
         finally:
             # Important to clean up resources
-            await computer.stop()
+            # await computer.stop()
+            pass
             
     except Exception as e:
         print(f"Error in main: {e}")
