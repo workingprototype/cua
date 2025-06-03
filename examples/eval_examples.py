@@ -146,8 +146,10 @@ async def main():
                 
                 # Safety check
                 if steps >= max_steps:
-                    print(f"❌ Failed: Reached maximum steps ({max_steps})")
-                    break
+                    print(f"❌ Stopping agent: Reached maximum steps ({max_steps})")
+                    agent._loop.cancel()
+                
+            await asyncio.sleep(2) # Wait for recv to finish
                 
             # Check again
             current_page = await get_current_wiki_page()
