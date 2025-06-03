@@ -160,8 +160,8 @@ async def main():
     # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
     agent = ComputerAgent(
       computer=computer,
-      loop="UITARS",
-      model=LLM(provider="MLXVLM", name="mlx-community/UI-TARS-1.5-7B-6bit")
+      loop="uitars",
+      model=LLM(provider="mlxvlm", name="mlx-community/UI-TARS-1.5-7B-6bit")
     )
     await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
 
