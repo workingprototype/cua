@@ -31,7 +31,8 @@ from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 # Global reference to computer instance (will be set in main)
 _computer = None
 
-def remote(venv_name="eval_env"):
+
+def remote(venv_name="eval_env", max_retries=3):
     """
     Decorator that wraps a function to be executed remotely via computer.venv_exec
     
@@ -43,7 +44,14 @@ def remote(venv_name="eval_env"):
         async def wrapper(*args, **kwargs):
             if _computer is None:
                 raise RuntimeError("Computer instance not initialized. Call this after computer.run()")
-            return await _computer.venv_exec(venv_name, func, *args, **kwargs)
+            for i in range(max_retries):
+                try:
+                    return await _computer.venv_exec(venv_name, func, *args, **kwargs)
+                except Exception as e:
+                    print(f"Attempt {i+1} failed: {e}")
+                    await asyncio.sleep(1)
+                    if i == max_retries - 1:
+                        raise e
         return wrapper
     return decorator
 
@@ -140,28 +148,33 @@ async def main():
             Look at the current page and click on a link that might lead you closer to {target_page}.
             """
             
-            async for result in agent.run(prompt):    
-                steps += 1
-                print(f"Step {steps}: {result}")
-                
-                # Safety check
-                if steps >= max_steps:
-                    print(f"❌ Stopping agent: Reached maximum steps ({max_steps})")
-                    agent._loop.cancel()
-                
-            await asyncio.sleep(2) # Wait for recv to finish
-                
-            # Check again
-            current_page = await get_current_wiki_page()
-            print(f"Current page: {current_page}")
-            
-            # Check if we reached the target
-            if current_page and target_page.lower() in current_page.lower():
-                success = True
-                print(f"🎉 SUCCESS! Reached {target_page} in {steps} steps!")
-            
+            try: 
+                async for result in agent.run(prompt):    
+                    steps += 1
+                    print(f"Step {steps}: {result}")
+                    
+                    # Check again
+                    current_page = await get_current_wiki_page()
+                    print(f"Current page: {current_page}")
+                    
+                    # Check if we reached the target
+                    if current_page and target_page.lower() in current_page.lower():
+                        success = True
+                        print(f"🎉 SUCCESS! Reached {target_page} in {steps} steps!")
+                        await agent._loop.cancel()
+                        break
+                    
+                    # Safety check
+                    if steps >= max_steps:
+                        print(f"❌ Stopping agent: Reached maximum steps ({max_steps})")
+                        await agent._loop.cancel()
+                        break
+            except asyncio.CancelledError:
+                print("Agent stopped")
+                            
             end_time = time.time()
             duration = end_time - start_time
+            await asyncio.sleep(2) # Wait for agent to finish
             
             # Results
             print(f"\n=== WIKIRACE RESULTS ===")
