@@ -11,6 +11,7 @@ import json
 import logging
 from .telemetry import record_computer_initialization
 import os
+from . import helpers
 
 # Import provider related modules
 from .providers.base import VMProviderType
@@ -460,6 +461,10 @@ class Computer:
 
             # Set the initialization flag and clear the initializing flag
             self._initialized = True
+            
+            # Set this instance as the default computer for remote decorators
+            helpers.set_default_computer(self)
+            
             self.logger.info("Computer successfully initialized")
         except Exception as e:
             raise

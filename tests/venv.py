@@ -31,24 +31,29 @@ for path in pythonpath.split(":"):
 
 from computer.computer import Computer
 from computer.providers.base import VMProviderType
+from computer.helpers import remote, set_default_computer
 
 
 @pytest.fixture(scope="session")
 async def computer():
     """Shared Computer instance for all test cases."""
-    # Create a remote Linux computer with C/ua
-    computer = Computer(
-        os_type="linux",
-        api_key=os.getenv("CUA_API_KEY"),
-        name=str(os.getenv("CUA_CONTAINER_NAME")),
-        provider_type=VMProviderType.CLOUD,
-    )
+    # # Create a remote Linux computer with C/ua
+    # computer = Computer(
+    #     os_type="linux",
+    #     api_key=os.getenv("CUA_API_KEY"),
+    #     name=str(os.getenv("CUA_CONTAINER_NAME")),
+    #     provider_type=VMProviderType.CLOUD,
+    # )
+    
+    # Create a local macOS computer with C/ua
+    computer = Computer()
     
     try:
         await computer.run()
         yield computer
     finally:
-        await computer.stop()
+        # await computer.stop()
+        pass
 
 
 # Sample test cases
@@ -145,6 +150,56 @@ async def test_venv_exec_stdout_capture(computer, capfd):
     # Assert the stdout contains our expected output
     assert out == "Hello World!\n\n"
     assert result == "Function completed"
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_remote_decorator(computer):
+    """Test the remote decorator from computer.helpers module."""
+    # Set the computer as default for the remote decorator
+    set_default_computer(computer)
+    
+    # Define a function with the remote decorator
+    @sandboxed("test_env")
+    def get_package_version():
+        import sys
+        import platform
+        return {
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "success": True
+        }
+    
+    # Call the decorated function
+    result = await get_package_version()
+    
+    # Verify the function executed in the virtual environment
+    assert "python_version" in result
+    assert "platform" in result
+    assert result["success"] == True
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_remote_decorator_with_custom_computer(computer):
+    """Test the remote decorator with explicitly specified computer instance."""
+    # Define a function with the remote decorator that explicitly specifies the computer
+    @sandboxed("test_env", computer=computer)
+    def get_system_info():
+        import os
+        import sys
+        return {
+            "python_version": sys.version,
+            "environment_vars": dict(os.environ),
+            "working_directory": os.getcwd()
+        }
+    
+    # Call the decorated function
+    result = await get_system_info()
+    
+    # Verify the function executed in the virtual environment
+    assert "python_version" in result
+    assert "environment_vars" in result
+    assert "working_directory" in result
+    # The virtual environment should have a different working directory
+    # than the current test process
+    assert result["working_directory"] != os.getcwd()
 
 if __name__ == "__main__":
     # Run tests directly

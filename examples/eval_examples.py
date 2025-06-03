@@ -24,40 +24,12 @@ for path in pythonpath.split(":"):
 from computer.computer import Computer
 from computer.providers.base import VMProviderType
 from computer.logger import LogLevel
+from computer.helpers import sandboxed
 
 # Assuming these exist based on your request
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
 
-# Global reference to computer instance (will be set in main)
-_computer = None
-
-
-def remote(venv_name="eval_env", max_retries=3):
-    """
-    Decorator that wraps a function to be executed remotely via computer.venv_exec
-    
-    Args:
-        venv_name: Name of the virtual environment to execute in
-    """
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            if _computer is None:
-                raise RuntimeError("Computer instance not initialized. Call this after computer.run()")
-            for i in range(max_retries):
-                try:
-                    return await _computer.venv_exec(venv_name, func, *args, **kwargs)
-                except Exception as e:
-                    print(f"Attempt {i+1} failed: {e}")
-                    await asyncio.sleep(1)
-                    if i == max_retries - 1:
-                        raise e
-        return wrapper
-    return decorator
-
-async def main():
-    global _computer, remote
-    
+async def main():    
     try:
         print("\n=== Using cloud container ===")
         # # Create a remote Linux computer with CUA
@@ -70,7 +42,6 @@ async def main():
         
         # Connect to local macOS computer
         computer = Computer()
-        _computer = computer  # Set global reference
         
         try:
             # Run the computer with default parameters
@@ -84,8 +55,8 @@ async def main():
                 await computer.interface.run_command(f"open https://en.wikipedia.org/wiki/{page.replace(' ', '_')} &")
                 await asyncio.sleep(2)  # Wait for page to load
 
-            # Remote functions for wikirace - using @remote decorator
-            @remote("eval_env")
+            # Remote functions for wikirace - using @sandboxed decorator
+            @sandboxed("eval_env")
             def close_all_windows():
                 import pywinctl
                 windows = pywinctl.getAllWindows()
@@ -96,7 +67,7 @@ async def main():
                         # Some windows might not be closeable or may have already closed
                         pass
 
-            @remote("eval_env")
+            @sandboxed("eval_env")
             def get_current_wiki_page():
                 import pywinctl
                 titles = pywinctl.getAllTitles()
