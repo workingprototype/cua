@@ -78,11 +78,15 @@ async def main():
 
             # Remote functions for wikirace - using @remote decorator
             @remote("eval_env")
-            def get_open_wikis():
+            def close_all_windows():
                 import pywinctl
-                titles = pywinctl.getAllTitles()
-                wiki_titles = [title.split(" - Wikipedia")[0] for title in titles if "Wikipedia" in title]
-                return wiki_titles
+                windows = pywinctl.getAllWindows()
+                for window in windows:
+                    try:
+                        window.close()
+                    except:
+                        # Some windows might not be closeable or may have already closed
+                        pass
 
             @remote("eval_env")
             def get_current_wiki_page():
@@ -94,11 +98,14 @@ async def main():
                 return None
 
             # Wikirace setup
-            max_steps = 15
+            max_steps = 2
             start_page = "Albert Einstein"
             target_page = "Pizza"
             
             print(f"\nStarting Wikirace: {start_page} → {target_page}")
+            
+            # Close all windows
+            await close_all_windows()
             
             # Open starting page
             await open_wiki(start_page)
@@ -142,7 +149,7 @@ async def main():
                     print(f"❌ Failed: Reached maximum steps ({max_steps})")
                     break
                 
-            # Check current page using decorated function
+            # Check again
             current_page = await get_current_wiki_page()
             print(f"Current page: {current_page}")
             
@@ -161,11 +168,6 @@ async def main():
             print(f"Steps taken: {steps}")
             print(f"Success: {success}")
             print(f"Duration: {duration:.2f} seconds")
-            
-            # Get final page list - now using decorated function
-            final_wikis = await get_open_wikis()
-            print(f"Open Wikipedia pages: {final_wikis}")
-
         finally:
             # Important to clean up resources
             # await computer.stop()
