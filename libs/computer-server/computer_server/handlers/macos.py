@@ -627,21 +627,14 @@ class MacOSAutomationHandler(BaseAutomationHandler):
 
     async def press_key(self, key: str) -> Dict[str, Any]:
         try:
-            # Try to map string to Key else use as char
-            k = getattr(Key, key, key)
-            self.keyboard.press(k)
-            self.keyboard.release(k)
+            pyautogui.press(key)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     async def hotkey(self, keys: List[str]) -> Dict[str, Any]:
         try:
-            key_objs = [getattr(Key, k, k) for k in keys]
-            for k in key_objs:
-                self.keyboard.press(k)
-            for k in reversed(key_objs):
-                self.keyboard.release(k)
+            pyautogui.hotkey(*keys)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
