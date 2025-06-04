@@ -87,7 +87,17 @@ class DioramaComputerInterface:
         await self._send_cmd("press_key", {"key": key})
 
     async def hotkey(self, *keys):
-        await self._send_cmd("hotkey", {"keys": list(keys)})
+        actual_keys = []
+        for key in keys:
+            if isinstance(key, Key):
+                actual_keys.append(key.value)
+            elif isinstance(key, str):
+                # Try to convert to enum if it matches a known key
+                key_or_enum = Key.from_string(key)
+                actual_keys.append(key_or_enum.value if isinstance(key_or_enum, Key) else key_or_enum)
+            else:
+                raise ValueError(f"Invalid key type: {type(key)}. Must be Key enum or string.")
+        await self._send_cmd("hotkey", {"keys": actual_keys})
 
     async def to_screen_coordinates(self, x, y):
         return await self._send_cmd("to_screen_coordinates", {"x": x, "y": y})
