@@ -94,9 +94,6 @@ class Diorama:
                         x = args.get("x")
                         y = args.get("y")
                         
-                        # Update the cursor position for this app_list hash
-                        Diorama._cursor_positions[app_list_hash] = (x, y)
-                        
                         duration = args.get("duration", 0.5)
                         if action == "left_click":
                             await automation_handler.left_click(x, y)
@@ -264,8 +261,6 @@ class Diorama:
             app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
             last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
             x, y = last_pos[0], last_pos[1]
-            # Update cursor position for this app_list hash
-            Diorama._cursor_positions[app_list_hash] = (x, y)
             
             await self._send_cmd("scroll_up", {"clicks": clicks, "x": x, "y": y})
 
@@ -274,8 +269,6 @@ class Diorama:
             app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
             last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
             x, y = last_pos[0], last_pos[1]
-            # Update cursor position for this app_list hash
-            Diorama._cursor_positions[app_list_hash] = (x, y)
             
             await self._send_cmd("scroll_down", {"clicks": clicks, "x": x, "y": y})
 
