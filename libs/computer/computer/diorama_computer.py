@@ -1,4 +1,5 @@
 import asyncio
+from .interface.models import KeyType, Key
 
 class DioramaComputer:
     """
