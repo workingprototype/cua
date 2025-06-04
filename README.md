@@ -167,26 +167,6 @@ async def main():
     async for result in agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide"):
         print(result)
 
-    # Example: Use sandboxed functions to execute code in a C/ua Container
-    # 1. Install a package in a Python virtual environment
-    await computer.venv_install("demo_venv", ["requests", "macos-pyxa"])
-    
-    # 2. Define a sandboxed function
-    @sandboxed("demo_venv")
-    def greet_and_print(name):
-        # get .html of the current Safari tab
-        import PyXA
-        safari = PyXA.Application("Safari")
-        current_doc = safari.current_document
-        html = current_doc.source()
-        print(f"Hello from inside the container, {name}!")
-        print("Safari HTML length:", len(html))
-        return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:200]}
-    
-    # 3. Run the function in the container in the agent's environment
-    result = await greet_and_print("C/ua")
-    print("Result from sandboxed function:", result)
-
 if __name__ == "__main__":
     asyncio.run(main())
 ```
@@ -301,6 +281,25 @@ await computer.interface.get_accessibility_tree() # Get accessibility tree
 await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
 await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
 await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
+
+# Example: Use sandboxed functions to execute code in a C/ua Container
+# 1. Install a package in a Python virtual environment
+await computer.venv_install("demo_venv", ["requests", "macos-pyxa"])
+
+# 2. Define a sandboxed function
+@sandboxed("demo_venv")
+def greet_and_print(name, html_snippet_length=200):
+    # get .html of the current Safari tab
+    import PyXA
+    safari = PyXA.Application("Safari")
+    html = safari.current_document.source()
+    print(f"Hello from inside the container, {name}!")
+    print("Safari HTML length:", len(html))
+    return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:html_snippet_length]}
+
+# 3. Run the function in the container in the agent's environment
+result = await greet_and_print("C/ua", html_snippet_length=100)
+print("Result from sandboxed function:", result)
 ```
 
 ## ComputerAgent Reference
