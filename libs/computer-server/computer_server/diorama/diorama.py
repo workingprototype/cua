@@ -77,8 +77,6 @@ class Diorama:
             frontmost_app, active_app_to_use, active_app_pid = get_frontmost_and_active_app(all_windows, running_apps, app_whitelist)
             focus_context = AppActivationContext(active_app_pid, active_app_to_use, logger)
             
-            app_list_hash = hash(tuple(sorted(app_whitelist)))
-            
             with focus_context:
                 try:
                     if action == "screenshot":
@@ -93,11 +91,8 @@ class Diorama:
                             future.set_result((result, img))
                     # Mouse actions
                     elif action in ["left_click", "right_click", "double_click", "move_cursor", "drag_to"]:
-                        # Get last cursor position for this app_list hash
-                        last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
-                        
-                        x = args.get("x", last_pos[0])
-                        y = args.get("y", last_pos[1])
+                        x = args.get("x")
+                        y = args.get("y")
                         
                         # Update the cursor position for this app_list hash
                         Diorama._cursor_positions[app_list_hash] = (x, y)
@@ -116,9 +111,10 @@ class Diorama:
                         if future:
                             future.set_result(None)
                     elif action in ["scroll_up", "scroll_down"]:
-                        # Move cursor to last known position for this app_list hash
-                        last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
-                        await automation_handler.move_cursor(*last_pos)
+                        x = args.get("x")
+                        y = args.get("y")
+                        if x is not None and y is not None:
+                            await automation_handler.move_cursor(x, y)
                         
                         clicks = args.get("clicks", 1)
                         if action == "scroll_up":
@@ -197,22 +193,57 @@ class Diorama:
                 return img
 
         async def left_click(self, x, y):
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = x or last_pos[0], y or last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+
             sx, sy = await self.to_screen_coordinates(x, y)
             await self._send_cmd("left_click", {"x": sx, "y": sy})
 
         async def right_click(self, x, y):
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = x or last_pos[0], y or last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
             sx, sy = await self.to_screen_coordinates(x, y)
             await self._send_cmd("right_click", {"x": sx, "y": sy})
 
         async def double_click(self, x, y):
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = x or last_pos[0], y or last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
             sx, sy = await self.to_screen_coordinates(x, y)
             await self._send_cmd("double_click", {"x": sx, "y": sy})
 
         async def move_cursor(self, x, y):
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = x or last_pos[0], y or last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
             sx, sy = await self.to_screen_coordinates(x, y)
             await self._send_cmd("move_cursor", {"x": sx, "y": sy})
 
         async def drag_to(self, x, y, duration=0.5):
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = x or last_pos[0], y or last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
             sx, sy = await self.to_screen_coordinates(x, y)
             await self._send_cmd("drag_to", {"x": sx, "y": sy, "duration": duration})
 
@@ -229,10 +260,24 @@ class Diorama:
             await self._send_cmd("hotkey", {"keys": list(keys)})
 
         async def scroll_up(self, clicks: int = 1):
-            await self._send_cmd("scroll_up", {"clicks": clicks})
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = last_pos[0], last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
+            await self._send_cmd("scroll_up", {"clicks": clicks, "x": x, "y": y})
 
         async def scroll_down(self, clicks: int = 1):
-            await self._send_cmd("scroll_down", {"clicks": clicks})
+            # Get last cursor position for this app_list hash
+            app_list_hash = hash(tuple(sorted(self._diorama.app_list)))
+            last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+            x, y = last_pos[0], last_pos[1]
+            # Update cursor position for this app_list hash
+            Diorama._cursor_positions[app_list_hash] = (x, y)
+            
+            await self._send_cmd("scroll_down", {"clicks": clicks, "x": x, "y": y})
 
         async def get_screen_size(self) -> dict[str, int]:
             if not self._scene_size:
