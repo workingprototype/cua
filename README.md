@@ -137,6 +137,7 @@ pip install "cua-computer[all]" "cua-agent[all]"
 ### Step 4: Use in Your Code
 
 ```python
+from computer.helpers import sandboxed
 from computer import Computer
 from agent import ComputerAgent, LLM
 
@@ -163,9 +164,31 @@ async def main():
       loop="uitars",
       model=LLM(provider="mlxvlm", name="mlx-community/UI-TARS-1.5-7B-6bit")
     )
-    await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+    async for result in agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide"):
+        print(result)
 
-main()
+    # Example: Use sandboxed functions to execute code in a C/ua Container
+    # 1. Install a package in a Python virtual environment
+    await computer.venv_install("demo_venv", ["requests", "macos-pyxa"])
+    
+    # 2. Define a sandboxed function
+    @sandboxed("demo_venv")
+    def greet_and_print(name):
+        # get .html of the current Safari tab
+        import PyXA
+        safari = PyXA.Application("Safari")
+        current_doc = safari.current_document
+        html = current_doc.source()
+        print(f"Hello from inside the container, {name}!")
+        print("Safari HTML length:", len(html))
+        return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:200]}
+    
+    # 3. Run the function in the container in the agent's environment
+    result = await greet_and_print("C/ua")
+    print("Result from sandboxed function:", result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
@@ -273,6 +296,11 @@ await computer.interface.run_command(cmd)       # Run shell command
 
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
+
+# Python Virtual Environment Operations
+await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
+await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
+await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
 ```
 
 ## ComputerAgent Reference

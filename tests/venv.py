@@ -31,7 +31,7 @@ for path in pythonpath.split(":"):
 
 from computer.computer import Computer
 from computer.providers.base import VMProviderType
-from computer.helpers import remote, set_default_computer
+from computer.helpers import sandboxed, set_default_computer
 
 
 @pytest.fixture(scope="session")
