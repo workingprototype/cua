@@ -11,13 +11,16 @@ import urllib.request
 import datetime
 from urllib.parse import quote
 
+# Global variable to track all results
+all_results = []
+
 # Wikirace prompt template
 WIKIRACE_PROMPT_TEMPLATE = """
 You are playing Wikirace in {browser}! Your goal is to navigate from "{start_page}" to "{target_page}" 
 by clicking only on Wikipedia links within articles.
 
 Rules:
-1. Only click on links within Wikipedia articles (blue underlined text)
+1. Only click on links within Wikipedia articles (blue text)
 2. No using search, back button, or typing URLs
 3. You MAY use cmd+f (or ctrl+f) to find text on the current page
 4. Do NOT click any search icon or type into any search box unless it's a browser command
@@ -26,6 +29,7 @@ Rules:
 7. Do not maximize the window or use any other application
 8. Avoid wasting actions by scrolling
 9. Try using cmd+f and quickly clicking through relevant links in the page as you have a limited number of steps
+10. Stay on the English Wikipedia
 
 Look at the current page and click on a link that might lead you closer to {target_page}.
 """
@@ -36,6 +40,7 @@ _print = print
 # Define log file path
 project_root = Path(__file__).parent.parent
 log_file = project_root / "examples" / "evals" / "eval_appuse_log.txt"
+results_file = project_root / "examples" / "evals" / "eval_appuse_results.md"
 
 # Custom print function that also logs to file
 def print(*args, **kwargs):
@@ -160,6 +165,36 @@ def get_article_pair(depth=5):
         target_article = wikipedia_random_walk(start_article, depth)[-1]
     return start_article, target_article
 
+
+def save_results_to_markdown():
+    """Save all results to a markdown table"""
+    global all_results
+    
+    if not all_results:
+        print("No results to save")
+        return
+    
+    # Create header for the markdown table
+    header = "| Timestamp | Scenario | App-Use | Browser | Config | Start | Target | Steps | Success | Duration (s) |"
+    separator = "|---|---|---|---|---|---|---|---|---|---|"
+    
+    # Create rows for each result
+    rows = []
+    for result in all_results:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        row = f"| {timestamp} | {result['scenario']} | {result['app_use']} | {result['browser']} | {result['config']} | {result['start']} | {result['target']} | {result['steps']} | {result['success']} | {result['duration']:.2f} |"
+        rows.append(row)
+    
+    # Combine header, separator, and rows
+    table = "\n".join([header, separator] + rows)
+    
+    # Write to file (append mode)
+    with open(results_file, "a") as f:
+        f.write(f"\n\n## Results Update - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        f.write(table)
+    
+    print(f"Results saved to {results_file}")
+
 async def run_scenario(scenario_name, use_app_use, agent_configs, max_steps=30):
     """Run a specific evaluation scenario"""
     
@@ -254,6 +289,7 @@ async def open_wiki(page, app_name="Safari"):
 
 
 async def run_messy_desktop_scenario(computer, agent_configs, max_steps):
+    global all_results
     """Run the messy desktop scenario with a single agent"""
     # Get popular wiki articles
     global articles
@@ -292,7 +328,8 @@ async def run_messy_desktop_scenario(computer, agent_configs, max_steps):
         agent = ComputerAgent(
             computer=agent_computer,
             loop=loop_provider,
-            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider
+            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider,
+            trajectory_dir="examples/evals/trajectories/eval_appuse"
         )
         
         # Run the wikirace
@@ -387,6 +424,7 @@ async def run_messy_desktop_scenario(computer, agent_configs, max_steps):
 
 
 async def run_parallel_agents_scenario(computer, agent_configs, max_steps):
+    global all_results
     
     """Run two agents in parallel, one using Safari and one using Firefox"""
     # Get popular wiki articles
@@ -436,13 +474,15 @@ async def run_parallel_agents_scenario(computer, agent_configs, max_steps):
         safari_agent = ComputerAgent(
             computer=safari_desktop,
             loop=loop_provider,
-            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider
+            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider,
+            trajectory_dir="examples/evals/trajectories/eval_parallel_safari"
         )
         
         firefox_agent = ComputerAgent(
             computer=firefox_desktop,
             loop=loop_provider,
-            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider
+            model=LLM(model_provider) if not isinstance(model_provider, LLM) else model_provider,
+            trajectory_dir="examples/evals/trajectories/eval_parallel_firefox"
         )
         
         # Create prompts using the template
@@ -525,6 +565,24 @@ async def run_parallel_agents_scenario(computer, agent_configs, max_steps):
                         print(f"{browser} current page: {current_page}")
                         print(f"{browser} target: {target_page}") 
                         
+                        # Add result to global tracking
+                        global all_results
+                        current_result = {
+                            'scenario': 'parallel_agents',
+                            'app_use': 'Yes' if 'app-use' in (computer.experiments or []) else 'No',
+                            'browser': browser,
+                            'config': config_name,
+                            'start': start_page,
+                            'target': target_page,
+                            'steps': results['steps'],
+                            'success': results['success'],
+                            'duration': time.time() - results['start_time']
+                        }
+                        all_results.append(current_result)
+                        
+                        # Save results after each step
+                        save_results_to_markdown()
+                        
                         # Check if we reached the target
                         if current_page and target_page.lower() in current_page.lower():
                             results["success"] = True
@@ -575,9 +633,9 @@ async def main():
         
         # Define agent configurations to test
         agent_configs = [
-            ("OpenAI", AgentLoop.OPENAI, LLMProvider.OPENAI),
-            ("Anthropic", AgentLoop.ANTHROPIC, LLMProvider.ANTHROPIC),
-            # ("UITARS", AgentLoop.UITARS, LLM(LLMProvider.OAICOMPAT, name="tgi", provider_base_url=os.getenv("UITARS_BASE_URL")))
+            # ("OpenAI", AgentLoop.OPENAI, LLMProvider.OPENAI),
+            # ("Anthropic", AgentLoop.ANTHROPIC, LLMProvider.ANTHROPIC),
+            ("UITARS", AgentLoop.UITARS, LLM(LLMProvider.OAICOMPAT, name="tgi", provider_base_url=os.getenv("UITARS_BASE_URL")))
         ]
         
         # # Run the test scenario without any agents
@@ -585,7 +643,7 @@ async def main():
         # await run_test_scenario()
         
         # Set maximum steps for each agent run
-        max_steps = 50
+        max_steps = 15
         runs = 5
 
         # run all scenarios
