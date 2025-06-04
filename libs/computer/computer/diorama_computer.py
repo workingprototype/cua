@@ -37,7 +37,7 @@ class DioramaComputerInterface:
             raise RuntimeError("Computer interface not initialized. Call run() first.")
         result = await iface.diorama_cmd(action, arguments)
         if not result.get("success"):
-            raise RuntimeError(f"Diorama command failed: {result.get('error')}")
+            raise RuntimeError(f"Diorama command failed: {result.get('error')}\n{result.get('trace')}")
         return result.get("result")
 
     async def screenshot(self, as_bytes=True):

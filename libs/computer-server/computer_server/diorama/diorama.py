@@ -36,11 +36,21 @@ class Diorama:
         cls._ensure_scheduler()
         return cls(args).computer
 
+    # Dictionary to store cursor positions for each unique app_list hash
+    _cursor_positions = {}
+    
     def __init__(self, app_list):
         self.app_list = app_list
         self.interface = self.Interface(self)
         self.computer = DioramaComputer(self)
         self.focus_context = None
+        
+        # Create a hash for this app_list to use as a key
+        self.app_list_hash = hash(tuple(sorted(app_list)))
+        
+        # Initialize cursor position for this app_list if it doesn't exist
+        if self.app_list_hash not in Diorama._cursor_positions:
+            Diorama._cursor_positions[self.app_list_hash] = (0, 0)
 
     @classmethod
     def _ensure_scheduler(cls):
@@ -67,10 +77,11 @@ class Diorama:
             frontmost_app, active_app_to_use, active_app_pid = get_frontmost_and_active_app(all_windows, running_apps, app_whitelist)
             focus_context = AppActivationContext(active_app_pid, active_app_to_use, logger)
             
+            app_list_hash = hash(tuple(sorted(app_whitelist)))
+            
             with focus_context:
                 try:
                     if action == "screenshot":
-                        app_whitelist = list(args["app_list"])
                         logger.info(f"Taking screenshot for apps: {app_whitelist}")
                         result, img = capture_all_apps(
                             app_whitelist=app_whitelist,
@@ -82,8 +93,15 @@ class Diorama:
                             future.set_result((result, img))
                     # Mouse actions
                     elif action in ["left_click", "right_click", "double_click", "move_cursor", "drag_to"]:
-                        x = args.get("x")
-                        y = args.get("y")
+                        # Get last cursor position for this app_list hash
+                        last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+                        
+                        x = args.get("x", last_pos[0])
+                        y = args.get("y", last_pos[1])
+                        
+                        # Update the cursor position for this app_list hash
+                        Diorama._cursor_positions[app_list_hash] = (x, y)
+                        
                         duration = args.get("duration", 0.5)
                         if action == "left_click":
                             await automation_handler.left_click(x, y)
@@ -98,6 +116,10 @@ class Diorama:
                         if future:
                             future.set_result(None)
                     elif action in ["scroll_up", "scroll_down"]:
+                        # Move cursor to last known position for this app_list hash
+                        last_pos = Diorama._cursor_positions.get(app_list_hash, (0, 0))
+                        await automation_handler.move_cursor(*last_pos)
+                        
                         clicks = args.get("clicks", 1)
                         if action == "scroll_up":
                             await automation_handler.scroll_up(clicks)
