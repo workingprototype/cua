@@ -137,7 +137,6 @@ pip install "cua-computer[all]" "cua-agent[all]"
 ### Step 4: Use in Your Code
 
 ```python
-from computer.helpers import sandboxed
 from computer import Computer
 from agent import ComputerAgent, LLM
 
@@ -283,10 +282,7 @@ await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests
 await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
 
 # Example: Use sandboxed functions to execute code in a C/ua Container
-# 1. Install a package in a Python virtual environment
-await computer.venv_install("demo_venv", ["requests", "macos-pyxa"])
-
-# 2. Define a sandboxed function
+from computer.helpers import sandboxed
 @sandboxed("demo_venv")
 def greet_and_print(name, html_snippet_length=200):
     # get .html of the current Safari tab
@@ -296,9 +292,7 @@ def greet_and_print(name, html_snippet_length=200):
     print(f"Hello from inside the container, {name}!")
     print("Safari HTML length:", len(html))
     return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:html_snippet_length]}
-
-# 3. Run the function in the container in the agent's environment
-result = await greet_and_print("C/ua", html_snippet_length=100)
+result = await greet_and_print("C/ua", html_snippet_length=100) # Executes in the container
 print("Result from sandboxed function:", result)
 ```
 
