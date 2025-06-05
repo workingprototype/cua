@@ -283,16 +283,20 @@ await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) 
 
 # Example: Use sandboxed functions to execute code in a C/ua Container
 from computer.helpers import sandboxed
+
 @sandboxed("demo_venv")
-def greet_and_print(name, html_snippet_length=200):
-    # get .html of the current Safari tab
+def greet_and_print(name):
+    """Get the HTML of the current Safari tab"""
     import PyXA
     safari = PyXA.Application("Safari")
     html = safari.current_document.source()
     print(f"Hello from inside the container, {name}!")
-    print("Safari HTML length:", len(html))
-    return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:html_snippet_length]}
-result = await greet_and_print("C/ua", html_snippet_length=100) # Executes in the container
+    return {"greeted": name, "safari_html": html}
+
+# When a @sandboxed function is called, it will execute in the container
+result = await greet_and_print("C/ua")
+# Result: {"greeted": "C/ua", "safari_html": "<html>...</html>"}
+# stdout and stderr are also captured and printed / raised
 print("Result from sandboxed function:", result)
 ```
 
