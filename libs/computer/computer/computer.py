@@ -181,24 +181,25 @@ class Computer:
             self.logger.debug("Telemetry disabled - skipping initialization tracking")
 
     async def __aenter__(self):
-        """Enter async context manager."""
+        """Start the computer."""
+        await self.run()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Exit async context manager."""
-        pass
+        """Stop the computer."""
+        await self.disconnect()
 
     def __enter__(self):
-        """Enter synchronous context manager."""
-        # Run the event loop to call the async run method
+        """Start the computer."""
+        # Run the event loop to call the async enter method
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.run())
+        loop.run_until_complete(self.__aenter__())
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit synchronous context manager."""
-        # We could add cleanup here if needed in the future
-        pass
+        """Stop the computer."""
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.__aexit__(exc_type, exc_val, exc_tb))
 
     async def run(self) -> Optional[str]:
         """Initialize the VM and computer interface."""
@@ -473,9 +474,14 @@ class Computer:
             duration_ms = (time.time() - start_time) * 1000
             self.logger.debug(f"Computer initialization took {duration_ms:.2f}ms")
         return
+    
+    async def disconnect(self) -> None:
+        """Disconnect from the computer's WebSocket interface."""
+        if self._interface:
+            self._interface.close()
 
     async def stop(self) -> None:
-        """Stop computer control."""
+        """Disconnect from the computer's WebSocket interface and stop the computer."""
         start_time = time.time()
 
         try:
@@ -496,6 +502,7 @@ class Computer:
                 await self.config.vm_provider.__aexit__(None, None, None)
                 self._provider_context = None
 
+            await self.disconnect()
             self.logger.info("Computer stopped")
         except Exception as e:
             self.logger.debug(f"Error during cleanup: {e}")  # Log as debug since this might be expected
