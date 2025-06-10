@@ -51,18 +51,19 @@
 
 **Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
-
-
 ### Option 1: Fully-managed install (recommended)
+
 *I want to be totally guided in the process*
 
 **macOS/Linux/Windows (via WSL):**
+
 ```bash
 # Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
 
 This script will:
+
 - Ask if you want to use local VMs or C/ua Cloud Containers
 - Install necessary dependencies (Lume CLI for local VMs)
 - Download VM images if needed
@@ -70,10 +71,12 @@ This script will:
 - Launch the Computer-Use Agent UI
 
 ### Option 2: Key manual steps
+
 <details>
 <summary>If you are skeptical running one-install scripts</summary>
 
 **For C/ua Agent UI (any system, cloud VMs only):**
+
 ```bash
 # Requires Python 3.11+ and C/ua API key
 pip install -U "cua-computer[all]" "cua-agent[all]"
@@ -81,6 +84,7 @@ python -m agent.ui.gradio.app
 ```
 
 **For Local macOS/Linux VMs (Apple Silicon only):**
+
 ```bash
 # 1. Install Lume CLI
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
@@ -95,22 +99,23 @@ lume run macos-sequoia-cua:latest
 pip install -U "cua-computer[all]" "cua-agent[all]"
 python -m agent.ui.gradio.app
 ```
+
 </details>
 
 ---
 
 *How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module provides local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
+
 ### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
-
-
 # 💻 Developer Guide
 
-Follow these steps to use C/ua in your own code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
+Follow these steps to use C/ua in your own code. See [Developer Guide](https://docs.trycua.com/home/developer-guide) for building from source.
 
 ### Step 1: Install Lume CLI
 
@@ -347,7 +352,6 @@ ComputerAgent(
     api_key="your-openrouter-api-key"
 )
 ```
-
 
 ## Community
 
