@@ -42,7 +42,10 @@ async def computer():
     # )
     
     # Create a local macOS computer with C/ua
-    computer = Computer()
+    # computer = Computer()
+    
+    # Connect to host computer
+    computer = Computer(use_host_computer_server=True)
     
     try:
         await computer.run()
@@ -50,7 +53,7 @@ async def computer():
     finally:
         await computer.disconnect()
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_file_exists(computer):
     tmp_path = "test_file_exists.txt"
     # Ensure file does not exist
@@ -65,7 +68,7 @@ async def test_file_exists(computer):
     await computer.interface.delete_file(tmp_path)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_directory_exists(computer):
     tmp_dir = "test_directory_exists"
     if await computer.interface.directory_exists(tmp_dir):
@@ -87,7 +90,7 @@ async def test_directory_exists(computer):
     await computer.interface.delete_dir(tmp_dir)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_list_dir(computer):
     tmp_dir = "test_list_dir"
     if not await computer.interface.directory_exists(tmp_dir):
@@ -102,7 +105,7 @@ async def test_list_dir(computer):
     await computer.interface.delete_dir(tmp_dir)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_read_write_text(computer):
     tmp_path = "test_rw_text.txt"
     content = "sample text"
@@ -112,7 +115,7 @@ async def test_read_write_text(computer):
     await computer.interface.delete_file(tmp_path)
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_delete_file(computer):
     tmp_path = "test_delete_file.txt"
     await computer.interface.write_text(tmp_path, "bye")
@@ -123,7 +126,7 @@ async def test_delete_file(computer):
     assert exists is False, "File should not exist"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_create_dir(computer):
     tmp_dir = "test_create_dir"
     if await computer.interface.directory_exists(tmp_dir):
