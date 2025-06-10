@@ -5,7 +5,6 @@ import json
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
 import re
-from ..providers.omni.parser import ParseResult
 
 logger = logging.getLogger(__name__)
 
