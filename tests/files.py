@@ -57,11 +57,11 @@ async def test_file_exists(computer):
     if await computer.interface.file_exists(tmp_path):
         await computer.interface.delete_file(tmp_path)
     exists = await computer.interface.file_exists(tmp_path)
-    assert exists is False
+    assert exists is False, f"File {tmp_path} should not exist"
     # Create file and check again
     await computer.interface.write_text(tmp_path, "hello")
     exists = await computer.interface.file_exists(tmp_path)
-    assert exists is True
+    assert exists is True, f"File {tmp_path} should exist"
     await computer.interface.delete_file(tmp_path)
 
 
@@ -76,10 +76,10 @@ async def test_directory_exists(computer):
         # Remove the directory itself
         await computer.interface.delete_dir(tmp_dir)
     exists = await computer.interface.directory_exists(tmp_dir)
-    assert exists is False
+    assert exists is False, f"Directory {tmp_dir} should not exist"
     await computer.interface.create_dir(tmp_dir)
     exists = await computer.interface.directory_exists(tmp_dir)
-    assert exists is True
+    assert exists is True, f"Directory {tmp_dir} should exist"
     # Cleanup: remove files and directory
     files = await computer.interface.list_dir(tmp_dir)
     for fname in files:
@@ -96,7 +96,7 @@ async def test_list_dir(computer):
     for fname in files:
         await computer.interface.write_text(f"{tmp_dir}/{fname}", "hi")
     result = await computer.interface.list_dir(tmp_dir)
-    assert set(result) >= set(files)
+    assert set(result) >= set(files), f"Directory {tmp_dir} should contain files {files}"
     for fname in files:
         await computer.interface.delete_file(f"{tmp_dir}/{fname}")
     await computer.interface.delete_dir(tmp_dir)
@@ -108,7 +108,7 @@ async def test_read_write_text(computer):
     content = "sample text"
     await computer.interface.write_text(tmp_path, content)
     read = await computer.interface.read_text(tmp_path)
-    assert read == content
+    assert read == content, "File content should match"
     await computer.interface.delete_file(tmp_path)
 
 
@@ -117,10 +117,10 @@ async def test_delete_file(computer):
     tmp_path = "test_delete_file.txt"
     await computer.interface.write_text(tmp_path, "bye")
     exists = await computer.interface.file_exists(tmp_path)
-    assert exists is True
+    assert exists is True, "File should exist"
     await computer.interface.delete_file(tmp_path)
     exists = await computer.interface.file_exists(tmp_path)
-    assert exists is False
+    assert exists is False, "File should not exist"
 
 
 @pytest.mark.asyncio
@@ -130,7 +130,7 @@ async def test_create_dir(computer):
         await computer.interface.delete_dir(tmp_dir)
     await computer.interface.create_dir(tmp_dir)
     exists = await computer.interface.directory_exists(tmp_dir)
-    assert exists is True
+    assert exists is True, "Directory should exist"
     await computer.interface.delete_dir(tmp_dir)
 
 if __name__ == "__main__":
