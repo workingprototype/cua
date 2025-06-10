@@ -132,3 +132,7 @@ async def test_create_dir(computer):
     exists = await computer.interface.directory_exists(tmp_dir)
     assert exists is True
     await computer.interface.delete_dir(tmp_dir)
+
+if __name__ == "__main__":
+    # Run tests directly
+    pytest.main([__file__, "-v"])
