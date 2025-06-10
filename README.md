@@ -247,6 +247,9 @@ docker run -it --rm \
 For complete examples, see [computer_examples.py](./examples/computer_examples.py) or [computer_nb.ipynb](./notebooks/computer_nb.ipynb)
 
 ```python
+# Shell Actions
+await computer.interface.run_command(cmd)       # Run shell command
+
 # Mouse Actions
 await computer.interface.left_click(x, y)       # Left click at coordinates
 await computer.interface.right_click(x, y)      # Right click at coordinates
@@ -254,11 +257,20 @@ await computer.interface.double_click(x, y)     # Double click at coordinates
 await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
 await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
 await computer.interface.get_cursor_position()  # Get current cursor position
+await computer.interface.mouse_down(x, y, button="left")  # Press and hold a mouse button
+await computer.interface.mouse_up(x, y, button="left")    # Release a mouse button
 
 # Keyboard Actions
 await computer.interface.type_text("Hello")     # Type text
 await computer.interface.press_key("enter")     # Press a single key
 await computer.interface.hotkey("command", "c") # Press key combination
+await computer.interface.key_down("command")    # Press and hold a key
+await computer.interface.key_up("command")      # Release a key
+
+# Scrolling Actions
+await computer.interface.scroll(x, y)           # Scroll the mouse wheel
+await computer.interface.scroll_down(clicks)    # Scroll down
+await computer.interface.scroll_up(clicks)      # Scroll up
 
 # Screen Actions
 await computer.interface.screenshot()           # Take a screenshot
@@ -271,7 +283,14 @@ await computer.interface.copy_to_clipboard()    # Get clipboard content
 # File System Operations
 await computer.interface.file_exists(path)      # Check if file exists
 await computer.interface.directory_exists(path) # Check if directory exists
-await computer.interface.run_command(cmd)       # Run shell command
+await computer.interface.read_text(path)        # Read file content
+await computer.interface.write_text(path, content) # Write file content
+await computer.interface.read_bytes(path)       # Read file content as bytes
+await computer.interface.write_bytes(path, content) # Write file content as bytes
+await computer.interface.delete_file(path)      # Delete file
+await computer.interface.create_dir(path)       # Create directory
+await computer.interface.delete_dir(path)       # Delete directory
+await computer.interface.list_dir(path)         # List directory contents
 
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
