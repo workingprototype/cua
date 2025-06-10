@@ -109,14 +109,13 @@ async def test_read_write_text(computer):
     await computer.interface.write_text(tmp_path, content)
     read = await computer.interface.read_text(tmp_path)
     assert read == content
-    os.remove(tmp_path)
+    await computer.interface.delete_file(tmp_path)
 
 
 @pytest.mark.asyncio
 async def test_delete_file(computer):
     tmp_path = "test_delete_file.txt"
-    with open(tmp_path, "w") as f:
-        f.write("bye")
+    await computer.interface.write_text(tmp_path, "bye")
     exists = await computer.interface.file_exists(tmp_path)
     assert exists is True
     await computer.interface.delete_file(tmp_path)
@@ -127,9 +126,9 @@ async def test_delete_file(computer):
 @pytest.mark.asyncio
 async def test_create_dir(computer):
     tmp_dir = "test_create_dir"
-    if os.path.exists(tmp_dir):
-        os.rmdir(tmp_dir)
+    if await computer.interface.directory_exists(tmp_dir):
+        await computer.interface.delete_dir(tmp_dir)
     await computer.interface.create_dir(tmp_dir)
     exists = await computer.interface.directory_exists(tmp_dir)
     assert exists is True
-    os.rmdir(tmp_dir)
+    await computer.interface.delete_dir(tmp_dir)

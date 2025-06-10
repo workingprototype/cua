@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Tuple, List
 from ..logger import Logger, LogLevel
-from ..mouse import MouseButton
+from .models import MouseButton
 
 
 class BaseComputerInterface(ABC):
