@@ -52,8 +52,7 @@ async def computer():
         await computer.run()
         yield computer
     finally:
-        # await computer.stop()
-        pass
+        await computer.disconnect()
 
 
 # Sample test cases
