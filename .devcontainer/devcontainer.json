@@ -45,5 +45,6 @@
 			}
 		}
 	},
-	"workspaceFolder": "/workspaces/cua/.vscode/py.code-workspace"
+	// Automatically run post-install.sh after container is created
+	"postCreateCommand": "/bin/bash .devcontainer/post-install.sh"
 }
