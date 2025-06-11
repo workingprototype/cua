@@ -23,6 +23,7 @@ curl --connect-timeout 6000 \
     }' \
     http://localhost:7777/lume/vms
 ```
+
 </details>
 
 <details open>
@@ -53,6 +54,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/vms/lume_vm/run
 ```
+
 </details>
 
 <details open>
@@ -63,6 +65,7 @@ curl --connect-timeout 6000 \
   --max-time 5000 \
   http://localhost:7777/lume/vms
 ```
+
 ```
 [
   {
@@ -83,6 +86,7 @@ curl --connect-timeout 6000 \
   }
 ]
 ```
+
 </details>
 
 <details open>
@@ -99,6 +103,7 @@ curl --connect-timeout 6000 \
   --max-time 5000 \
   http://localhost:7777/lume/vms/lume_vm?storage=ssd
 ```
+
 ```
 {
   "name": "lume_vm",
@@ -109,6 +114,7 @@ curl --connect-timeout 6000 \
   "diskSize": "64GB"
 }
 ```
+
 </details>
 
 <details open>
@@ -127,6 +133,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/vms/my-vm-name
 ```
+
 </details>
 
 <details open>
@@ -145,6 +152,7 @@ curl --connect-timeout 6000 \
   -X POST \
   http://localhost:7777/lume/vms/my-vm-name/stop?storage=ssd
 ```
+
 </details>
 
 <details open>
@@ -163,6 +171,7 @@ curl --connect-timeout 6000 \
   -X DELETE \
   http://localhost:7777/lume/vms/my-vm-name?storage=ssd
 ```
+
 </details>
 
 <details open>
@@ -194,6 +203,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/pull
 ```
+
 </details>
 
 <details open>
@@ -206,15 +216,15 @@ curl --connect-timeout 6000 \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "my-local-vm", 
+    "name": "my-local-vm",
     "imageName": "my-image",
     "tags": ["latest", "v1"],
-    "organization": "my-org", 
+    "organization": "my-org",
     "registry": "ghcr.io",
     "chunkSizeMb": 512,
-    "storage": null 
+    "storage": null
   }' \
-  http://localhost:7777/lume/vms/push 
+  http://localhost:7777/lume/vms/push
 ```
 
 **Response (202 Accepted):**
@@ -224,12 +234,10 @@ curl --connect-timeout 6000 \
   "message": "Push initiated in background",
   "name": "my-local-vm",
   "imageName": "my-image",
-  "tags": [
-    "latest",
-    "v1"
-  ]
+  "tags": ["latest", "v1"]
 }
 ```
+
 </details>
 
 <details open>
@@ -248,6 +256,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/vms/clone
 ```
+
 </details>
 
 <details open>
@@ -258,6 +267,7 @@ curl --connect-timeout 6000 \
   --max-time 5000 \
   http://localhost:7777/lume/ipsw
 ```
+
 </details>
 
 <details open>
@@ -272,12 +282,10 @@ curl --connect-timeout 6000 \
 
 ```json
 {
-  "local": [
-    "macos-sequoia-xcode:latest",
-    "macos-sequoia-vanilla:latest"
-  ]
+  "local": ["macos-sequoia-xcode:latest", "macos-sequoia-vanilla:latest"]
 }
 ```
+
 </details>
 
 <details open>
@@ -289,6 +297,7 @@ curl --connect-timeout 6000 \
   -X POST \
   http://localhost:7777/lume/prune
 ```
+
 </details>
 
 <details open>
@@ -307,6 +316,7 @@ curl --connect-timeout 6000 \
   "cachingEnabled": true
 }
 ```
+
 </details>
 
 <details open>
@@ -324,6 +334,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/config
 ```
+
 </details>
 
 <details open>
@@ -349,6 +360,7 @@ curl --connect-timeout 6000 \
   }
 ]
 ```
+
 </details>
 
 <details open>
@@ -365,6 +377,7 @@ curl --connect-timeout 6000 \
   }' \
   http://localhost:7777/lume/config/locations
 ```
+
 </details>
 
 <details open>
@@ -376,6 +389,7 @@ curl --connect-timeout 6000 \
   -X DELETE \
   http://localhost:7777/lume/config/locations/ssd
 ```
+
 </details>
 
 <details open>
@@ -387,4 +401,5 @@ curl --connect-timeout 6000 \
   -X POST \
   http://localhost:7777/lume/config/locations/default/ssd
 ```
+
 </details>

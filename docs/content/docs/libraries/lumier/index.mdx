@@ -2,19 +2,48 @@
 title: Lumier
 ---
 
-<div align="center" style={{display: 'flex', gap: '10px', margin: '0 auto', width: '100%', justifyContent: 'center'}}>
-<a href="#"><img src="https://img.shields.io/badge/Swift_6-F54A2A?logo=swift&logoColor=white&labelColor=F54A2A" alt="Swift 6" /></a>
-<a href="#"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0" alt="macOS" /></a>
-<a href="https://discord.com/invite/mVnXXpdE85"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white" alt="Discord" /></a>
+<div
+  align="center"
+  style={{
+    display: 'flex',
+    gap: '10px',
+    margin: '0 auto',
+    width: '100%',
+    justifyContent: 'center',
+  }}
+>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/Swift_6-F54A2A?logo=swift&logoColor=white&labelColor=F54A2A"
+      alt="Swift 6"
+    />
+  </a>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
+      alt="macOS"
+    />
+  </a>
+  <a href="https://discord.com/invite/mVnXXpdE85">
+    <img
+      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
+      alt="Discord"
+    />
+  </a>
 </div>
 
 macOS and Linux virtual machines in a Docker container.
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/2ecca01c-cb6f-4c35-a5a7-69bc58bd94e2" width="800" controls></video>
+  <video
+    src="https://github.com/user-attachments/assets/2ecca01c-cb6f-4c35-a5a7-69bc58bd94e2"
+    width="800"
+    controls
+  ></video>
 </div>
 
 ## What is Lumier?
+
 **Lumier** is an interface for running macOS virtual machines with minimal setup. It uses Docker as a packaging system to deliver a pre-configured environment that connects to the `lume` virtualization service running on your host machine. With Lumier, you get:
 
 - A ready-to-use macOS or Linux virtual machine in minutes
@@ -29,6 +58,7 @@ Before using Lumier, make sure you have:
 1. **Docker for Apple Silicon** - download it [here](https://desktop.docker.com/mac/main/arm64/Docker.dmg) and follow the installation instructions.
 
 2. **Lume** - This is the virtualization CLI that powers Lumier. Install it with this command:
+
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
@@ -160,10 +190,10 @@ services:
     container_name: lumier-vm
     restart: unless-stopped
     ports:
-      - "8006:8006"  # Port for VNC access
+      - '8006:8006' # Port for VNC access
     volumes:
-      - ./storage:/storage  # VM persistent storage
-      - ./shared:/shared    # Shared folder accessible in the VM
+      - ./storage:/storage # VM persistent storage
+      - ./shared:/shared # Shared folder accessible in the VM
     environment:
       - VM_NAME=lumier-vm
       - VERSION=ghcr.io/trycua/macos-sequoia-cua:latest
@@ -239,6 +269,7 @@ When running Lumier, you'll need to configure a few things:
 - **Port forwarding** (`-p 8006:8006`): Makes the VM's VNC interface accessible in your browser. If port 8006 is already in use, you can use a different port like `-p 8007:8006`.
 
 - **Environment variables** (`-e`): Configure your VM settings:
+
   - `VM_NAME`: A name for your virtual machine
   - `VERSION`: The macOS image to use
   - `CPU_CORES`: Number of CPU cores to allocate
@@ -253,6 +284,7 @@ When running Lumier, you'll need to configure a few things:
 This project was inspired by [dockur/windows](https://github.com/dockur/windows) and [dockur/macos](https://github.com/dockur/macos), which pioneered the approach of running Windows and macOS VMs in Docker containers.
 
 Main differences with dockur/macos:
+
 - Lumier is specifically designed for macOS virtualization
 - Lumier supports Apple Silicon (M1/M2/M3/M4) while dockur/macos only supports Intel
 - Lumier uses the Apple Virtualization Framework (Vz) through the `lume` CLI to create true virtual machines, while dockur relies on KVM.

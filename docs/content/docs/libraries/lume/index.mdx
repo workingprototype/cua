@@ -2,21 +2,43 @@
 title: Lume
 ---
 
-<div align="center" style={{display: 'flex', gap: '10px', margin: '0 auto', width: '100%', justifyContent: 'center'}}>
-<a href="#"><img src="https://img.shields.io/badge/Swift_6-F54A2A?logo=swift&logoColor=white&labelColor=F54A2A" alt="Swift 6" /></a>
-<a href="#"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0" alt="macOS" /></a>
-<a href="https://discord.com/invite/mVnXXpdE85"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white" alt="Discord" /></a>
+<div
+  align="center"
+  style={{
+    display: 'flex',
+    gap: '10px',
+    margin: '0 auto',
+    width: '100%',
+    justifyContent: 'center',
+  }}
+>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/Swift_6-F54A2A?logo=swift&logoColor=white&labelColor=F54A2A"
+      alt="Swift 6"
+    />
+  </a>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
+      alt="macOS"
+    />
+  </a>
+  <a href="https://discord.com/invite/mVnXXpdE85">
+    <img
+      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
+      alt="Discord"
+    />
+  </a>
 </div>
-
 
 **lume** is a lightweight Command Line Interface and local API server to create, run and manage macOS and Linux virtual machines (VMs) with near-native performance on Apple Silicon, using Apple's `Virtualization.Framework`.
 
 ### Run prebuilt macOS images in just 1 step
 
 <div align="center">
-    <img src="./cli.png" alt="lume cli"/>
+  <img src="/img/cli.png" alt="lume cli" />
 </div>
-
 
 ```bash
 lume run macos-sequoia-vanilla:latest
@@ -30,6 +52,7 @@ If you're working on Lume in the context of the CUA monorepo, we recommend using
 # Open VS Code workspace from the root of the monorepo
 code .vscode/lume.code-workspace
 ```
+
 This workspace is preconfigured with Swift language support, build tasks, and debug configurations.
 
 ## Usage
@@ -153,7 +176,7 @@ You can also download the `lume.pkg.tar.gz` archive from the [latest release](ht
 
 ## Prebuilt Images
 
-Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages). 
+Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages).
 
 **Important Note (v0.2.0+):** Images are being re-uploaded with sparse file system optimizations enabled, resulting in significantly lower actual disk usage. Older images (without the `-sparse` suffix) are now **deprecated**. The last version of `lume` fully supporting the non-sparse images was `v0.1.x`. Starting from `v0.2.0`, lume will automatically pull images optimized with sparse file system support.
 
@@ -161,17 +184,17 @@ These images come with an SSH server pre-configured and auto-login enabled.
 
 For the security of your VM, change the default password `lume` immediately after your first login.
 
-| Image | Tag | Description | Logical Size |
-|-------|------------|-------------|------|
-| `macos-sequoia-vanilla` | `latest`, `15.2` | macOS Sequoia 15.2 image | 20GB |
-| `macos-sequoia-xcode` | `latest`, `15.2` | macOS Sequoia 15.2 image with Xcode command line tools | 22GB |
-| `macos-sequoia-cua` | `latest`, `15.3` | macOS Sequoia 15.3 image compatible with the Computer interface | 24GB |
-| `ubuntu-noble-vanilla` | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB |
+| Image                   | Tag                 | Description                                                                                     | Logical Size |
+| ----------------------- | ------------------- | ----------------------------------------------------------------------------------------------- | ------------ |
+| `macos-sequoia-vanilla` | `latest`, `15.2`    | macOS Sequoia 15.2 image                                                                        | 20GB         |
+| `macos-sequoia-xcode`   | `latest`, `15.2`    | macOS Sequoia 15.2 image with Xcode command line tools                                          | 22GB         |
+| `macos-sequoia-cua`     | `latest`, `15.3`    | macOS Sequoia 15.3 image compatible with the Computer interface                                 | 24GB         |
+| `ubuntu-noble-vanilla`  | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB         |
 
 For additional disk space, resize the VM disk after pulling the image using the `lume set <name> --disk-size <size>` command. Note that the actual disk space used by sparse images will be much lower than the logical size listed.
 
 ## Local API Server
-  
+
 `lume` exposes a local HTTP API server that listens on `http://localhost:7777/lume`, enabling automated management of VMs.
 
 ```bash

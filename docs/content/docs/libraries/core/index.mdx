@@ -1,5 +1,5 @@
 ---
-title: Computer Server
+title: c/ua Core
 ---
 
 <div
@@ -38,24 +38,14 @@ title: Computer Server
   </a>
 </div>
 
-**Computer Server** is the server component for the Computer-Use Interface (CUI) framework powering Cua for interacting with local macOS and Linux sandboxes, PyAutoGUI-compatible, and pluggable with any AI agent systems (Cua, Langchain, CrewAI, AutoGen).
+**Cua Core** provides essential shared functionality and utilities used across the Cua ecosystem:
 
-## Features
+- Privacy-focused telemetry system for transparent usage analytics
+- Common helper functions and utilities used by other Cua packages
+- Core infrastructure components shared between modules
 
-- WebSocket API for computer-use
-- Cross-platform support (macOS, Linux)
-- Integration with CUA computer library for screen control, keyboard/mouse automation, and accessibility
-
-## Install
-
-To install the Computer-Use Interface (CUI):
+## Installation
 
 ```bash
-pip install cua-computer-server
+pip install cua-core
 ```
-
-## Run
-
-Refer to this notebook for a step-by-step guide on how to use the Computer-Use Server on the host system or VM:
-
-- [Computer-Use Server](https://github.com/trycua/cua/tree/main/notebooks/samples/computer_server_nb.ipynb)

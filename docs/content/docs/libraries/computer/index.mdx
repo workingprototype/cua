@@ -2,11 +2,40 @@
 title: Computer
 ---
 
-<div align="center" style={{display: 'flex', gap: '10px', margin: '0 auto', width: '100%', justifyContent: 'center'}}>
-<a href="#"><img src="https://img.shields.io/badge/Python-333333?logo=python&logoColor=white&labelColor=333333" alt="Python" /></a>
-<a href="#"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0" alt="macOS" /></a>
-<a href="https://discord.com/invite/mVnXXpdE85"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white" alt="Discord" /></a>
-<a href="https://pypi.org/project/cua-computer/"><img src="https://img.shields.io/pypi/v/cua-computer?color=333333" alt="PyPI" /></a>
+<div
+  align="center"
+  style={{
+    display: 'flex',
+    gap: '10px',
+    margin: '0 auto',
+    width: '100%',
+    justifyContent: 'center',
+  }}
+>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/Python-333333?logo=python&logoColor=white&labelColor=333333"
+      alt="Python"
+    />
+  </a>
+  <a href="#">
+    <img
+      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
+      alt="macOS"
+    />
+  </a>
+  <a href="https://discord.com/invite/mVnXXpdE85">
+    <img
+      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
+      alt="Discord"
+    />
+  </a>
+  <a href="https://pypi.org/project/cua-computer/">
+    <img
+      src="https://img.shields.io/pypi/v/cua-computer?color=333333"
+      alt="PyPI"
+    />
+  </a>
 </div>
 
 **cua-computer** is a Computer-Use Interface (CUI) framework powering Cua for interacting with local macOS and Linux sandboxes, PyAutoGUI-compatible, and pluggable with any AI agent systems (Cua, Langchain, CrewAI, AutoGen). Computer relies on [Lume](https://github.com/trycua/lume) for creating and managing sandbox environments.
@@ -14,7 +43,7 @@ title: Computer
 ### Get started with Computer
 
 <div align="center">
-    <img src="./computer.png"/>
+  <img src="/img/computer.png" />
 </div>
 
 ```python
@@ -23,11 +52,11 @@ from computer import Computer
 computer = Computer(os_type="macos", display="1024x768", memory="8GB", cpu="4")
 try:
     await computer.run()
-    
+
     screenshot = await computer.interface.screenshot()
     with open("screenshot.png", "wb") as f:
         f.write(screenshot)
-    
+
     await computer.interface.move_cursor(100, 100)
     await computer.interface.left_click()
     await computer.interface.right_click(300, 300)
@@ -100,8 +129,12 @@ For examples, see [Computer UI Examples](https://github.com/trycua/cua/tree/main
 #### 3. Record Your Tasks
 
 <details open>
-<summary>View demonstration video</summary>
-<video src="https://github.com/user-attachments/assets/de3c3477-62fe-413c-998d-4063e48de176" controls width="600"></video>
+  <summary>View demonstration video</summary>
+  <video
+    src="https://github.com/user-attachments/assets/de3c3477-62fe-413c-998d-4063e48de176"
+    controls
+    width="600"
+  ></video>
 </details>
 
 Record yourself performing various computer tasks using the UI.
@@ -109,8 +142,12 @@ Record yourself performing various computer tasks using the UI.
 #### 4. Save Your Demonstrations
 
 <details open>
-<summary>View demonstration video</summary>
-<video src="https://github.com/user-attachments/assets/5ad1df37-026a-457f-8b49-922ae805faef" controls width="600"></video>
+  <summary>View demonstration video</summary>
+  <video
+    src="https://github.com/user-attachments/assets/5ad1df37-026a-457f-8b49-922ae805faef"
+    controls
+    width="600"
+  ></video>
 </details>
 
 Save each task by picking a descriptive name and adding relevant tags (e.g., "office", "web-browsing", "coding").
@@ -122,11 +159,16 @@ Repeat steps 3 and 4 until you have a good amount of demonstrations covering dif
 #### 6. Upload to Huggingface
 
 <details open>
-<summary>View demonstration video</summary>
-<video src="https://github.com/user-attachments/assets/c586d460-3877-4b5f-a736-3248886d2134" controls width="600"></video>
+  <summary>View demonstration video</summary>
+  <video
+    src="https://github.com/user-attachments/assets/c586d460-3877-4b5f-a736-3248886d2134"
+    controls
+    width="600"
+  ></video>
 </details>
 
 Upload your dataset to Huggingface by:
+
 - Naming it as `{your_username}/{dataset_name}`
 - Choosing public or private visibility
 - Optionally selecting specific tags to upload only tasks with certain tags
@@ -135,4 +177,3 @@ Upload your dataset to Huggingface by:
 
 - Example Dataset: [ddupont/test-dataset](https://huggingface.co/datasets/ddupont/test-dataset)
 - Find Community Datasets: 🔍 [Browse CUA Datasets on Huggingface](https://huggingface.co/datasets?other=cua)
-
