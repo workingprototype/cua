@@ -53,7 +53,12 @@ if [ ! -f "$DEVCONTAINER_JSON" ];then
 fi
 
 # open devcontainer
-HOST_PATH=$(echo $(wslpath -w $PWD) | sed -e 's,\\,\\\\,g')
+if command -v wslpath >/dev/null 2>&1; then
+    HOST_PATH=$(echo $(wslpath -w $PWD) | sed -e 's,\\,\\\\,g')
+else
+    # Not on WSL, fallback for macOS/Linux
+    HOST_PATH="$PWD"
+fi
 WORKSPACE="/workspaces/$(basename $PWD)"
 
 URI_SUFFIX=
