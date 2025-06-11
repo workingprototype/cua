@@ -57,16 +57,5 @@ fi
 URI="{\"hostPath\":\"$HOST_PATH\",\"configFile\":{\"\$mid\":1,\"path\":\"$DEVCONTAINER_JSON\",\"scheme\":\"vscode-fileHost\"}}"
 URI_HEX=$(echo "${URI}" | xxd -c 0 -p)
 
-echo "ls ~/.vscode-server*/bin/*/bin/remote-cli* yields:"
-ls ~/.vscode-server*/bin/*/bin/remote-cli* || echo "No match found"
-
-export code="$(ls ~/.vscode-server*/bin/*/bin/remote-cli* | head -n 1)"
-echo "exported code (from home): $code"
-
-echo "ls /vscode/vscode-server/bin/*/bin/remote-cli* yields:"
-ls /vscode/vscode-server/bin/*/bin/remote-cli* || echo "No match found"
-
-export code_v2="$(ls /vscode/vscode-server/bin/*/bin/remote-cli* | head -n 1)"
-echo "exported code_v2 (from /vscode): $code_v2"
-
-code ${URI_TYPE}="vscode-remote://dev-container%2B${URI_HEX}${URI_SUFFIX}" &
+export code="$(ls /vscode/vscode-server/bin/*/*/bin/remote-cli/code 2>/dev/null | head -n 1)"
+"$code" ${URI_TYPE}="vscode-remote://dev-container%2B${URI_HEX}${URI_SUFFIX}" &
