@@ -15,7 +15,6 @@
 			"onAutoForward": "silent"
 		}
 	},
-	"postCreateCommand": "echo 'PYTHON_BIN=python' > /app/.env.local",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -45,5 +44,6 @@
 				}
 			}
 		}
-	}
+	},
+	"workspaceFolder": "/.vscode/py.code-workspace"
 }
