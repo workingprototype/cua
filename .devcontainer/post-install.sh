@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Setup .env.local
+echo "PYTHON_BIN=python" > /workspaces/cua/.env.local
 
 # Run /scripts/build.sh
 ./scripts/build.sh
