@@ -56,4 +56,6 @@ fi
 
 URI="{\"hostPath\":\"$HOST_PATH\",\"configFile\":{\"\$mid\":1,\"path\":\"$DEVCONTAINER_JSON\",\"scheme\":\"vscode-fileHost\"}}"
 URI_HEX=$(echo "${URI}" | xxd -c 0 -p)
+
+alias code="$(ls ~/.vscode-server*/bin/*/bin/code-server* | head -n 1)"
 code ${URI_TYPE}="vscode-remote://dev-container%2B${URI_HEX}${URI_SUFFIX}" &
