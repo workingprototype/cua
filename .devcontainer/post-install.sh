@@ -1,32 +1,11 @@
 #!/usr/bin/env bash
 
-if [ "$1" == "--help" ]; then
-    
-    cat << EOF
-Run from project folder, auto opens vscode in some mode depending on folder contents:
 
-* Folder contains .devcontainer/devcontainer.json and <name>.code-workspace file: vscode opens in devcontainer, workspace file is loaded
-* Folder contains .devcontainer/devcontainer.json: vscode opens in devcontainer
-* Folder contains <name>.code-workspace file: Workspace is opened in vscode
-* Folder contains no <name>.code-workspace and no devcontainer: vscode is opened, loading contents of the current folder
+# Run /scripts/build.sh
+./scripts/build.sh
 
-This script was created for WSL2, probably works the same way for native Linux, but untested
-
-Assumes the following filestructure:
-
-<some folder>
-| 
-| -- <name>.code-workspace
-| -- ./devcontainer/devcontainer.json
-| -- ...
-
-Note: If you set workspaceFolder or workspaceMount in devcontainer.json this may cause issues
-      Also, if .devcontainer/devcontainer.json is not in the root of your repository, you may get in trouble
-      refer to https://code.visualstudio.com/remote/advancedcontainers/change-default-source-mount 
-
-EOF
-    exit 0
-fi
+# Open VSCode .code-workspace file
+# https://gist.github.com/Kaptensanders/79da7c1547751fb43c75904e3110bbf9
 
 # check for dependencies
 if ! command -v xxd &> /dev/null; then
