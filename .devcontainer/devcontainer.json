@@ -45,7 +45,5 @@
 				}
 			}
 		}
-	},
-	"workspaceMount": "type=bind,source=${localWorkspaceFolder},target=/app",
-	"workspaceFolder": "/app"
+	}
 }
