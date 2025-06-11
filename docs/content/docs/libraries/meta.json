@@ -1,5 +1,20 @@
 {
   "title": "Libraries",
   "description": "Libraries",
-  "root": true
+  "icon": "Library",
+  "root": true,
+  "pages": [
+    "index",
+    "---Libraries---",
+    "agent",
+    "computer",
+    "computer-server",
+    "cloud",
+    "core",
+    "lume",
+    "lumier",
+    "mcp-server",
+    "pylume",
+    "som"
+  ]
 }
