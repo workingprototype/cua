@@ -4,6 +4,8 @@ This repository includes a Dev Container configuration that simplifies the devel
 
 ## Quick Start
 
+![Clipboard-20250611-174726-573](https://github.com/user-attachments/assets/603e2b25-5763-41cd-a4bc-01fe5d57482b)
+
 1. **Install Dev Containers extension** in VS Code
 2. **Clone and open in container**: 
    - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
