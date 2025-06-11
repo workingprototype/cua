@@ -7,7 +7,7 @@ This repository includes a Dev Container configuration that simplifies the devel
 1. **Install Dev Containers extension** in VS Code
 2. **Clone and open in container**: 
    - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-   - Type "Dev Containers: Clone Repository in Container Volume"
+   - Type "Dev Containers: Clone Repository in Container Volume..."
    - Paste the repository URL: `https://github.com/trycua/cua.git`
 3. **Hit play**: Once the container builds, you're ready to develop!
 
