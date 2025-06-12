@@ -54,48 +54,31 @@
 
 
 ### Option 1: Fully-managed install (recommended)
-*I want to be totally guided in the process*
+*Guided install for quick use*
 
 **macOS/Linux/Windows (via WSL):**
 ```bash
 # Requires Python 3.11+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
 ```
+This script will guide you through setup and launch the Computer-Use Agent UI.
 
-This script will:
-- Ask if you want to use local VMs or C/ua Cloud Containers
-- Install necessary dependencies (Lume CLI for local VMs)
-- Download VM images if needed
-- Install Python packages
-- Launch the Computer-Use Agent UI
+---
 
-### Option 2: Key manual steps
-<details>
-<summary>If you are skeptical running one-install scripts</summary>
+### Option 2: [Dev Container](./.devcontainer/README.md)
+*Best for contributors and development*
 
-**For C/ua Agent UI (any system, cloud VMs only):**
-```bash
-# Requires Python 3.11+ and C/ua API key
-pip install -U "cua-computer[all]" "cua-agent[all]"
-python -m agent.ui.gradio.app
-```
+This repository includes a [Dev Container](./.devcontainer/README.md) configuration that simplifies setup to a few steps:
 
-**For Local macOS/Linux VMs (Apple Silicon only):**
-```bash
-# 1. Install Lume CLI
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+1. **Install Dev Containers extension** in VS Code
+2. **Clone and open in container:**
+   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+   - Type `Dev Containers: Clone Repository in Container Volume...`
+   - Paste the repository URL: `https://github.com/trycua/cua.git`
+   - Open the `.vscode/py.code-workspace` workspace
+3. **Run the Agent UI example:** Click <img height="24" alt="image" src="https://github.com/user-attachments/assets/7a1b7111-f676-4d86-b7bf-ea337df90d5b" /> to start the Gradio UI
 
-# 2. Pull macOS image
-lume pull macos-sequoia-cua:latest
-
-# 3. Start VM
-lume run macos-sequoia-cua:latest
-
-# 4. Install packages and launch UI
-pip install -U "cua-computer[all]" "cua-agent[all]"
-python -m agent.ui.gradio.app
-```
-</details>
+The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
 
 ---
 
