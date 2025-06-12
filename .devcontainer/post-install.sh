@@ -8,14 +8,21 @@ echo "PYTHON_BIN=python" > /workspaces/cua/.env.local
 # Run /scripts/build.sh
 ./scripts/build.sh
 
-# check for dependencies
-if ! command -v xxd &> /dev/null; then
-    echo "xxd command not found, install with"
-    echo "sudo apt install xxd"
-    exit 1
-fi
+# ---
+# Build is complete. Show user a clear message to open the workspace manually.
+# ---
 
-CODE_WS_FILE="$WORKSPACE/.vscode/py.code-workspace"
-export code="$(ls /vscode/vscode-server/bin/*/*/bin/remote-cli/code 2>/dev/null | head -n 1)"
+cat << 'EOM'
 
-"$code" $CODE_WS_FILE &
+============================================
+  🚀 Build complete!
+
+  👉 Next steps:
+
+    1. Open '.vscode/py.code-workspace'
+    2. Press 'Open Workspace'
+
+  Happy coding!
+============================================
+
+EOM
