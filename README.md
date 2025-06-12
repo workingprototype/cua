@@ -76,20 +76,9 @@ This repository includes a [Dev Container](./.devcontainer/README.md) configurat
    - Type `Dev Containers: Clone Repository in Container Volume...`
    - Paste the repository URL: `https://github.com/trycua/cua.git`
    - Open the `.vscode/py.code-workspace` workspace
-3. **Run the Agent UI example:** Once the container builds, you're ready to run the Agent UI example!
-
+3. **Run the Agent UI example:** Click <img height="24" alt="image" src="https://github.com/user-attachments/assets/7a1b7111-f676-4d86-b7bf-ea337df90d5b" /> to start the Gradio UI
 
 The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
-
-**Environment Variables:**
-You'll need to add your API keys to `.env.local`:
-```bash
-# Required for Anthropic provider
-ANTHROPIC_API_KEY=your_anthropic_key_here
-
-# Required for OpenAI provider
-OPENAI_API_KEY=your_openai_key_here
-```
 
 ---
 
