@@ -1,0 +1,84 @@
+[
+  {
+    "prompt": "Start",
+    "gif": "assets/gifs/msg_000.gif",
+    "tool_calls": [
+      {
+        "name": "computer: initialize",
+        "screenshot": "assets/gifs/screenshot_1_1.png"
+      }
+    ]
+  },
+  {
+    "prompt": "Open Chrome",
+    "gif": "assets/gifs/msg_001.gif",
+    "tool_calls": [
+      {
+        "name": "computer: left_click at (460, 725)"
+      }
+    ]
+  },
+  {
+    "prompt": "Navigate to https://github.com/trycua/cua",
+    "gif": "assets/gifs/msg_002.gif",
+    "tool_calls": [
+      {
+        "name": "computer: left_click at (206, 107)",
+        "screenshot": "assets/gifs/screenshot_3_5.png"
+      },
+      {
+        "name": "computer: wait",
+        "screenshot": "assets/gifs/screenshot_3_6.png"
+      },
+      {
+        "name": "computer: left_click at (214, 101)",
+        "screenshot": "assets/gifs/screenshot_3_7.png"
+      },
+      {
+        "name": "computer: type_text",
+        "screenshot": "assets/gifs/screenshot_3_8.png"
+      },
+      {
+        "name": "computer: left_click at (248, 103)",
+        "screenshot": "assets/gifs/screenshot_3_9.png"
+      },
+      {
+        "name": "computer: type_text",
+        "screenshot": "assets/gifs/screenshot_3_10.png"
+      },
+      {
+        "name": "computer: left_click at (245, 153)"
+      },
+      {
+        "name": "computer: wait"
+      }
+    ]
+  },
+  {
+    "prompt": "Navigate to Releases",
+    "gif": "assets/gifs/msg_003.gif",
+    "tool_calls": [
+      {
+        "name": "computer: send_hotkey"
+      },
+      {
+        "name": "computer: type_text"
+      },
+      {
+        "name": "computer: left_click at (71, 375)"
+      },
+      {
+        "name": "computer: wait"
+      }
+    ]
+  },
+  {
+    "prompt": "At the top of the page, click Draft a new release",
+    "gif": "assets/gifs/msg_004.gif",
+    "tool_calls": [
+      {
+        "name": "computer: left_click at (561, 328)"
+      }
+    ]
+  }
+]
