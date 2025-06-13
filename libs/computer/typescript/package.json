@@ -39,6 +39,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "pino": "^9.7.0",
     "sharp": "^0.33.0"
   },
   "devDependencies": {

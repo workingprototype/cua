@@ -1,16 +1,25 @@
-import type { Display, ComputerConfig } from '../models';
-import type { BaseComputerInterface } from '../interface/base';
-import { InterfaceFactory } from '../interface/factory';
-import type { BaseVMProvider } from '../providers/base';
-import { VMProviderType } from '../providers/base';
-import { VMProviderFactory } from '../providers/factory';
-import { Logger, LogLevel } from '../logger';
-import { recordComputerInitialization, recordVMStart, recordVMStop } from '../telemetry';
-import { setDefaultComputer } from '../helpers';
-import { parseDisplayString, parseImageString, sleep, withTimeout } from '../utils';
-import sharp from 'sharp';
+import type { Display, ComputerConfig } from "../models";
+import type { BaseComputerInterface } from "../interface/base";
+import { InterfaceFactory } from "../interface/factory";
+import type { BaseVMProvider } from "../providers/base";
+import { VMProviderType } from "../providers/base";
+import { VMProviderFactory } from "../providers/factory";
+import pino from "pino";
+import {
+  recordComputerInitialization,
+  recordVMStart,
+  recordVMStop,
+} from "../telemetry";
+import { setDefaultComputer } from "../helpers";
+import {
+  parseDisplayString,
+  parseImageString,
+  sleep,
+  withTimeout,
+} from "../utils";
+import sharp from "sharp";
 
-export type OSType = 'macos' | 'linux' | 'windows';
+export type OSType = "macos" | "linux" | "windows";
 
 export interface ComputerOptions {
   display?: Display | { width: number; height: number } | string;
@@ -21,7 +30,7 @@ export interface ComputerOptions {
   image?: string;
   sharedDirectories?: string[];
   useHostComputerServer?: boolean;
-  verbosity?: number | LogLevel;
+  verbosity?: pino.Level;
   telemetryEnabled?: boolean;
   providerType?: VMProviderType | string;
   port?: number;
@@ -37,10 +46,8 @@ export interface ComputerOptions {
  * Computer is the main class for interacting with the computer.
  */
 export class Computer {
-  private logger: Logger;
-  private vmLogger: Logger;
-  private interfaceLogger: Logger;
-  
+  private logger: pino.Logger;
+
   private image: string;
   private port?: number;
   private noVNCPort?: number;
@@ -56,7 +63,7 @@ export class Computer {
   private _telemetryEnabled: boolean;
   private _initialized: boolean = false;
   private _running: boolean = false;
-  private verbosity: number | LogLevel;
+
   private useHostComputerServer: boolean;
   private config?: ComputerConfig;
   private _providerContext?: BaseVMProvider;
@@ -71,29 +78,28 @@ export class Computer {
    */
   constructor(options: ComputerOptions = {}) {
     const {
-      display = '1024x768',
-      memory = '8GB',
-      cpu = '4',
-      osType = 'macos',
-      name = '',
-      image = 'macos-sequoia-cua:latest',
+      display = "1024x768",
+      memory = "8GB",
+      cpu = "4",
+      osType = "macos",
+      name = "",
+      image = "macos-sequoia-cua:latest",
       sharedDirectories = [],
       useHostComputerServer = false,
-      verbosity = LogLevel.NORMAL,
+      verbosity = "info",
       telemetryEnabled = true,
       providerType = VMProviderType.LUME,
       port = 7777,
       noVNCPort = 8006,
-      host = process.env.PYLUME_HOST || 'localhost',
+      host = process.env.PYLUME_HOST || "localhost",
       storage,
       ephemeral = false,
       apiKey,
-      experiments = []
+      experiments = [],
     } = options;
 
-    this.verbosity = verbosity;
-    this.logger = new Logger('cua.computer', verbosity);
-    this.logger.info('Initializing Computer...');
+    this.logger = pino({ name: "cua.computer", level: verbosity });
+    this.logger.info("Initializing Computer...");
 
     // Store original parameters
     this.image = image;
@@ -106,46 +112,46 @@ export class Computer {
     this.apiKey = apiKey;
     this.experiments = experiments;
 
-    if (this.experiments.includes('app-use')) {
-      if (this.osType !== 'macos') {
-        throw new Error('App use experiment is only supported on macOS');
+    if (this.experiments.includes("app-use")) {
+      if (this.osType !== "macos") {
+        throw new Error("App use experiment is only supported on macOS");
       }
     }
 
     // The default is currently to use non-ephemeral storage
-    if (storage && ephemeral && storage !== 'ephemeral') {
-      throw new Error('Storage path and ephemeral flag cannot be used together');
+    if (storage && ephemeral && storage !== "ephemeral") {
+      throw new Error(
+        "Storage path and ephemeral flag cannot be used together"
+      );
     }
-    this.storage = ephemeral ? 'ephemeral' : storage;
+    this.storage = ephemeral ? "ephemeral" : storage;
 
     // For Lumier provider, store the first shared directory path to use
     // for VM file sharing
     this.sharedPath = undefined;
     if (sharedDirectories && sharedDirectories.length > 0) {
       this.sharedPath = sharedDirectories[0];
-      this.logger.info(`Using first shared directory for VM file sharing: ${this.sharedPath}`);
+      this.logger.info(
+        `Using first shared directory for VM file sharing: ${this.sharedPath}`
+      );
     }
 
     // Store telemetry preference
     this._telemetryEnabled = telemetryEnabled;
 
-    // Configure component loggers with proper hierarchy
-    this.vmLogger = new Logger('cua.vm', verbosity);
-    this.interfaceLogger = new Logger('cua.interface', verbosity);
-
     this.useHostComputerServer = useHostComputerServer;
 
     if (!useHostComputerServer) {
       const imageInfo = parseImageString(image);
-      
-      const vmName = name || image.replace(':', '_');
+
+      const vmName = name || image.replace(":", "_");
 
       // Convert display parameter to Display object
       let displayConfig: Display;
-      if (typeof display === 'string') {
+      if (typeof display === "string") {
         const { width, height } = parseDisplayString(display);
         displayConfig = { width, height };
-      } else if ('width' in display && 'height' in display) {
+      } else if ("width" in display && "height" in display) {
         displayConfig = display as Display;
       } else {
         displayConfig = display as Display;
@@ -168,7 +174,9 @@ export class Computer {
     if (telemetryEnabled) {
       recordComputerInitialization();
     } else {
-      this.logger.debug('Telemetry disabled - skipping initialization tracking');
+      this.logger.debug(
+        "Telemetry disabled - skipping initialization tracking"
+      );
     }
   }
 
@@ -180,11 +188,13 @@ export class Computer {
    * @returns A proxy object with the Diorama interface, but using diorama_cmds.
    */
   createDesktopFromApps(apps: string[]): any {
-    if (!this.experiments.includes('app-use')) {
-      throw new Error("App Usage is an experimental feature. Enable it by passing experiments=['app-use'] to Computer()");
+    if (!this.experiments.includes("app-use")) {
+      throw new Error(
+        "App Usage is an experimental feature. Enable it by passing experiments=['app-use'] to Computer()"
+      );
     }
     // DioramaComputer would be imported and used here
-    throw new Error('DioramaComputer not yet implemented');
+    throw new Error("DioramaComputer not yet implemented");
   }
 
   /**
@@ -208,11 +218,11 @@ export class Computer {
   async run(): Promise<string | undefined> {
     // If already initialized, just log and return
     if (this._initialized) {
-      this.logger.info('Computer already initialized, skipping initialization');
+      this.logger.info("Computer already initialized, skipping initialization");
       return;
     }
 
-    this.logger.info('Starting computer...');
+    this.logger.info("Starting computer...");
     const startTime = Date.now();
 
     try {
@@ -220,29 +230,32 @@ export class Computer {
 
       // If using host computer server
       if (this.useHostComputerServer) {
-        this.logger.info('Using host computer server');
-        ipAddress = 'localhost';
-        
+        this.logger.info("Using host computer server");
+        ipAddress = "localhost";
+
         // Create the interface
         this._interface = InterfaceFactory.createInterfaceForOS(
           this.osType,
           ipAddress
         );
 
-        this.logger.info('Waiting for host computer server to be ready...');
+        this.logger.info("Waiting for host computer server to be ready...");
         await this._interface.waitForReady();
-        this.logger.info('Host computer server ready');
+        this.logger.info("Host computer server ready");
       } else {
         // Start or connect to VM
         this.logger.info(`Starting VM: ${this.image}`);
-        
+
         if (!this._providerContext) {
           try {
-            const providerTypeName = typeof this.providerType === 'object' 
-              ? this.providerType 
-              : this.providerType;
-            
-            this.logger.verbose(`Initializing ${providerTypeName} provider context...`);
+            const providerTypeName =
+              typeof this.providerType === "object"
+                ? this.providerType
+                : this.providerType;
+
+            this.logger.info(
+              `Initializing ${providerTypeName} provider context...`
+            );
 
             // Create VM provider instance with explicit parameters
             const providerOptions = {
@@ -251,14 +264,15 @@ export class Computer {
               storage: this.storage,
               sharedPath: this.sharedPath,
               image: this.image,
-              verbose: this.verbosity >= LogLevel.DEBUG,
+              verbose:
+                this.logger.level === "debug" || this.logger.level === "trace",
               ephemeral: this.ephemeral,
               noVNCPort: this.noVNCPort,
-              apiKey: this.apiKey
+              apiKey: this.apiKey,
             };
 
             if (!this.config) {
-              throw new Error('Computer config not initialized');
+              throw new Error("Computer config not initialized");
             }
 
             this.config.vm_provider = await VMProviderFactory.createProvider(
@@ -267,33 +281,38 @@ export class Computer {
             );
 
             this._providerContext = await this.config.vm_provider.__aenter__();
-            this.logger.verbose('VM provider context initialized successfully');
+            this.logger.debug("VM provider context initialized successfully");
           } catch (error) {
-            this.logger.error(`Failed to import provider dependencies: ${error}`);
+            this.logger.error(
+              `Failed to import provider dependencies: ${error}`
+            );
             throw error;
           }
         }
 
         // Run the VM
         if (!this.config || !this.config.vm_provider) {
-          throw new Error('VM provider not initialized');
+          throw new Error("VM provider not initialized");
         }
 
         const runOpts = {
           display: this.config.display,
           memory: this.config.memory,
           cpu: this.config.cpu,
-          shared_directories: this.sharedDirectories
+          shared_directories: this.sharedDirectories,
         };
 
-        this.logger.info(`Running VM ${this.config.name} with options:`, runOpts);
-        
+        this.logger.info(
+          `Running VM ${this.config.name} with options:`,
+          runOpts
+        );
+
         if (this._telemetryEnabled) {
           recordVMStart(this.config.name, String(this.providerType));
         }
 
-        const storageParam = this.ephemeral ? 'ephemeral' : this.storage;
-        
+        const storageParam = this.ephemeral ? "ephemeral" : this.storage;
+
         try {
           await this.config.vm_provider.runVM(
             this.image,
@@ -302,7 +321,7 @@ export class Computer {
             storageParam
           );
         } catch (error: any) {
-          if (error.message?.includes('already running')) {
+          if (error.message?.includes("already running")) {
             this.logger.info(`VM ${this.config.name} is already running`);
           } else {
             throw error;
@@ -311,9 +330,9 @@ export class Computer {
 
         // Wait for VM to be ready
         try {
-          this.logger.info('Waiting for VM to be ready...');
+          this.logger.info("Waiting for VM to be ready...");
           await this.waitVMReady();
-          
+
           // Get IP address
           ipAddress = await this.getIP();
           this.logger.info(`VM is ready with IP: ${ipAddress}`);
@@ -326,14 +345,22 @@ export class Computer {
       // Initialize the interface
       try {
         // Verify we have a valid IP before initializing the interface
-        if (!ipAddress || ipAddress === 'unknown' || ipAddress === '0.0.0.0') {
-          throw new Error(`Cannot initialize interface - invalid IP address: ${ipAddress}`);
+        if (!ipAddress || ipAddress === "unknown" || ipAddress === "0.0.0.0") {
+          throw new Error(
+            `Cannot initialize interface - invalid IP address: ${ipAddress}`
+          );
         }
 
-        this.logger.info(`Initializing interface for ${this.osType} at ${ipAddress}`);
+        this.logger.info(
+          `Initializing interface for ${this.osType} at ${ipAddress}`
+        );
 
         // Pass authentication credentials if using cloud provider
-        if (this.providerType === VMProviderType.CLOUD && this.apiKey && this.config?.name) {
+        if (
+          this.providerType === VMProviderType.CLOUD &&
+          this.apiKey &&
+          this.config?.name
+        ) {
           this._interface = InterfaceFactory.createInterfaceForOS(
             this.osType,
             ipAddress,
@@ -348,7 +375,7 @@ export class Computer {
         }
 
         // Wait for the WebSocket interface to be ready
-        this.logger.info('Connecting to WebSocket interface...');
+        this.logger.info("Connecting to WebSocket interface...");
 
         try {
           await withTimeout(
@@ -356,9 +383,11 @@ export class Computer {
             30000,
             `Could not connect to WebSocket interface at ${ipAddress}:8000/ws`
           );
-          this.logger.info('WebSocket interface connected successfully');
+          this.logger.info("WebSocket interface connected successfully");
         } catch (error) {
-          this.logger.error(`Failed to connect to WebSocket interface at ${ipAddress}`);
+          this.logger.error(
+            `Failed to connect to WebSocket interface at ${ipAddress}`
+          );
           throw error;
         }
 
@@ -366,13 +395,13 @@ export class Computer {
         if (!this.useHostComputerServer) {
           // In TypeScript, we'll use a Promise instead of asyncio.Event
           let resolveStop: () => void;
-          this._stopEvent = new Promise<void>(resolve => {
+          this._stopEvent = new Promise<void>((resolve) => {
             resolveStop = resolve;
           });
           this._keepAliveTask = this._stopEvent;
         }
 
-        this.logger.info('Computer is ready');
+        this.logger.info("Computer is ready");
 
         // Set the initialization flag
         this._initialized = true;
@@ -380,13 +409,15 @@ export class Computer {
         // Set this instance as the default computer for remote decorators
         setDefaultComputer(this);
 
-        this.logger.info('Computer successfully initialized');
+        this.logger.info("Computer successfully initialized");
       } catch (error) {
         throw error;
       } finally {
         // Log initialization time for performance monitoring
         const durationMs = Date.now() - startTime;
-        this.logger.debug(`Computer initialization took ${durationMs.toFixed(2)}ms`);
+        this.logger.debug(
+          `Computer initialization took ${durationMs.toFixed(2)}ms`
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to initialize computer: ${error}`);
@@ -413,34 +444,37 @@ export class Computer {
     const startTime = Date.now();
 
     try {
-      this.logger.info('Stopping Computer...');
+      this.logger.info("Stopping Computer...");
 
       // In VM mode, first explicitly stop the VM, then exit the provider context
-      if (!this.useHostComputerServer && this._providerContext && this.config?.vm_provider) {
+      if (
+        !this.useHostComputerServer &&
+        this._providerContext &&
+        this.config?.vm_provider
+      ) {
         try {
           this.logger.info(`Stopping VM ${this.config.name}...`);
-          await this.config.vm_provider.stopVM(
-            this.config.name,
-            this.storage
-          );
+          await this.config.vm_provider.stopVM(this.config.name, this.storage);
         } catch (error) {
           this.logger.error(`Error stopping VM: ${error}`);
         }
 
-        this.logger.verbose('Closing VM provider context...');
+        this.logger.info("Closing VM provider context...");
         await this.config.vm_provider.__aexit__(null, null, null);
         this._providerContext = undefined;
       }
 
       await this.disconnect();
-      this.logger.info('Computer stopped');
+      this.logger.info("Computer stopped");
     } catch (error) {
       this.logger.debug(`Error during cleanup: ${error}`);
     } finally {
       // Log stop time for performance monitoring
       const durationMs = Date.now() - startTime;
-      this.logger.debug(`Computer stop process took ${durationMs.toFixed(2)}ms`);
-      
+      this.logger.debug(
+        `Computer stop process took ${durationMs.toFixed(2)}ms`
+      );
+
       if (this._telemetryEnabled && this.config?.name) {
         recordVMStop(this.config.name, durationMs);
       }
@@ -450,22 +484,27 @@ export class Computer {
   /**
    * Get the IP address of the VM or localhost if using host computer server.
    */
-  async getIP(maxRetries: number = 15, retryDelay: number = 2): Promise<string> {
+  async getIP(
+    maxRetries: number = 15,
+    retryDelay: number = 2
+  ): Promise<string> {
     // For host computer server, always return localhost immediately
     if (this.useHostComputerServer) {
-      return '127.0.0.1';
+      return "127.0.0.1";
     }
 
     // Get IP from the provider
     if (!this.config?.vm_provider) {
-      throw new Error('VM provider is not initialized');
+      throw new Error("VM provider is not initialized");
     }
 
     // Log that we're waiting for the IP
-    this.logger.info(`Waiting for VM ${this.config.name} to get an IP address...`);
+    this.logger.info(
+      `Waiting for VM ${this.config.name} to get an IP address...`
+    );
 
     // Call the provider's get_ip method which will wait indefinitely
-    const storageParam = this.ephemeral ? 'ephemeral' : this.storage;
+    const storageParam = this.ephemeral ? "ephemeral" : this.storage;
 
     // Log the image being used
     this.logger.info(`Running VM using image: ${this.image}`);
@@ -496,16 +535,18 @@ export class Computer {
     let lastStatus: string | undefined;
     let attempts = 0;
 
-    this.logger.info(`Waiting for VM ${this.config?.name} to be ready (timeout: ${timeout}s)...`);
+    this.logger.info(
+      `Waiting for VM ${this.config?.name} to be ready (timeout: ${timeout}s)...`
+    );
 
-    while ((Date.now() / 1000) - startTime < timeout) {
+    while (Date.now() / 1000 - startTime < timeout) {
       attempts++;
-      const elapsed = (Date.now() / 1000) - startTime;
+      const elapsed = Date.now() / 1000 - startTime;
 
       try {
         // Keep polling for VM info
         if (!this.config?.vm_provider) {
-          this.logger.error('VM provider is not initialized');
+          this.logger.error("VM provider is not initialized");
           return undefined;
         }
 
@@ -522,14 +563,23 @@ export class Computer {
         const currentStatus = vm?.status;
         if (currentStatus !== lastStatus) {
           this.logger.info(
-            `VM status changed to: ${currentStatus} (after ${elapsed.toFixed(1)}s)`
+            `VM status changed to: ${currentStatus} (after ${elapsed.toFixed(
+              1
+            )}s)`
           );
           lastStatus = currentStatus;
         }
 
         // Check if VM is ready
-        if (vm && vm.status === 'running' && vm.ip_address && vm.ip_address !== '0.0.0.0') {
-          this.logger.info(`VM ${this.config.name} is ready with IP: ${vm.ip_address}`);
+        if (
+          vm &&
+          vm.status === "running" &&
+          vm.ip_address &&
+          vm.ip_address !== "0.0.0.0"
+        ) {
+          this.logger.info(
+            `VM ${this.config.name} is ready with IP: ${vm.ip_address}`
+          );
           return vm;
         }
 
@@ -541,7 +591,9 @@ export class Computer {
       }
     }
 
-    throw new Error(`VM ${this.config?.name} failed to become ready within ${timeout} seconds`);
+    throw new Error(
+      `VM ${this.config?.name} failed to become ready within ${timeout} seconds`
+    );
   }
 
   /**
@@ -549,12 +601,12 @@ export class Computer {
    */
   async update(cpu?: number, memory?: string): Promise<void> {
     if (this.useHostComputerServer) {
-      this.logger.warning('Cannot update settings for host computer server');
+      this.logger.warn("Cannot update settings for host computer server");
       return;
     }
 
     if (!this.config?.vm_provider) {
-      throw new Error('VM provider is not initialized');
+      throw new Error("VM provider is not initialized");
     }
 
     await this.config.vm_provider.updateVM(
@@ -568,11 +620,13 @@ export class Computer {
   /**
    * Get the dimensions of a screenshot.
    */
-  async getScreenshotSize(screenshot: Buffer): Promise<{ width: number; height: number }> {
+  async getScreenshotSize(
+    screenshot: Buffer
+  ): Promise<{ width: number; height: number }> {
     const metadata = await sharp(screenshot).metadata();
     return {
       width: metadata.width || 0,
-      height: metadata.height || 0
+      height: metadata.height || 0,
     };
   }
 
@@ -581,7 +635,7 @@ export class Computer {
    */
   get interface(): BaseComputerInterface {
     if (!this._interface) {
-      throw new Error('Computer interface not initialized. Call run() first.');
+      throw new Error("Computer interface not initialized. Call run() first.");
     }
     return this._interface;
   }
@@ -598,18 +652,18 @@ export class Computer {
    */
   toScreenCoordinates(x: number, y: number): [number, number] {
     if (!this.config?.display) {
-      throw new Error('Display configuration not available');
+      throw new Error("Display configuration not available");
     }
-    return [
-      x * this.config.display.width,
-      y * this.config.display.height
-    ];
+    return [x * this.config.display.width, y * this.config.display.height];
   }
 
   /**
    * Convert screen coordinates to screenshot coordinates.
    */
-  async toScreenshotCoordinates(x: number, y: number): Promise<[number, number]> {
+  async toScreenshotCoordinates(
+    x: number,
+    y: number
+  ): Promise<[number, number]> {
     // In the Python version, this uses the interface to get screenshot dimensions
     // For now, we'll assume 1:1 mapping
     return [x, y];
@@ -618,10 +672,13 @@ export class Computer {
   /**
    * Install packages in a virtual environment.
    */
-  async venvInstall(venvName: string, requirements: string[]): Promise<[string, string]> {
+  async venvInstall(
+    venvName: string,
+    requirements: string[]
+  ): Promise<[string, string]> {
     // This would be implemented using the interface to run commands
     // TODO: Implement venvInstall
-    throw new Error('venvInstall not yet implemented');
+    throw new Error("venvInstall not yet implemented");
   }
 
   /**
@@ -630,15 +687,19 @@ export class Computer {
   async venvCmd(venvName: string, command: string): Promise<[string, string]> {
     // This would be implemented using the interface to run commands
     // TODO: Implement venvCmd
-    throw new Error('venvCmd not yet implemented');
+    throw new Error("venvCmd not yet implemented");
   }
 
   /**
    * Execute function in a virtual environment using source code extraction.
    */
-  async venvExec(venvName: string, pythonFunc: Function, ...args: any[]): Promise<any> {
+  async venvExec(
+    venvName: string,
+    pythonFunc: Function,
+    ...args: any[]
+  ): Promise<any> {
     // This would be implemented using the interface to run Python code
     // TODO: Implement venvExec
-    throw new Error('venvExec not yet implemented');
+    throw new Error("venvExec not yet implemented");
   }
 }

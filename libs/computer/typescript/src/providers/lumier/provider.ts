@@ -73,8 +73,8 @@ export class LumierProvider extends BaseVMProviderImpl {
 
     const match = memoryStr.match(/^(\d+)([A-Za-z]*)$/);
     if (match) {
-      const value = parseInt(match[1] || "0");
-      const unit = match[2]?.toUpperCase() || "";
+      const value = parseInt(match[1]);
+      const unit = match[2].toUpperCase();
 
       if (unit === "GB" || unit === "G") {
         return value * 1024;
