@@ -106,7 +106,15 @@ class Computer:
         # The default is currently to use non-ephemeral storage
         if storage and ephemeral and storage != "ephemeral":
             raise ValueError("Storage path and ephemeral flag cannot be used together")
-        self.storage = "ephemeral" if ephemeral else storage
+        
+        # Windows Sandbox always uses ephemeral storage
+        if self.provider_type == VMProviderType.WINSANDBOX:
+            if not ephemeral:
+                self.logger.warning("Windows Sandbox storage is always ephemeral. Setting ephemeral=True.")
+            self.ephemeral = True
+            self.storage = "ephemeral"
+        else:
+            self.storage = "ephemeral" if ephemeral else storage
         
         # For Lumier provider, store the first shared directory path to use
         # for VM file sharing
@@ -284,6 +292,15 @@ class Computer:
                                     self.provider_type,
                                     api_key=self.api_key,
                                     verbose=verbose,
+                                )
+                            elif self.provider_type == VMProviderType.WINSANDBOX:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
                                 )
                             else:
                                 raise ValueError(f"Unsupported provider type: {self.provider_type}")
