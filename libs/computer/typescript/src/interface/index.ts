@@ -1,5 +1,5 @@
 export * from "./base";
 export * from "./factory";
-export * from "./models";
+export * from "./types";
 export * from "./macos";
 export * from "./linux";

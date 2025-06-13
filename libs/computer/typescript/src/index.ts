@@ -3,7 +3,7 @@ export { Computer } from "./computer";
 export type { ComputerOptions, OSType } from "./computer";
 
 // Models
-export type { Display, ComputerConfig } from "./models";
+export type { Display, ComputerConfig } from "./types";
 
 // Provider components
 export { VMProviderType, BaseVMProviderImpl } from "./providers";
@@ -16,13 +16,15 @@ export type { BaseComputerInterface } from "./interface";
 export { InterfaceFactory } from "./interface";
 export type { InterfaceOptions } from "./interface";
 export { Key } from "./interface";
-export type { 
-  KeyType, 
-  MouseButton, 
-  NavigationKey, 
-  SpecialKey, 
-  ModifierKey, 
+export type {
+  KeyType,
+  MouseButton,
+  NavigationKey,
+  SpecialKey,
+  ModifierKey,
   FunctionKey,
   AccessibilityWindow,
-  AccessibilityTree 
+  AccessibilityTree,
 } from "./interface";
+
+export * from "./helpers";

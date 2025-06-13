@@ -1,5 +1,5 @@
-import type { BaseComputerInterface } from './base';
-import type { KeyType, MouseButton, AccessibilityTree } from './models';
+import type { BaseComputerInterface } from "./base";
+import type { KeyType, MouseButton, AccessibilityTree } from "./types";
 
 /**
  * macOS-specific implementation of the computer interface.
@@ -24,7 +24,7 @@ export class MacOSComputerInterface implements BaseComputerInterface {
     // Implementation will go here
   }
 
-  async click(button: MouseButton = 'left'): Promise<void> {
+  async click(button: MouseButton = "left"): Promise<void> {
     // Implementation will go here
   }
 
@@ -40,8 +40,8 @@ export class MacOSComputerInterface implements BaseComputerInterface {
     // Implementation will go here
     return {
       success: false,
-      frontmost_application: '',
-      windows: []
+      frontmost_application: "",
+      windows: [],
     };
   }
 }

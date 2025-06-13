@@ -1,4 +1,4 @@
-import type { Display, ComputerConfig } from "../models";
+import type { Display, ComputerConfig } from "../types";
 import type { BaseComputerInterface } from "../interface/base";
 import { InterfaceFactory } from "../interface/factory";
 import type { BaseVMProvider } from "../providers/base";

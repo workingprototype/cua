@@ -37,6 +37,8 @@ export class TelemetryManager {
     // For now, just log to debug
     if (process.env.NODE_ENV === "development") {
       console.debug("[Telemetry]", event, properties);
+    } else {
+      //todo: log telemetry to posthog
     }
   }
 
