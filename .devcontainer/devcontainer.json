@@ -28,7 +28,6 @@
 				"python.terminal.activateEnvironment": false,
 				"[python]": {
 					"editor.formatOnSave": true,
-					"editor.defaultFormatter": "ms-python.black-formatter",
 					"editor.codeActionsOnSave": {
 						"source.organizeImports": "explicit"
 					}
@@ -45,6 +44,5 @@
 			}
 		}
 	},
-	// Automatically run post-install.sh after container is created
 	"postCreateCommand": "/bin/bash .devcontainer/post-install.sh"
 }
