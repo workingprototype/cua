@@ -3,6 +3,15 @@ import Icon from '@iconify/svelte';
 import type { VM } from '../api';
 import { onMount } from 'svelte';
 export let vms: VM[] = [];
+
+function getOsIcon(os: string) {
+  if (!os) return 'material-symbols:monitor-outline';
+  const osLower = os.toLowerCase();
+  if (osLower.includes('ubuntu')) return 'mdi:ubuntu';
+  if (osLower.includes('mac')) return 'wpf:mac-os';
+  if (osLower.includes('windows')) return 'mdi:microsoft-windows';
+  return 'material-symbols:monitor-outline';
+}
 export let selectedVM: VM | null = null;
 export let onSelect: (vm: VM) => void = () => {};
 
@@ -71,7 +80,7 @@ onMount(() => {
             Create a local VM...
           </button>
           <button class="w-full text-left px-4 py-2 text-gray-300 cursor-not-allowed transition" disabled>
-            Add existing RDP/VNC VM...
+            Add existing RDP/VNC...
           </button>
         </div>
       {/if}
@@ -111,7 +120,7 @@ onMount(() => {
           on:click={() => onSelect(vm)}
         >
           <span class="text-2xl">
-            <Icon icon="material-symbols:monitor-outline" width="28" height="28" class="text-blue-400" />
+            <Icon icon={getOsIcon(vm.os)} width="28" height="28" class="text-blue-400" />
           </span>
           <span class="flex flex-col text-left">
             <span class="font-semibold text-gray-800 text-sm">{vm.name}</span>
