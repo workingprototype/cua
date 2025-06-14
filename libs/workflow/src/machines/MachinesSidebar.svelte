@@ -74,27 +74,30 @@ onMount(() => {
             Add existing RDP/VNC VM...
           </button>
         </div>
-<!-- Modal for Add existing cloud VM -->
-{#if showCloudExistingModal}
-  <div class="fixed inset-0 z-30 flex items-center justify-center bg-black bg-opacity-40">
-    <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-sm">
-      <h3 class="text-lg font-semibold mb-4">Add Existing Cloud VM</h3>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">VM Name</label>
-        <input type="text" bind:value={cloudVmName} class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200" placeholder="Enter VM name" />
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">c/ua API Key</label>
-        <input type="password" bind:value={cloudApiKey} class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200" placeholder="Enter API key" />
-      </div>
-      <div class="flex justify-end gap-2 mt-6">
-        <button class="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" on:click={closeCloudExistingModal}>Cancel</button>
-        <button class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold" on:click={addCloudExistingVm}>Add</button>
-      </div>
-    </div>
-  </div>
-{/if}
       {/if}
+
+      <!-- Modal for Add existing cloud VM -->
+      {#if showCloudExistingModal}
+      <div class="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
+        <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-sm">
+          <h3 class="text-lg font-semibold mb-4">Add Existing Cloud VM</h3>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">VM Name</label>
+            <input type="text" bind:value={cloudVmName} class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200" placeholder="Enter VM name" />
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">c/ua API Key</label>
+            <input type="password" bind:value={cloudApiKey} class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200" placeholder="Enter API key" />
+          </div>
+          <div class="flex justify-end gap-2 mt-6">
+            <button class="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" on:click={closeCloudExistingModal}>Cancel</button>
+            <button class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold" on:click={addCloudExistingVm}>Add</button>
+          </div>
+        </div>
+      </div>
+      {/if}
+
+
     </div>
   </div>
   <ul class="flex-1 overflow-y-auto space-y-1">
