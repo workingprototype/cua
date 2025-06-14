@@ -30,15 +30,22 @@
         Controlling: <span class="font-bold">{part.computer_name}</span>
       </span>
       {#if part.image_url}
-        <div class="relative group mb-2">
-          <img src={part.image_url} alt="Computer call screenshot" class="max-w-xs rounded-md shadow-md" />
-          <button class="absolute inset-0 flex items-center justify-center bg-black/30 rounded-md opacity-0 group-hover:opacity-100 transition" title="Play" aria-label="Play computer call video or animation">
-            <svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-        </div>
-      {/if}
+  <div class="w-3/4 aspect-video bg-gradient-to-br from-gray-300 to-gray-200 rounded-xl flex items-center justify-center text-gray-400 text-3xl shadow-inner relative overflow-hidden mb-2 group">
+    <img src={part.image_url} alt="Computer call screenshot" class="object-contain w-full h-full" />
+    <button
+      class="absolute inset-0 flex items-center justify-center z-10 transition-all duration-150 group bg-black/25 opacity-0 group-hover:opacity-100"
+      title="Play"
+      aria-label="Play computer call video or animation"
+      style="outline: none;"
+    >
+      <span class="rounded-full bg-black/25 p-5 flex items-center justify-center shadow-lg border border-white/10 backdrop-blur-xs transition-all duration-150 group-hover:scale-110 group-hover:shadow-black/30 group-hover:shadow-lg group-active:scale-95 group-active:shadow-black/50">
+        <svg class="w-12 h-12 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+    </button>
+  </div>
+{/if}
     {/if}
     <!-- Always show action info if present -->
     {#if part.action}
