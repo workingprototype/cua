@@ -17,6 +17,7 @@ function select(key: string) {
 </script>
 
 <aside class="h-full w-16 bg-white flex flex-col items-center py-4 shadow-lg border-r border-gray-200">
+  <img src="https://www.trycua.com/logo-black.svg" alt="CUA Logo" class="h-8 mb-6" style="max-width: 32px;" />
   {#each items as item}
     <button
       class="group relative mb-4 p-2 rounded-lg flex items-center justify-center transition-colors duration-150 focus:outline-none"
