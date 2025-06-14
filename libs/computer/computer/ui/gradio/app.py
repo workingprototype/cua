@@ -1083,7 +1083,6 @@ def create_gradio_ui():
                                 label="OS",
                                 choices=["macOS", "Ubuntu"],
                                 value="macOS",
-                                interactive=False # disable until the ubuntu image is ready
                             )
                             
                             # Provider selection radio
