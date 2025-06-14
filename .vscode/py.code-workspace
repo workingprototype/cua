@@ -9,6 +9,10 @@
             "path": "../libs/computer"
         },
         {
+            "name": "workflow",
+            "path": "../libs/workflow"
+        },
+        {
             "name": "agent",
             "path": "../libs/agent"
         },

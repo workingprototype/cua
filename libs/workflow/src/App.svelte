@@ -8,7 +8,8 @@
     type Edge,
     Position,
     Panel,
-    useOnSelectionChange
+    useOnSelectionChange,
+    NodeToolbar
   } from "@xyflow/svelte";
   import TrajectoryNode from "./TrajectoryNode.svelte";
   import "@xyflow/svelte/dist/style.css";
@@ -22,7 +23,30 @@
   let edges = $state.raw<Edge[]>([]);
   let selectedNodeId = $state<string | null>(null);
   let runHistory = $state<(string | { name: string; screenshot?: string })[]>([]);
-  let activeTab = $state<'run-history' | 'demonstration'>('run-history');
+  let activeTab = $state<'run-history' | 'demonstration' | 'properties'>('run-history');
+
+  // Node properties form state
+  let nodeProperties = $state({
+    agent: 'cascade',
+    prompt: '',
+    tools: ['computer:left_click'],
+    enableCache: true,
+    maxActions: 10
+  });
+
+  // UI state
+  let showToolsEditor = $state(false);
+
+  // Available tools list
+  const availableTools = [
+    'cua:create_vm',
+    'cua:load_vm',
+    'computer:open_app',
+    'computer:bash',
+    'computer:left_click',
+    'computer:wait',
+    'computer:type_text'
+  ];
 
   // Mock data for run history
   const mockRunHistory = [
@@ -98,6 +122,16 @@
       selectedNodeId = nodeId;
       const node = nodes.find((n) => n.id === nodeId);
       runHistory = (node?.data?.tool_calls ?? []) as (string | { name: string; screenshot?: string })[];
+      
+      // Populate node properties form
+      if (node?.data) {
+        nodeProperties.prompt = (node.data as any).label || '';
+        // Reset other properties to defaults for now
+        nodeProperties.agent = 'cascade';
+        nodeProperties.tools = ['computer:left_click'];
+        nodeProperties.enableCache = true;
+        nodeProperties.maxActions = 10;
+      }
     } else {
       selectedNodeId = null;
       runHistory = [];
@@ -111,34 +145,53 @@
     <Controls />
     <Background />
     <MiniMap />
+    
+    <!-- Run History Panel (Center Right) -->
     <Panel position="center-right">
   {#if selectedNodeId}
     <div class="w-80 max-h-[70vh] overflow-y-auto bg-white rounded-lg shadow-lg mt-4 mr-2 border border-gray-200">
       <!-- Tab Headers -->
       <div class="flex border-b border-gray-200">
+        
         <button 
-          class="flex-1 px-4 py-3 text-sm font-medium {activeTab === 'run-history' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
+          class="flex-1 px-3 py-2 text-xs font-medium {activeTab === 'run-history' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
           onclick={() => activeTab = 'run-history'}
+          title="Run History"
         >
-          <div class="flex items-center justify-center gap-2">
+          <div class="flex items-center justify-center">
             <Icon icon="mdi:history" width="16" height="16" />
-            Run History
           </div>
         </button>
+        
         <button 
-          class="flex-1 px-4 py-3 text-sm font-medium {activeTab === 'demonstration' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
-          onclick={() => activeTab = 'demonstration'}
+          class="flex-1 px-3 py-2 text-xs font-medium {activeTab === 'properties' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
+          onclick={() => activeTab = 'properties'}
+          title="Properties"
         >
-          <div class="flex items-center justify-center gap-2">
-            <Icon icon="mdi:play-circle-outline" width="16" height="16" />
-            Demonstration
+          <div class="flex items-center justify-center">
+            <Icon icon="mdi:cog-outline" width="16" height="16" />
           </div>
         </button>
+
+        <button 
+          class="flex-1 px-3 py-2 text-xs font-medium {activeTab === 'demonstration' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}"
+          onclick={() => activeTab = 'demonstration'}
+          title="Demonstrations"
+        >
+          <div class="flex items-center justify-center">
+            <Icon icon="mdi:play-circle-outline" width="16" height="16" />
+          </div>
+        </button>
+        
       </div>
       
       <!-- Tab Content -->
       <div class="p-4">
         {#if activeTab === 'run-history'}
+          <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Icon icon="mdi:history" width="16" height="16" />
+            Run History
+          </h3>
           <div class="space-y-3">
             {#each mockRunHistory as run, i}
               <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
@@ -162,6 +215,10 @@
             {/each}
           </div>
         {:else if activeTab === 'demonstration'}
+          <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Icon icon="mdi:play-circle-outline" width="16" height="16" />
+            Demonstrations
+          </h3>
           {#if runHistory.length > 0}
             <div class="space-y-2">
               {#each runHistory as call, i}
@@ -182,6 +239,84 @@
           {:else}
             <div class="text-gray-400 italic text-center py-8">No tool calls available</div>
           {/if}
+        {:else if activeTab === 'properties'}
+          <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Icon icon="mdi:cog-outline" width="16" height="16" />
+            Node Properties
+          </h3>
+          <form class="space-y-3">
+            <!-- Agent Dropdown -->
+            <div>
+              <label for="agent-select" class="block text-xs font-medium text-gray-700 mb-1">Agent</label>
+              <select id="agent-select" bind:value={nodeProperties.agent} class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+                <option value="cascade">C/ua Orchestrator</option>
+                <option value="claude">Claude</option>
+                <option value="gpt-4">GPT-4</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </div>
+            
+            <!-- Prompt Text Field -->
+            <div>
+              <label for="prompt-textarea" class="block text-xs font-medium text-gray-700 mb-1">Prompt</label>
+              <textarea 
+                id="prompt-textarea"
+                bind:value={nodeProperties.prompt} 
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows="2"
+                placeholder="Enter your prompt here..."
+              ></textarea>
+            </div>
+            
+            <!-- Tools Summary + Edit Link -->
+            <div>
+              <label for={showToolsEditor ? "tools-select" : undefined} class="block text-xs font-medium text-gray-700 mb-1">Tools</label>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-gray-600">{nodeProperties.tools.length} tools selected</span>
+                <button 
+                  type="button"
+                  class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  onclick={() => showToolsEditor = !showToolsEditor}
+                >
+                  {showToolsEditor ? 'Hide' : 'Edit'}
+                </button>
+              </div>
+              {#if showToolsEditor}
+                <select 
+                  id="tools-select"
+                  bind:value={nodeProperties.tools} 
+                  multiple 
+                  class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  size="4"
+                >
+                  {#each availableTools as tool}
+                    <option value={tool}>{tool}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
+            
+            <!-- Max Actions Number -->
+            <div>
+              <label for="max-actions-input" class="block text-xs font-medium text-gray-700 mb-1">Max Actions</label>
+              <input 
+                id="max-actions-input"
+                type="number" 
+                bind:value={nodeProperties.maxActions} 
+                min="1" 
+                max="100"
+                class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <!-- Enable Cache Checkbox -->
+            <div>
+              <label class="flex items-center">
+                <input type="checkbox" bind:checked={nodeProperties.enableCache} class="mr-2 scale-75" />
+                <span class="text-xs font-medium text-gray-700">Enable Cache</span>
+              </label>
+            </div>
+          </form>
         {/if}
       </div>
     </div>

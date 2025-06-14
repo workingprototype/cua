@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Position, Handle, type NodeProps } from '@xyflow/svelte';
+  import { Position, Handle, NodeToolbar, type NodeProps } from '@xyflow/svelte';
   import Icon from '@iconify/svelte';
   let { id, data, selected }: NodeProps = $props();
   // Type guard for data
@@ -12,7 +12,36 @@
     gif = typeof d.gif === 'string' ? d.gif : undefined;
     isStart = !!d.isStart;
   }
+
+  function handleDelete() {
+    console.log('Delete node:', id);
+    // TODO: Implement delete functionality
+  }
+
+  function handleOptions() {
+    console.log('Options for node:', id);
+    // TODO: Implement options functionality
+  }
 </script>
+
+<NodeToolbar position={Position.Top} align="center">
+  <div class="flex gap-1 bg-white rounded-lg shadow-lg border border-gray-200 p-1">
+    <button 
+      class="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800 transition-colors"
+      onclick={handleOptions}
+      title="Options"
+    >
+      <Icon icon="mdi:dots-horizontal" width="16" height="16" />
+    </button>
+    <button 
+      class="p-1.5 hover:bg-red-100 rounded text-gray-600 hover:text-red-600 transition-colors"
+      onclick={handleDelete}
+      title="Delete"
+    >
+      <Icon icon="mdi:delete-outline" width="16" height="16" />
+    </button>
+  </div>
+</NodeToolbar>
 
 <div class="w-60 bg-white rounded-lg shadow flex flex-col overflow-hidden {selected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}" data-id={id} tabindex="0" role="button" style="cursor:pointer;">
   <!-- First row: icon + type label -->
