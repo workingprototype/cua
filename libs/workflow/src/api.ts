@@ -37,13 +37,60 @@ export async function chat(prompt: string): Promise<string> {
 }
 
 // ----------- Workflow/Trajectory Loader -----------
+export type ToolCall = {
+  name: string;
+  screenshot?: string;
+};
+
 export type WorkflowNodeData = {
   prompt: string;
   gif: string;
-  tool_calls?: string[];
+  tool_calls?: ToolCall[];
 };
 
 export async function load_workflow(): Promise<WorkflowNodeData[]> {
   const res = await fetch('/src/assets/trajectory_nodes.json');
   return await res.json();
+}
+
+// ----------- Mock Chat Loader -----------
+export type ChatMessageData = {
+  from: 'user' | 'assistant';
+  value: any;
+};
+
+export async function load_mock_chat(): Promise<ChatMessageData[]> {
+  const res = await fetch('/src/assets/trajectory_nodes.json');
+  const data: WorkflowNodeData[] = await res.json();
+  // Use the first VM for all computer_calls
+  const firstVM = mockVMs[0]?.name || 'vm-1';
+  const chat: ChatMessageData[] = [];
+  for (const node of data) {
+    // User message
+    chat.push({ from: 'user', value: [ { type: 'text', text: node.prompt } ] });
+    // Assistant tool calls
+    if (node.tool_calls && node.tool_calls.length > 0) {
+      chat.push({
+        from: 'assistant',
+        value: node.tool_calls.map(tc => {
+          let image_url: string | undefined;
+          if (tc.screenshot) {
+            image_url = tc.screenshot.startsWith('/') ? tc.screenshot : '/src/' + tc.screenshot;
+          } else if (node.gif) {
+            image_url = node.gif.startsWith('/') ? node.gif : '/src/' + node.gif;
+          } else {
+            image_url = undefined;
+          }
+          return {
+            type: 'computer_call',
+            computer_name: firstVM,
+            image_url,
+            action: { type: tc.name },
+            trajectory_id: 'traj_mock',
+          };
+        })
+      });
+    }
+  }
+  return chat;
 }

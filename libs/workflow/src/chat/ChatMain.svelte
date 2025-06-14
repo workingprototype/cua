@@ -2,13 +2,18 @@
 import Icon from '@iconify/svelte';
 import { onMount } from 'svelte';
 
-import { list_vms } from '../api';
+import { list_vms, load_mock_chat, type ChatMessageData } from '../api';
 let machines: { id: string; name: string }[] = [];
+
+let messages: ChatMessageData[] = [];
 
 onMount(async () => {
   const vms = await list_vms();
   machines = vms.map(vm => ({ id: vm.name, name: vm.name }));
   selectedMachine = machines[0]?.id;
+
+  // Load mock chat messages from trajectory_nodes.json
+  messages = await load_mock_chat();
 });
 let agents = [
   { id: 'ui-tars', name: 'UI-Tars' },
@@ -21,38 +26,7 @@ let selectedAgent = agents[0]?.id;
 let chatInput = '';
 import ChatMessage from './ChatMessage.svelte';
 
-let messages = [
-  {
-    from: 'user',
-    value: [
-      { type: 'text', text: 'Can you open the Wikipedia homepage and click the search box?' }
-    ]
-  },
-  {
-    from: 'assistant',
-    value: [
-      {
-        type: 'computer_call',
-        computer_name: 'm-linux-4l9zk7itlu',
-        image_url: 'https://placehold.co/400x200/png',
-        action: { type: 'navigate', url: 'https://wikipedia.org' },
-        trajectory_id: 'traj_1234'
-      },
-      {
-        type: 'computer_call',
-        action: { type: 'click', x: 200, y: 70 },
-        trajectory_id: 'traj_1234',
-        computer_name: 'm-linux-4l9zk7itlu'
-      },
-      {
-        type: 'computer_call',
-        action: { type: 'type', text: 'Athens' },
-        trajectory_id: 'traj_1234',
-        computer_name: 'm-linux-4l9zk7itlu'
-      }
-    ]
-  }
-];
+
 
 function sendMessage() {
   if (chatInput.trim()) {
@@ -69,8 +43,8 @@ function sendMessage() {
 </script>
 
 <main class="flex-1 flex flex-col">
-  <div class="flex items-center justify-center py-6 bg-gray-100">
-    <div class="flex gap-8 p-3 rounded-xl border border-gray-200 bg-white/80 shadow-lg">
+  <div class="flex items-center justify-center pt-6 pb-2 bg-gray-100">
+    <div class="flex gap-8 p-3 rounded-xl border border-gray-200 bg-white/80 shadow-xs">
       <div class="flex-1 flex-col items-center gap-1 min-w-[200px]">
         <span class="text-xs text-gray-500 font-semibold mb-1 flex items-center gap-1">
           <Icon icon="mdi:desktop-classic" width="16" height="16" class="text-gray-400" />
@@ -102,15 +76,17 @@ function sendMessage() {
     </div>
   </div>
 
-  <div class="flex-1 flex flex-col justify-end bg-gray-100 overflow-y-auto px-4 py-6">
+  <div class="flex-1 flex flex-col bg-gray-100 overflow-y-auto px-4 py-6">
     <div class="flex flex-col gap-2 max-w-2xl w-full mx-auto">
       {#each messages as message}
         <ChatMessage {message} />
       {/each}
     </div>
-    <form class="w-full max-w-2xl mx-auto mt-4 flex gap-2" on:submit|preventDefault={sendMessage}>
+  </div>
+  <div class="w-full bg-gray-100 py-4 flex justify-center border-t border-gray-200">
+    <form class="w-full max-w-2xl flex gap-2 px-4" on:submit|preventDefault={sendMessage}>
       <input
-        class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow"
+        class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow bg-white"
         type="text"
         placeholder="Type a message..."
         bind:value={chatInput}
