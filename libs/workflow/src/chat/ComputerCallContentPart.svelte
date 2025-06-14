@@ -17,7 +17,7 @@
     if (action.type === 'type') {
       return `Type: ${action.text || ''}`;
     }
-    return action.type ? `Action: ${action.type}` : '';
+    return action.type ? `Action: ${action.type.replace(': ', '.')}` : '';
   }
 </script>
 
