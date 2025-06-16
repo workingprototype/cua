@@ -111,6 +111,12 @@ useOnSelectionChange(({ nodes, edges }) => {
 <main class="flex-1 h-screen w-full overflow-y-auto">
   <div class="h-full">
     <SvelteFlow bind:nodes bind:edges {nodeTypes} fitView>
+      <Panel position="top-left">
+        <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow font-semibold transition-colors duration-150" title="Run Workflow">
+          <Icon icon="mdi:play" width="20" height="20" />
+          Run Workflow
+        </button>
+      </Panel>
       <Controls />
       <Background bgColor="#f5f5f5" />
       <MiniMap />
