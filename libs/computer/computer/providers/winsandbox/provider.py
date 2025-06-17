@@ -121,18 +121,73 @@ class WinSandboxProvider(BaseVMProvider):
         
         # Check if sandbox is still running
         try:
-            # For Windows Sandbox, we assume it's running if it's in our active list
-            # and hasn't been terminated
             # Try to ping the sandbox to see if it's responsive
             try:
-                # Simple test to see if RPyC connection is alive
                 sandbox.rpyc.modules.os.getcwd()
-                status = "running"
-                # Windows Sandbox typically uses localhost for RPyC connections
-                ip_address = "127.0.0.1"
+                sandbox_responsive = True
             except Exception:
+                sandbox_responsive = False
+            
+            if not sandbox_responsive:
+                return {
+                    "name": name,
+                    "status": "starting",
+                    "ip_address": None,
+                    "storage": "ephemeral",
+                    "memory_mb": self.memory_mb,
+                    "networking": self.networking
+                }
+            
+            # Check for computer server address file
+            server_address_file = r"C:\Users\WDAGUtilityAccount\Desktop\shared_windows_sandbox_dir\server_address"
+            
+            try:
+                # Check if the server address file exists
+                file_exists = sandbox.rpyc.modules.os.path.exists(server_address_file)
+                
+                if file_exists:
+                    # Read the server address file
+                    with sandbox.rpyc.builtin.open(server_address_file, 'r') as f:
+                        server_address = f.read().strip()
+                    
+                    if server_address and ':' in server_address:
+                        # Parse IP:port from the file
+                        ip_address, port = server_address.split(':', 1)
+                        
+                        # Verify the server is actually responding
+                        try:
+                            import socket
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            sock.settimeout(3)
+                            result = sock.connect_ex((ip_address, int(port)))
+                            sock.close()
+                            
+                            if result == 0:
+                                # Server is responding
+                                status = "running"
+                                self.logger.debug(f"Computer server found at {ip_address}:{port}")
+                            else:
+                                # Server file exists but not responding
+                                status = "starting"
+                                ip_address = None
+                        except Exception as e:
+                            self.logger.debug(f"Error checking server connectivity: {e}")
+                            status = "starting"
+                            ip_address = None
+                    else:
+                        # File exists but doesn't contain valid address
+                        status = "starting"
+                        ip_address = None
+                else:
+                    # Server address file doesn't exist yet
+                    status = "starting"
+                    ip_address = None
+                    
+            except Exception as e:
+                self.logger.debug(f"Error checking server address file: {e}")
                 status = "starting"
                 ip_address = None
+                
         except Exception as e:
             self.logger.error(f"Error checking sandbox status: {e}")
             status = "error"
@@ -187,9 +242,6 @@ class WinSandboxProvider(BaseVMProvider):
             
             networking = run_opts.get("networking", self.networking)
             
-            # Get the logon script path
-            script_path = os.path.join(os.path.dirname(__file__), "logon_script.bat")
-            
             # Create folder mappers if shared directories are specified
             folder_mappers = []
             shared_directories = run_opts.get("shared_directories", [])
@@ -209,11 +261,10 @@ class WinSandboxProvider(BaseVMProvider):
             if folder_mappers:
                 self.logger.info(f"Shared directories: {len(folder_mappers)}")
             
-            # Create the sandbox
+            # Create the sandbox without logon script
             sandbox = winsandbox.new_sandbox(
                 memory_mb=str(memory_mb),
                 networking=networking,
-                logon_script=f'cmd /c "{script_path}"',
                 folder_mappers=folder_mappers
             )
             
@@ -221,6 +272,9 @@ class WinSandboxProvider(BaseVMProvider):
             self._active_sandboxes[name] = sandbox
             
             self.logger.info(f"Windows Sandbox {name} created successfully")
+            
+            # Setup the computer server in the sandbox
+            await self._setup_computer_server(sandbox, name)
             
             return {
                 "success": True,
@@ -233,6 +287,9 @@ class WinSandboxProvider(BaseVMProvider):
             
         except Exception as e:
             self.logger.error(f"Failed to create Windows Sandbox {name}: {e}")
+            # stack trace
+            import traceback
+            self.logger.error(f"Stack trace: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": f"Failed to create sandbox: {str(e)}"
@@ -348,3 +405,66 @@ class WinSandboxProvider(BaseVMProvider):
             # Add progress log every 10 attempts
             if total_attempts % 10 == 0:
                 self.logger.info(f"Still waiting for Windows Sandbox {name} IP after {total_attempts} attempts...")
+    
+    async def _setup_computer_server(self, sandbox, name: str, visible: bool = False):
+        """Setup the computer server in the Windows Sandbox using RPyC.
+        
+        Args:
+            sandbox: The Windows Sandbox instance
+            name: Name of the sandbox
+            visible: Whether the opened process should be visible (default: False)
+        """
+        try:
+            self.logger.info(f"Setting up computer server in sandbox {name}...")
+            print(f"Setting up computer server in sandbox {name}...")
+
+            # Read the PowerShell setup script
+            script_path = os.path.join(os.path.dirname(__file__), "setup_script.ps1")
+            with open(script_path, 'r', encoding='utf-8') as f:
+                setup_script_content = f.read()
+            
+            # Write the setup script to the sandbox using RPyC
+            script_dest_path = r"C:\Users\WDAGUtilityAccount\setup_cua.ps1"
+            
+            print(f"Writing setup script to {script_dest_path}")
+            with sandbox.rpyc.builtin.open(script_dest_path, 'w') as f:
+                f.write(setup_script_content)
+            
+            # Execute the PowerShell script in the background
+            print("Executing setup script in sandbox...")
+            
+            # Use subprocess to run PowerShell script
+            import subprocess
+            powershell_cmd = [
+                "powershell.exe", 
+                "-ExecutionPolicy", "Bypass",
+                "-NoExit",  # Keep window open after script completes
+                "-File", script_dest_path
+            ]
+            
+            # Set creation flags based on visibility preference
+            if visible:
+                # CREATE_NEW_CONSOLE - creates a new console window (visible)
+                creation_flags = 0x00000010
+            else:
+                # DETACHED_PROCESS - runs in background (not visible)
+                creation_flags = 0x00000008
+            
+            # Start the process using RPyC
+            process = sandbox.rpyc.modules.subprocess.Popen(
+                powershell_cmd,
+                creationflags=creation_flags,
+                shell=False
+            )
+            
+            # Sleep for 30 seconds
+            await asyncio.sleep(30)
+
+            ip = await self.get_ip(name)
+            print(f"Sandbox IP: {ip}")
+            print(f"Setup script started in background in sandbox {name} with PID: {process.pid}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to setup computer server in sandbox {name}: {e}")
+            import traceback
+            self.logger.error(f"Stack trace: {traceback.format_exc()}")

@@ -109,7 +109,7 @@ class Computer:
         
         # Windows Sandbox always uses ephemeral storage
         if self.provider_type == VMProviderType.WINSANDBOX:
-            if not ephemeral:
+            if not ephemeral and storage != None and storage != "ephemeral":
                 self.logger.warning("Windows Sandbox storage is always ephemeral. Setting ephemeral=True.")
             self.ephemeral = True
             self.storage = "ephemeral"
@@ -400,7 +400,6 @@ class Computer:
                 # Wait for VM to be ready with a valid IP address
                 self.logger.info("Waiting for VM to be ready with a valid IP address...")
                 try:
-                    # Increased values for Lumier provider which needs more time for initial setup
                     if self.provider_type == VMProviderType.LUMIER:
                         max_retries = 60  # Increased for Lumier VM startup which takes longer
                         retry_delay = 3    # 3 seconds between retries for Lumier
@@ -530,7 +529,7 @@ class Computer:
         return
 
     # @property
-    async def get_ip(self, max_retries: int = 15, retry_delay: int = 2) -> str:
+    async def get_ip(self, max_retries: int = 15, retry_delay: int = 3) -> str:
         """Get the IP address of the VM or localhost if using host computer server.
         
         This method delegates to the provider's get_ip method, which waits indefinitely 
