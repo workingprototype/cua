@@ -729,7 +729,7 @@ if __name__ == "__main__":
                 with gr.Accordion("Computer Configuration", open=True):
                     # Computer configuration options
                     computer_os = gr.Radio(
-                        choices=["macos", "linux"],
+                        choices=["macos", "linux", "windows"],
                         label="Operating System",
                         value="macos",
                         info="Select the operating system for the computer",
@@ -747,7 +747,7 @@ if __name__ == "__main__":
                     computer_provider = gr.Radio(
                         choices=providers,
                         label="Provider",
-                        value="cloud",
+                        value="lume" if is_mac else "cloud",
                         info="Select the computer provider",
                     )
                     
