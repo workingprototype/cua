@@ -151,10 +151,14 @@ MODEL_MAPPINGS = {
         # New Claude 4 models
         "Anthropic: Claude 4 Opus (20250514)": "claude-opus-4-20250514",
         "Anthropic: Claude 4 Sonnet (20250514)": "claude-sonnet-4-20250514",
+        "claude-opus-4-20250514": "claude-opus-4-20250514",
+        "claude-sonnet-4-20250514": "claude-sonnet-4-20250514",
 
         # Specific Claude models for CUA
         "Anthropic: Claude 3.7 Sonnet (20250219)": "claude-3-5-sonnet-20240620",
         "Anthropic: Claude 3.5 Sonnet (20240620)": "claude-3-7-sonnet-20250219",
+        "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
+        "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
         # Map standard model names to CUA-specific model names
         "claude-3-opus": "claude-3-7-sonnet-20250219",
         "claude-3-sonnet": "claude-3-5-sonnet-20240620",
@@ -239,33 +243,11 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
             cleaned_model_name = model_name.split("OMNI: Ollama ", 1)[1]
         elif model_name.startswith("OMNI: Claude "):
             provider = LLMProvider.ANTHROPIC
-            # Extract the canonical model name based on the UI string
-            # e.g., "OMNI: Claude 3.7 Sonnet (20250219)" -> "3.7 Sonnet" and "20250219"
-            parts = model_name.split(" (")
-            model_key_part = parts[0].replace("OMNI: Claude ", "")
-            date_part = parts[1].replace(")", "") if len(parts) > 1 else ""
 
-            # Normalize the extracted key part for comparison
-            # "3.7 Sonnet" -> "37sonnet"
-            model_key_part_norm = model_key_part.lower().replace(".", "").replace(" ", "")
-
-            cleaned_model_name = MODEL_MAPPINGS["omni"]["default"]  # Default if not found
-            # Find the canonical name in the main Anthropic map
-            for key_anthropic, val_anthropic in MODEL_MAPPINGS["anthropic"].items():
-                # Normalize the canonical key for comparison
-                # "claude-3-7-sonnet-20250219" -> "claude37sonnet20250219"
-                key_anthropic_norm = key_anthropic.lower().replace("-", "")
-
-                # Check if the normalized canonical key starts with "claude" + normalized extracted part
-                # AND contains the date part.
-                if (
-                    key_anthropic_norm.startswith("claude" + model_key_part_norm)
-                    and date_part in key_anthropic_norm
-                ):
-                    cleaned_model_name = (
-                        val_anthropic  # Use the canonical name like "claude-3-7-sonnet-20250219"
-                    )
-                    break
+            model_name = model_name.replace("OMNI: ", "Anthropic: ")
+            cleaned_model_name = MODEL_MAPPINGS["anthropic"].get(
+                model_name, MODEL_MAPPINGS["anthropic"]["default"]
+            )
         elif model_name.startswith("OMNI: OpenAI "):
             provider = LLMProvider.OPENAI
             # Extract the model part, e.g., "GPT-4o mini"
@@ -470,6 +452,8 @@ def create_gradio_ui(
         "OMNI: OpenAI GPT-4o",
         "OMNI: OpenAI GPT-4o mini",
         "OMNI: OpenAI GPT-4.5-preview",
+        "OMNI: Claude 4 Opus (20250514)",
+        "OMNI: Claude 4 Sonnet (20250514)",
         "OMNI: Claude 3.7 Sonnet (20250219)", 
         "OMNI: Claude 3.5 Sonnet (20240620)"
     ]
