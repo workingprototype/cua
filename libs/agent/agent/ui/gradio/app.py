@@ -137,6 +137,7 @@ MODEL_MAPPINGS = {
     "openai": {
         # Default to operator CUA model
         "default": "computer-use-preview",
+        "OpenAI: Computer-Use Preview": "computer-use-preview",
         # Map standard OpenAI model names to CUA-specific model names
         "gpt-4-turbo": "computer-use-preview",
         "gpt-4o": "computer-use-preview",
@@ -147,9 +148,13 @@ MODEL_MAPPINGS = {
     "anthropic": {
         # Default to newest model
         "default": "claude-3-7-sonnet-20250219",
+        # New Claude 4 models
+        "Anthropic: Claude 4 Opus (20250514)": "claude-opus-4-20250514",
+        "Anthropic: Claude 4 Sonnet (20250514)": "claude-sonnet-4-20250514",
+
         # Specific Claude models for CUA
-        "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
-        "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
+        "Anthropic: Claude 3.7 Sonnet (20250219)": "claude-3-5-sonnet-20240620",
+        "Anthropic: Claude 3.5 Sonnet (20240620)": "claude-3-7-sonnet-20250219",
         # Map standard model names to CUA-specific model names
         "claude-3-opus": "claude-3-7-sonnet-20250219",
         "claude-3-sonnet": "claude-3-5-sonnet-20240620",
@@ -209,12 +214,12 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
     if agent_loop == AgentLoop.OPENAI:
         provider = LLMProvider.OPENAI
         model_name_to_use = MODEL_MAPPINGS["openai"].get(
-            model_name.lower(), MODEL_MAPPINGS["openai"]["default"]
+            model_name, MODEL_MAPPINGS["openai"]["default"]
         )
     elif agent_loop == AgentLoop.ANTHROPIC:
         provider = LLMProvider.ANTHROPIC
         model_name_to_use = MODEL_MAPPINGS["anthropic"].get(
-            model_name.lower(), MODEL_MAPPINGS["anthropic"]["default"]
+            model_name, MODEL_MAPPINGS["anthropic"]["default"]
         )
     elif agent_loop == AgentLoop.OMNI:
         # Determine provider and clean model name based on the full string from UI
@@ -308,6 +313,8 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         provider = LLMProvider.OPENAI
         model_name_to_use = MODEL_MAPPINGS["openai"]["default"]
         agent_loop = AgentLoop.OPENAI
+
+    print(f"Mapping {model_name} and {loop_provider} to {provider}, {model_name_to_use}, {agent_loop}")
 
     return provider, model_name_to_use, agent_loop
 
@@ -453,6 +460,9 @@ def create_gradio_ui(
     # Always show models regardless of API key availability
     openai_models = ["OpenAI: Computer-Use Preview"]
     anthropic_models = [
+        "Anthropic: Claude 4 Opus (20250514)",
+        "Anthropic: Claude 4 Sonnet (20250514)",
+
         "Anthropic: Claude 3.7 Sonnet (20250219)",
         "Anthropic: Claude 3.5 Sonnet (20240620)",
     ]
