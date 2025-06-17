@@ -116,19 +116,22 @@ jobs:
           
           # Verify certificates were imported
           echo "Verifying signing identities..."
-          security find-identity -v -p codesigning build.keychain
+          CERT_COUNT=$(security find-identity -v -p codesigning build.keychain | grep -c "Developer ID Application" || echo "0")
+          INSTALLER_COUNT=$(security find-identity -v build.keychain | grep -c "Developer ID Installer" || echo "0")
           
-          # Verify specific certificates exist
-          if ! security find-identity -v -p codesigning build.keychain | grep -q "Developer ID Application: ${{ secrets.DEVELOPER_NAME }}"; then
-            echo "Error: Developer ID Application certificate not found"
+          if [ "$CERT_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Application certificate found"
+            security find-identity -v -p codesigning build.keychain
             exit 1
           fi
           
-          if ! security find-identity -v -p codesigning build.keychain | grep -q "Developer ID Installer: ${{ secrets.DEVELOPER_NAME }}"; then
-            echo "Error: Developer ID Installer certificate not found"
+          if [ "$INSTALLER_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Installer certificate found"  
+            security find-identity -v build.keychain
             exit 1
           fi
           
+          echo "Found $CERT_COUNT Developer ID Application certificate(s) and $INSTALLER_COUNT Developer ID Installer certificate(s)"
           echo "All required certificates verified successfully"
           
           # Clean up certificate files
