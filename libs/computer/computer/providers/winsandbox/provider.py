@@ -416,7 +416,6 @@ class WinSandboxProvider(BaseVMProvider):
         """
         try:
             self.logger.info(f"Setting up computer server in sandbox {name}...")
-            print(f"Setting up computer server in sandbox {name}...")
 
             # Read the PowerShell setup script
             script_path = os.path.join(os.path.dirname(__file__), "setup_script.ps1")
@@ -426,12 +425,12 @@ class WinSandboxProvider(BaseVMProvider):
             # Write the setup script to the sandbox using RPyC
             script_dest_path = r"C:\Users\WDAGUtilityAccount\setup_cua.ps1"
             
-            print(f"Writing setup script to {script_dest_path}")
+            self.logger.info(f"Writing setup script to {script_dest_path}")
             with sandbox.rpyc.builtin.open(script_dest_path, 'w') as f:
                 f.write(setup_script_content)
             
             # Execute the PowerShell script in the background
-            print("Executing setup script in sandbox...")
+            self.logger.info("Executing setup script in sandbox...")
             
             # Use subprocess to run PowerShell script
             import subprocess
@@ -447,8 +446,7 @@ class WinSandboxProvider(BaseVMProvider):
                 # CREATE_NEW_CONSOLE - creates a new console window (visible)
                 creation_flags = 0x00000010
             else:
-                # DETACHED_PROCESS - runs in background (not visible)
-                creation_flags = 0x00000008
+                creation_flags = 0x08000000 # CREATE_NO_WINDOW
             
             # Start the process using RPyC
             process = sandbox.rpyc.modules.subprocess.Popen(
@@ -457,12 +455,12 @@ class WinSandboxProvider(BaseVMProvider):
                 shell=False
             )
             
-            # Sleep for 30 seconds
-            await asyncio.sleep(30)
+            # # Sleep for 30 seconds
+            # await asyncio.sleep(30)
 
             ip = await self.get_ip(name)
-            print(f"Sandbox IP: {ip}")
-            print(f"Setup script started in background in sandbox {name} with PID: {process.pid}")
+            self.logger.info(f"Sandbox IP: {ip}")
+            self.logger.info(f"Setup script started in background in sandbox {name} with PID: {process.pid}")
             
         except Exception as e:
             self.logger.error(f"Failed to setup computer server in sandbox {name}: {e}")
