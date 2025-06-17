@@ -36,10 +36,9 @@ class HandlerFactory:
                 return system
                 
             # Fallback to uname if platform.system() doesn't return expected values (Unix-like systems only)
-            if system != 'windows':
-                result = subprocess.run(['uname', '-s'], capture_output=True, text=True)
-                if result.returncode == 0:
-                    return result.stdout.strip().lower()
+            result = subprocess.run(['uname', '-s'], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip().lower()
             
             raise RuntimeError(f"Unsupported OS: {system}")
         except Exception as e:
