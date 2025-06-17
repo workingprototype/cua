@@ -574,6 +574,12 @@ async def handle_init_computer(os_choice: str, app_list=None, provider="lume", c
             api_key=cloud_api_key,
             experiments=experiments
         )
+    elif provider == "winsandbox":
+        computer = Computer(
+            os_type="windows",
+            provider_type=VMProviderType.WINSANDBOX,
+            experiments=experiments
+        )
     else:
         computer = Computer(
             image=image_str,
@@ -1091,7 +1097,7 @@ def create_gradio_ui():
                             # Provider selection radio
                             provider_choice = gr.Radio(
                                 label="Provider",
-                                choices=["lume", "self", "cloud"],
+                                choices=["lume", "self", "cloud", "winsandbox"],
                                 value="lume",
                                 info="'lume' uses a VM, 'self' uses the host computer server, 'cloud' uses a cloud container"
                             )
