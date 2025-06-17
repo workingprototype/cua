@@ -735,14 +735,19 @@ if __name__ == "__main__":
                         info="Select the operating system for the computer",
                     )
                     
-                    # Detect if current device is MacOS
+                    is_windows = platform.system().lower() == "windows"
                     is_mac = platform.system().lower() == "darwin"
                     
+                    providers = ["cloud"]
+                    if is_mac:
+                        providers += ["lume"]
+                    elif is_windows:
+                        providers += ["winsandbox"]
+
                     computer_provider = gr.Radio(
-                        choices=["cloud", "lume"],
+                        choices=providers,
                         label="Provider",
-                        value="lume" if is_mac else "cloud",
-                        visible=is_mac,
+                        value="cloud",
                         info="Select the computer provider",
                     )
                     
