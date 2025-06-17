@@ -81,16 +81,27 @@ class StandardMessageManager:
         if not self.config.num_images_to_keep:
             return messages
 
-        # Find user messages with images
+        # Find messages with images (both user messages and tool call outputs)
         image_messages = []
         for msg in messages:
+            has_image = False
+            
+            # Check user messages with images
             if msg["role"] == "user" and isinstance(msg["content"], list):
                 has_image = any(
                     item.get("type") == "image_url" or item.get("type") == "image"
                     for item in msg["content"]
                 )
-                if has_image:
-                    image_messages.append(msg)
+            
+            # Check assistant messages with tool calls that have images
+            elif msg["role"] == "assistant" and isinstance(msg["content"], list):
+                for item in msg["content"]:
+                    if item.get("type") == "tool_result" and "base64_image" in item:
+                        has_image = True
+                        break
+            
+            if has_image:
+                image_messages.append(msg)
 
         # If we don't have more images than the limit, return all messages
         if len(image_messages) <= self.config.num_images_to_keep:
@@ -100,13 +111,35 @@ class StandardMessageManager:
         images_to_keep = image_messages[-self.config.num_images_to_keep :]
         images_to_remove = image_messages[: -self.config.num_images_to_keep]
 
-        # Create a new message list without the older images
+        # Create a new message list, removing images from older messages
         result = []
         for msg in messages:
             if msg in images_to_remove:
-                # Skip this message
-                continue
-            result.append(msg)
+                # Remove images from this message but keep the text content
+                if msg["role"] == "user" and isinstance(msg["content"], list):
+                    # Keep only text content, remove images
+                    new_content = [
+                        item for item in msg["content"] 
+                        if item.get("type") not in ["image_url", "image"]
+                    ]
+                    if new_content:  # Only add if there's still content
+                        result.append({"role": msg["role"], "content": new_content})
+                elif msg["role"] == "assistant" and isinstance(msg["content"], list):
+                    # Remove base64_image from tool_result items
+                    new_content = []
+                    for item in msg["content"]:
+                        if item.get("type") == "tool_result" and "base64_image" in item:
+                            # Create a copy without the base64_image
+                            new_item = {k: v for k, v in item.items() if k != "base64_image"}
+                            new_content.append(new_item)
+                        else:
+                            new_content.append(item)
+                    result.append({"role": msg["role"], "content": new_content})
+                else:
+                    # For other message types, keep as is
+                    result.append(msg)
+            else:
+                result.append(msg)
 
         return result
 
