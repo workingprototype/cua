@@ -1,8 +1,11 @@
 /**
- * Shared API utilities for Lume and Lumier providers.
+ * Shared API utilities for Lume providers.
  *
  * This module contains shared functions for interacting with the Lume API,
- * used by both the LumeProvider and LumierProvider classes.
+ * used by LumeProvider.
+ *
+ * WARNING: This file was created as a test/example implementation and is not maintained or expected to work.
+ * It serves as a reference for how a provider might be implemented but should not be used in production.
  */
 
 import pino from "pino";
@@ -73,7 +76,9 @@ export async function lumeApiGet(
   }
 
   // Construct API URL with encoded storage parameter if needed
-  const apiUrl = `http://${host}:${port}/lume/vms${vmName ? `/${vmName}` : ""}${storageParam}`;
+  const apiUrl = `http://${host}:${port}/lume/vms${
+    vmName ? `/${vmName}` : ""
+  }${storageParam}`;
 
   // Only print the fetch URL when debug is enabled
   logger.info(`Executing API request: ${apiUrl}`);

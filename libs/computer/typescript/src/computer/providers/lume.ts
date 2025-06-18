@@ -1,3 +1,8 @@
+/**
+ * WARNING: This file was created as a test/example implementation and is not maintained or expected to work.
+ * It serves as a reference for how a provider might be implemented but should not be used in production.
+ */
+
 import type { Display, LumeComputerConfig } from "../types";
 import { BaseComputer } from "./base";
 import { applyDefaults } from "../defaults";

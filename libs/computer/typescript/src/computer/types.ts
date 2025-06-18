@@ -24,7 +24,7 @@ export interface BaseComputerConfig {
   osType: OSType;
 
   /**
-   * The VM provider type to use (lume, lumier, cloud)
+   * The VM provider type to use (lume, cloud)
    * @default VMProviderType.LUME
    */
   vmProvider: VMProviderType;
@@ -80,7 +80,7 @@ export interface BaseComputerConfig {
   port?: number;
 
   /**
-   * Optional port for the noVNC web interface (Lumier provider)
+   * Optional port for the noVNC web interface
    * @default 8006
    */
   noVNCPort?: number;
@@ -92,7 +92,7 @@ export interface BaseComputerConfig {
   host?: string;
 
   /**
-   * Optional path for persistent VM storage (Lumier provider)
+   * Optional path for persistent VM storage
    */
   storage?: string;
 
@@ -132,17 +132,9 @@ export interface LumeComputerConfig extends BaseComputerConfig {
   vmProvider: VMProviderType.LUME;
 }
 
-/**
- * The Lumier VM provider type
- */
-export interface LumierComputerConfig extends BaseComputerConfig {
-  vmProvider: VMProviderType.LUMIER;
-}
-
 export enum VMProviderType {
   CLOUD = "cloud",
   LUME = "lume",
-  LUMIER = "lumier",
 }
 
 export enum OSType {

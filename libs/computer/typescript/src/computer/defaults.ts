@@ -7,7 +7,7 @@ import type { BaseComputerConfig, Display } from "./types";
 export const DEFAULT_CONFIG: Partial<BaseComputerConfig> = {
   name: "",
   osType: OSType.MACOS,
-  vmProvider: VMProviderType.LUME,
+  vmProvider: VMProviderType.CLOUD,
   display: "1024x768",
   memory: "8GB",
   cpu: 4,

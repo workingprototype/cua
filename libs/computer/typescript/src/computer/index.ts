@@ -1,4 +1,3 @@
-import { LumierComputer } from "./providers/lumier";
 import type { BaseComputer } from "./providers/base";
 import { CloudComputer } from "./providers/cloud";
 import { LumeComputer } from "./providers/lume";
@@ -7,7 +6,6 @@ import {
   type BaseComputerConfig,
   type CloudComputerConfig,
   type LumeComputerConfig,
-  type LumierComputerConfig,
 } from "./types";
 import { applyDefaults } from "./defaults";
 
@@ -25,7 +23,6 @@ export class Computer {
       | Partial<BaseComputerConfig>
       | Partial<CloudComputerConfig>
       | Partial<LumeComputerConfig>
-      | Partial<LumierComputerConfig>
   ): BaseComputer {
     // Apply defaults to the configuration
     const fullConfig = applyDefaults(config);
@@ -36,8 +33,6 @@ export class Computer {
         return new CloudComputer(fullConfig as CloudComputerConfig);
       case VMProviderType.LUME:
         return new LumeComputer(fullConfig as LumeComputerConfig);
-      case VMProviderType.LUMIER:
-        return new LumierComputer(fullConfig as LumierComputerConfig);
       default:
         throw new Error(
           `Unsupported VM provider type: ${fullConfig.vmProvider}`

@@ -1,6 +1,8 @@
 import { BaseComputer } from "./base";
 import type { CloudComputerConfig } from "../types";
-import { computerLogger } from "../../util/logger";
+import pino from "pino";
+
+const logger = pino({ name: "cloud" });
 
 /**
  * Cloud-specific computer implementation
@@ -14,7 +16,7 @@ export class CloudComputer extends BaseComputer {
    * Cloud-specific method to deploy the computer
    */
   async deploy(): Promise<void> {
-    computerLogger.info(`Deploying cloud computer ${this.name}`);
+    logger.info(`Deploying cloud computer ${this.name}`);
     // Cloud-specific implementation
   }
 
