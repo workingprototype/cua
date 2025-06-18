@@ -8,6 +8,9 @@ import {
   type LumeComputerConfig,
 } from "./types";
 import { applyDefaults } from "./defaults";
+import pino from "pino";
+
+export const logger = pino({ name: "computer" });
 
 /**
  * Factory class for creating the appropriate Computer instance

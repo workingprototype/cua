@@ -1,10 +1,10 @@
+import { logger } from "../index";
 import type {
   BaseComputerConfig,
   Display,
   OSType,
   VMProviderType,
 } from "../types";
-import { computerLogger } from "../../util/logger";
 
 /**
  * Base Computer class with shared functionality
@@ -45,7 +45,7 @@ export abstract class BaseComputer {
    * Shared method available to all computer types
    */
   async disconnect(): Promise<void> {
-    computerLogger.info(`Disconnecting from ${this.name}`);
+    logger.info(`Disconnecting from ${this.name}`);
     // Implementation would go here
   }
 
