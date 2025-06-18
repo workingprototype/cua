@@ -34,11 +34,12 @@ export abstract class BaseComputerInterface {
   protected ipAddress: string;
   protected username: string;
   protected password: string;
-  protected apiKey?: string;
-  protected vmName?: string;
-  protected ws?: WebSocket;
   protected closed = false;
   protected commandLock: Promise<unknown> = Promise.resolve();
+  protected ws: WebSocket;
+  protected apiKey?: string;
+  protected vmName?: string;
+
   protected logger = pino({ name: "interface-base" });
 
   constructor(
@@ -53,6 +54,16 @@ export abstract class BaseComputerInterface {
     this.password = password;
     this.apiKey = apiKey;
     this.vmName = vmName;
+
+    // Initialize WebSocket with headers if needed
+    const headers: { [key: string]: string } = {};
+    if (this.apiKey && this.vmName) {
+      headers["X-API-Key"] = this.apiKey;
+      headers["X-VM-Name"] = this.vmName;
+    }
+
+    // Create the WebSocket instance
+    this.ws = new WebSocket(this.wsUri, { headers });
   }
 
   /**
@@ -92,19 +103,34 @@ export abstract class BaseComputerInterface {
    * Connect to the WebSocket server.
    */
   protected async connect(): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws.readyState === WebSocket.OPEN) {
       return;
     }
 
-    return new Promise((resolve, reject) => {
+    // If the WebSocket is closed or closing, reinitialize it
+    if (
+      this.ws.readyState === WebSocket.CLOSED ||
+      this.ws.readyState === WebSocket.CLOSING
+    ) {
       const headers: { [key: string]: string } = {};
       if (this.apiKey && this.vmName) {
         headers["X-API-Key"] = this.apiKey;
         headers["X-VM-Name"] = this.vmName;
       }
-
       this.ws = new WebSocket(this.wsUri, { headers });
+    }
 
+    return new Promise((resolve, reject) => {
+      // If already connecting, wait for it to complete
+      if (this.ws.readyState === WebSocket.CONNECTING) {
+        this.ws.addEventListener("open", () => resolve(), { once: true });
+        this.ws.addEventListener("error", (error) => reject(error), {
+          once: true,
+        });
+        return;
+      }
+
+      // Set up event handlers
       this.ws.on("open", () => {
         resolve();
       });
@@ -177,9 +203,8 @@ export abstract class BaseComputerInterface {
    */
   close(): void {
     this.closed = true;
-    if (this.ws) {
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
       this.ws.close();
-      this.ws = undefined;
     }
   }
 
