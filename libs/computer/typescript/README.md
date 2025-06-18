@@ -4,12 +4,7 @@ The TypeScript library for C/UA Computer - a powerful computer control and autom
 
 ## Overview
 
-This library is a TypeScript port of the Python computer library, providing the same functionality for controlling virtual machines and computer interfaces. It includes:
-
-- **Computer Class**: Main class for interacting with computers (virtual or host)
-- **VM Providers**: Support for different VM providers (Lume, Lumier, Cloud)
-- **Computer Interfaces**: OS-specific interfaces for controlling computers (macOS, Linux, Windows)
-- **Utilities**: Helper functions for display parsing, memory parsing, logging, and telemetry
+This library is a TypeScript port of the Python computer library, providing the same functionality for controlling virtual machines and computer interfaces. It enables programmatic control of virtual machines through various providers and offers a consistent interface for interacting with the VM's operating system.
 
 ## Installation
 
@@ -54,31 +49,23 @@ await computer.stop();
 
 ## Architecture
 
-The library is organized into several key modules:
+The library is organized into the following structure:
 
 ### Core Components
-- `Computer`: Main class that manages VM lifecycle and interfaces
-- `ComputerOptions`: Configuration options for computer instances
 
-### Models
-- `Display`: Display configuration (width, height)
-- `ComputerConfig`: Internal computer configuration
+- **Computer Factory**: A factory object that creates appropriate computer instances
+- **BaseComputer**: Abstract base class with shared functionality for all computer types
+- **Types**: Type definitions for configuration options and shared interfaces
 
-### Providers
-- `BaseVMProvider`: Abstract base class for VM providers
-- `VMProviderFactory`: Factory for creating provider instances
-- Provider types: `LUME`, `LUMIER`, `CLOUD`
+### Provider Implementations
 
-### Interfaces
-- `BaseComputerInterface`: Abstract base class for OS interfaces
-- `InterfaceFactory`: Factory for creating OS-specific interfaces
-- Interface models: Key types, mouse buttons, accessibility tree
+- **LumeComputer**: Implementation for Lume API-based VMs
+- **CloudComputer**: Implementation for cloud-based VMs
 
-### Utilities
-- `Logger`: Logging with different verbosity levels
-- `helpers`: Default computer management and sandboxed execution
-- `utils`: Display/memory parsing, timeout utilities
-- `telemetry`: Usage tracking and metrics
+### Utility Functions
+
+- **Lume API Utilities**: Functions for interacting with the Lume API (lumeApiGet, lumeApiRun, lumeApiStop, etc.)
+- **Helper Functions**: Parsing utilities for display and memory strings
 
 ## Development
 
@@ -106,13 +93,10 @@ pnpm build
 pnpm typecheck
 ```
 
-## External Dependencies
+## Disclaimer
 
-- `sharp`: For image processing and screenshot manipulation
-- Additional provider-specific packages need to be installed separately:
-  - `@cua/computer-lume`: For Lume provider support
-  - `@cua/computer-lumier`: For Lumier provider support
-  - `@cua/computer-cloud`: For Cloud provider support
+**WARNING:** Some parts of this library, particularly the provider implementations (like Lume), were created as test/example implementations and are not maintained or expected to work in production environments. They serve as references for how providers might be implemented but should not be used in production.
+
 
 ## License
 
