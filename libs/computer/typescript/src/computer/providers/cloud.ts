@@ -69,7 +69,7 @@ export class CloudComputer extends BaseComputer {
     logger.info("Stopping cloud computer...");
 
     if (this.interface) {
-      this.interface.close();
+      this.interface.disconnect();
       this.interface = undefined;
     }
 

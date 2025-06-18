@@ -91,7 +91,9 @@ export abstract class BaseComputerInterface {
         return;
       } catch (error) {
         // Wait a bit before retrying
-        this.logger.error(`Error connecting to websocket: ${error}`);
+        this.logger.error(
+          `Error connecting to websocket: ${JSON.stringify(error)}`
+        );
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
@@ -102,7 +104,7 @@ export abstract class BaseComputerInterface {
   /**
    * Connect to the WebSocket server.
    */
-  protected async connect(): Promise<void> {
+  public async connect(): Promise<void> {
     if (this.ws.readyState === WebSocket.OPEN) {
       return;
     }
@@ -151,7 +153,7 @@ export abstract class BaseComputerInterface {
   /**
    * Send a command to the WebSocket server.
    */
-  protected async sendCommand(command: {
+  public async sendCommand(command: {
     action: string;
     [key: string]: unknown;
   }): Promise<{ [key: string]: unknown }> {
@@ -199,12 +201,22 @@ export abstract class BaseComputerInterface {
   }
 
   /**
+   * Check if the WebSocket is connected.
+   */
+  public isConnected(): boolean {
+    return this.ws && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  /**
    * Close the interface connection.
    */
-  close(): void {
+  disconnect(): void {
     this.closed = true;
-    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.close();
+    } else if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      // If still connecting, terminate the connection attempt
+      this.ws.terminate();
     }
   }
 
@@ -214,7 +226,7 @@ export abstract class BaseComputerInterface {
    * to provide more forceful cleanup.
    */
   forceClose(): void {
-    this.close();
+    this.disconnect();
   }
 
   // Mouse Actions
