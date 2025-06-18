@@ -3,9 +3,8 @@
  * It serves as a reference for how a provider might be implemented but should not be used in production.
  */
 
-import type { Display, LumeComputerConfig } from "../types";
-import { BaseComputer } from "./base";
-import { applyDefaults } from "../defaults";
+import type { Display, LumeComputerConfig } from "../types.ts";
+import { BaseComputer } from "./base.ts";
 import {
   lumeApiGet,
   lumeApiRun,
@@ -14,10 +13,10 @@ import {
   lumeApiDelete,
   lumeApiUpdate,
   type VMInfo,
-} from "../../util/lume";
+} from "../../util/lume.ts";
 import pino from "pino";
 
-const logger = pino({ name: "lume_computer" });
+const logger = pino({ name: "computer-lume" });
 
 /**
  * Lume-specific computer implementation
@@ -34,15 +33,13 @@ export class LumeComputer extends BaseComputer {
   constructor(config: LumeComputerConfig) {
     super(config);
 
-    const defaultConfig = applyDefaults(config);
-
-    this.display = defaultConfig.display;
-    this.memory = defaultConfig.memory;
-    this.cpu = defaultConfig.cpu;
-    this.image = defaultConfig.image;
-    this.port = defaultConfig.port;
-    this.host = defaultConfig.host;
-    this.ephemeral = defaultConfig.ephemeral;
+    this.display = config.display ?? "1024x768";
+    this.memory = config.memory ?? "8GB";
+    this.cpu = config.cpu ?? 2;
+    this.image = config.image ?? "macos-sequoia-cua:latest";
+    this.port = config.port ?? 7777;
+    this.host = config.host ?? "localhost";
+    this.ephemeral = config.ephemeral ?? false;
   }
 
   /**

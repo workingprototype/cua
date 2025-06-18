@@ -1,9 +1,9 @@
+import type { OSType, ScreenSize } from "../types";
+
 /**
  * Display configuration for the computer.
  */
-export interface Display {
-  width: number;
-  height: number;
+export interface Display extends ScreenSize {
   scale_factor?: number;
 }
 
@@ -22,13 +22,16 @@ export interface BaseComputerConfig {
    * @default "macos"
    */
   osType: OSType;
+}
 
+export interface CloudComputerConfig extends BaseComputerConfig {
   /**
-   * The VM provider type to use (lume, cloud)
-   * @default VMProviderType.LUME
+   * Optional API key for cloud providers
    */
-  vmProvider: VMProviderType;
+  apiKey: string;
+}
 
+export interface LumeComputerConfig extends BaseComputerConfig {
   /**
    * The display configuration. Can be:
    * - A Display object
@@ -108,37 +111,7 @@ export interface BaseComputerConfig {
   experiments?: string[];
 }
 
-export interface CloudComputerConfig extends BaseComputerConfig {
-  /**
-   * Optional API key for cloud providers
-   */
-  apiKey: string;
-
-  /**
-   * Size of the cloud VM
-   */
-  size: "small" | "medium" | "large";
-
-  /**
-   * The Cloud VM provider type
-   */
-  vmProvider: VMProviderType.CLOUD;
-}
-
-export interface LumeComputerConfig extends BaseComputerConfig {
-  /**
-   * The Lume VM provider type
-   */
-  vmProvider: VMProviderType.LUME;
-}
-
 export enum VMProviderType {
   CLOUD = "cloud",
   LUME = "lume",
-}
-
-export enum OSType {
-  MACOS = "macos",
-  WINDOWS = "windows",
-  LINUX = "linux",
 }

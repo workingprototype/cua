@@ -1,10 +1,8 @@
-import { logger } from "../index";
-import type {
-  BaseComputerConfig,
-  Display,
-  OSType,
-  VMProviderType,
-} from "../types";
+import type { OSType } from "../../types";
+import type { BaseComputerConfig, Display, VMProviderType } from "../types";
+import pino from "pino";
+
+const logger = pino({ name: "computer-base" });
 
 /**
  * Base Computer class with shared functionality
@@ -12,12 +10,11 @@ import type {
 export abstract class BaseComputer {
   protected name: string;
   protected osType: OSType;
-  protected vmProvider: VMProviderType;
+  protected vmProvider?: VMProviderType;
 
   constructor(config: BaseComputerConfig) {
     this.name = config.name;
     this.osType = config.osType;
-    this.vmProvider = config.vmProvider;
   }
 
   /**
@@ -37,7 +34,7 @@ export abstract class BaseComputer {
   /**
    * Get the VM provider type
    */
-  getVMProviderType(): VMProviderType {
+  getVMProviderType(): VMProviderType | undefined {
     return this.vmProvider;
   }
 

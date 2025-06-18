@@ -39,11 +39,13 @@
   },
   "dependencies": {
     "pino": "^9.7.0",
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.15.17",
+    "@types/ws": "^8.18.1",
     "bumpp": "^10.1.0",
     "happy-dom": "^17.4.7",
     "tsdown": "^0.11.9",
