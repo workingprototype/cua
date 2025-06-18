@@ -529,10 +529,10 @@ async def execute(name, action, arguments):
     return results
 
 async def handle_init_computer(os_choice: str, app_list=None, provider="lume", container_name=None, api_key=None):
-    """Initialize the computer instance and tools for macOS or Ubuntu
+    """Initialize the computer instance and tools for macOS or Ubuntu or Windows
     
     Args:
-        os_choice: The OS to use ("macOS" or "Ubuntu")
+        os_choice: The OS to use ("macOS" or "Ubuntu" or "Windows")
         app_list: Optional list of apps to focus on using the app-use experiment
         provider: The provider to use ("lume" or "self" or "cloud")
         container_name: The container name to use for cloud provider
@@ -550,6 +550,9 @@ async def handle_init_computer(os_choice: str, app_list=None, provider="lume", c
     if os_choice == "Ubuntu":
         os_type_str = "linux"
         image_str = "ubuntu-noble-vanilla:latest"
+    elif os_choice == "Windows":
+        os_type_str = "windows"
+        image_str = "windows-11-vanilla:latest"
     else:
         os_type_str = "macos"
         image_str = "macos-sequoia-cua:latest"
@@ -569,6 +572,12 @@ async def handle_init_computer(os_choice: str, app_list=None, provider="lume", c
             provider_type=VMProviderType.CLOUD,
             name=container_name,
             api_key=cloud_api_key,
+            experiments=experiments
+        )
+    elif provider == "winsandbox":
+        computer = Computer(
+            os_type="windows",
+            provider_type=VMProviderType.WINSANDBOX,
             experiments=experiments
         )
     else:
@@ -1081,14 +1090,14 @@ def create_gradio_ui():
                         with gr.Row():
                             os_choice = gr.Radio(
                                 label="OS",
-                                choices=["macOS", "Ubuntu"],
+                                choices=["macOS", "Ubuntu", "Windows"],
                                 value="macOS",
                             )
                             
                             # Provider selection radio
                             provider_choice = gr.Radio(
                                 label="Provider",
-                                choices=["lume", "self", "cloud"],
+                                choices=["lume", "self", "cloud", "winsandbox"],
                                 value="lume",
                                 info="'lume' uses a VM, 'self' uses the host computer server, 'cloud' uses a cloud container"
                             )
