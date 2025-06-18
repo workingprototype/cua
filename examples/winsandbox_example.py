@@ -33,6 +33,9 @@ async def main():
         print("Testing command execution...")
         stdout, stderr = await computer.interface.run_command("echo Hello from Windows Sandbox!")
         print(f"Command output: {stdout}")
+
+        print("Press any key to continue...")
+        input()
         
     except Exception as e:
         print(f"Error: {e}")
