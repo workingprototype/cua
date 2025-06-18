@@ -102,6 +102,21 @@ onMount(async () => {
 useOnSelectionChange(({ nodes, edges }) => {
   selectedNodes = nodes.map((node) => node.id);
   selectedEdges = edges.map((edge) => edge.id);
+  
+  // Update node properties when a node is selected
+  if (nodes.length === 1) {
+    const selectedNode = nodes[0];
+    if (selectedNode.data && typeof selectedNode.data === 'object') {
+      const nodeData = selectedNode.data as any;
+      nodeProperties.prompt = nodeData.label || '';
+      // Update runHistory with tool calls for demonstration tab
+      runHistory = nodeData.tool_calls || [];
+    }
+  } else {
+    // Clear properties when no node or multiple nodes selected
+    nodeProperties.prompt = '';
+    runHistory = [];
+  }
 });
 
 // Use the selection change hook instead of nodeClick, if needed
@@ -148,50 +163,60 @@ useOnSelectionChange(({ nodes, edges }) => {
                 </h3>
                 <div class="space-y-3">
                   {#each mockRunHistory as run, i}
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
                           <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span class="text-xs font-medium text-gray-600 uppercase tracking-wide">Agent Run</span>
+                          <h4 class="text-sm font-medium text-gray-900">Agent Run</h4>
                         </div>
-                        <span class="text-xs font-medium text-gray-900">{run.steps} steps</span>
+                        <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                          {run.steps} steps
+                        </span>
                       </div>
-                      <div class="text-xs text-gray-600 mb-2">
-                        {run.cacheHits} cache hits (muscle-mem)
-                      </div>
-                      <div class="text-xs text-gray-500 mb-2">
-                        {run.cacheMisses} cache misses • {run.tokens.toLocaleString()} tokens • ${run.price.toFixed(2)}
-                      </div>
-                      <button class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                        see trajectory →
+                      <p class="text-xs text-gray-600 mb-3">
+                        {run.cacheHits} cache hits • {run.cacheMisses} cache misses • {run.tokens.toLocaleString()} tokens • ${run.price.toFixed(2)}
+                      </p>
+                      <button class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium py-2 px-3 rounded border border-blue-200 transition-colors duration-150 flex items-center justify-center gap-1">
+                        <Icon icon="mdi:eye-outline" width="14" height="14" />
+                        See trajectory
                       </button>
                     </div>
                   {/each}
                 </div>
               {:else if activeTab === 'demonstration'}
-                <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Icon icon="mdi:play-circle-outline" width="16" height="16" />
-                  Demonstrations
-                </h3>
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold flex items-center gap-2">
+                    <Icon icon="mdi:play-circle-outline" width="16" height="16" />
+                    Demonstrations
+                  </h3>
+                  <button class="p-1 rounded-lg hover:bg-blue-50 transition flex items-center justify-center" title="Add Demonstration">
+                    <Icon icon="material-symbols:add-circle-outline-rounded" width="18" height="18" class="text-blue-600" />
+                  </button>
+                </div>
                 {#if runHistory.length > 0}
-                  <div class="space-y-2">
-                    {#each runHistory as call, i}
-                      <div class="bg-gray-50 rounded px-3 py-2">
-                        {#if typeof call === 'string'}
-                          <div class="text-xs font-mono">{call}</div>
-                        {:else if call && typeof call === 'object'}
-                          <div class="text-xs font-mono mb-1">{call.name || call}</div>
-                          {#if call.screenshot}
-                            <img src={call.screenshot.startsWith('/') ? call.screenshot : '/src/' + call.screenshot} 
-                                 alt="Screenshot for {call.name}" 
-                                 class="w-full max-w-48 h-auto rounded border border-gray-200 mt-1" />
-                          {/if}
-                        {/if}
+                  <div class="space-y-3">
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-medium text-gray-900">Demonstration 1</h4>
+                        <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                          {runHistory.length} actions
+                        </span>
                       </div>
-                    {/each}
+                      <p class="text-xs text-gray-600 mb-3">
+                        {#if runHistory.length === 1}
+                          Single action demonstration
+                        {:else}
+                          Multi-step demonstration with {runHistory.length} computer actions including clicks, typing, and navigation
+                        {/if}
+                      </p>
+                      <button class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium py-2 px-3 rounded border border-blue-200 transition-colors duration-150 flex items-center justify-center gap-1">
+                        <Icon icon="mdi:eye-outline" width="14" height="14" />
+                        See trajectory
+                      </button>
+                    </div>
                   </div>
                 {:else}
-                  <div class="text-gray-400 italic text-center py-8">No tool calls available</div>
+                  <div class="text-gray-400 italic text-center py-8">No demonstrations available</div>
                 {/if}
               {:else if activeTab === 'properties'}
                 <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">

@@ -35,6 +35,13 @@ function deleteChat(id: number) {
   chats = chats.filter(c => c.id !== id);
   closeMenu();
 }
+function convertToWorkflow(id: number) {
+  console.log('Convert chat to workflow:', id);
+  // TODO: Implement conversion to workflow functionality
+  closeMenu();
+  // Navigate to workflow page
+  window.location.href = '/workflow';
+}
 </script>
 
 <aside class="w-64 bg-white border-r border-gray-100 flex flex-col p-4 shadow-sm">
@@ -64,17 +71,21 @@ function deleteChat(id: number) {
               <Icon icon="mdi:dots-horizontal" width="20" height="20" />
             </button>
             {#if menuOpenId === chat.id}
-              <div class="absolute right-8 top-1 z-10 bg-white rounded shadow-xl w-32 py-1">
+              <div class="absolute right-8 top-1 z-10 bg-white rounded shadow-xl w-50 py-1 border border-gray-200">
                 <button class="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100" on:click={() => startRename(chat.id, chat.title)}>
                   <Icon icon="mdi:pencil" width="18" height="18" class="text-gray-500" />
                   Rename
+                </button>
+                <button class="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100" on:click={() => convertToWorkflow(chat.id)}>
+                  <Icon icon="mdi:workflow" width="18" height="18" class="text-gray-500" />
+                  Convert to Workflow
                 </button>
                 <button class="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-100 text-red-600" on:click={() => deleteChat(chat.id)}>
                   <Icon icon="mdi:trash-can-outline" width="18" height="18" class="text-red-500" />
                   Delete
                 </button>
               </div>
-              <div class="fixed inset-0 z-0" on:click={closeMenu} />
+              <div class="fixed inset-0 z-0" role="button" tabindex="0" on:click={closeMenu} on:keydown={(e) => e.key === 'Escape' && closeMenu()}></div>
             {/if}
           {/if}
         </li>
