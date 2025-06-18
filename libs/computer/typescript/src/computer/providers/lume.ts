@@ -90,7 +90,7 @@ export class LumeComputer extends BaseComputer {
   async runVm(
     image: string,
     name: string,
-    runOpts: { [key: string]: any } = {},
+    runOpts: { [key: string]: unknown } = {},
     storage?: string
   ): Promise<VMInfo> {
     logger.info(
@@ -106,7 +106,7 @@ export class LumeComputer extends BaseComputer {
     // Lume-specific implementation
     try {
       await this.getVm(name, storage);
-    } catch (e) {
+    } catch {
       logger.info(
         `VM ${name} not found, attempting to pull image ${image} from registry...`
       );
@@ -161,9 +161,8 @@ export class LumeComputer extends BaseComputer {
     name: string,
     image: string,
     storage?: string,
-    registry: string = "ghcr.io",
-    organization: string = "trycua",
-    pullOpts?: { [key: string]: any }
+    registry = "ghcr.io",
+    organization = "trycua"
   ): Promise<VMInfo> {
     // Validate image parameter
     if (!image) {
@@ -222,7 +221,7 @@ export class LumeComputer extends BaseComputer {
    */
   async updateVm(
     name: string,
-    updateOpts: { [key: string]: any },
+    updateOpts: { [key: string]: unknown },
     storage?: string
   ): Promise<VMInfo> {
     return await lumeApiUpdate(
@@ -239,11 +238,7 @@ export class LumeComputer extends BaseComputer {
   /**
    * Lume-specific method to get the IP address of a VM, waiting indefinitely until it's available
    */
-  async getIp(
-    name: string,
-    storage?: string,
-    retryDelay: number = 2
-  ): Promise<string> {
+  async getIp(name: string, storage?: string, retryDelay = 2): Promise<string> {
     // Track total attempts for logging purposes
     let attempts = 0;
 

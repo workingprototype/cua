@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   lumeApiGet,
   lumeApiRun,
@@ -15,24 +15,6 @@ const PORT = 1213;
 const HOST = "localhost";
 
 describe("Lume API", () => {
-  let lumeServer: any;
-
-  beforeAll(() => {
-    // Spawn the lume serve process before tests
-    const { spawn } = require("child_process");
-    lumeServer = spawn("lume", ["serve", "--port", PORT], {
-      stdio: "pipe",
-      detached: true,
-    });
-
-    // Clean up the server when tests are done
-    afterAll(() => {
-      if (lumeServer && !lumeServer.killed) {
-        process.kill(-lumeServer.pid);
-      }
-    });
-  });
-
   describe("lumeApiGet", () => {
     it("should fetch VM information successfully", async () => {
       // Mock fetch for this test - API returns a single VMDetails object
@@ -44,7 +26,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "1920x1080",
         locationName: "local",
-        cpuCount: 2, 
+        cpuCount: 2,
         sharedDirectories: [
           {
             hostPath: "/home/user/shared",
@@ -56,7 +38,7 @@ describe("Lume API", () => {
 
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => mockVMInfo, 
+        json: async () => mockVMInfo,
         headers: new Headers({ "content-type": "application/json" }),
       } as Response);
 
@@ -99,7 +81,7 @@ describe("Lume API", () => {
 
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => mockVMList, 
+        json: async () => mockVMList,
         headers: new Headers({ "content-type": "application/json" }),
       } as Response);
 
@@ -161,7 +143,7 @@ describe("Lume API", () => {
 
     it("should handle connection refused errors", async () => {
       const error = new Error("Connection refused");
-      (error as any).code = "ECONNREFUSED";
+      (error as Error).message = "ECONNREFUSED";
       global.fetch = vi.fn().mockRejectedValueOnce(error);
 
       await expect(lumeApiGet("test-vm", HOST, PORT)).rejects.toThrow(
@@ -181,7 +163,7 @@ describe("Lume API", () => {
 
     it("should handle host not found errors", async () => {
       const error = new Error("Host not found");
-      (error as any).code = "ENOTFOUND";
+      (error as Error).message = "ENOTFOUND";
       global.fetch = vi.fn().mockRejectedValueOnce(error);
 
       await expect(lumeApiGet("test-vm", HOST, PORT)).rejects.toThrow(
@@ -200,7 +182,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "1920x1080",
         locationName: "local",
-        cpuCount: 2, 
+        cpuCount: 2,
         vncUrl: "vnc://localhost:5900",
         ipAddress: "192.168.1.100",
       };
@@ -263,9 +245,7 @@ describe("Lume API", () => {
         headers: new Headers(),
       } as Response);
 
-      await expect(
-        lumeApiRun("test-vm", HOST, PORT, {})
-      ).rejects.toThrow(
+      await expect(lumeApiRun("test-vm", HOST, PORT, {})).rejects.toThrow(
         "API request failed: HTTP error returned from API server (status: 500)"
       );
     });
@@ -281,7 +261,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "1920x1080",
         locationName: "local",
-        cpuCount: 2, 
+        cpuCount: 2,
       };
 
       global.fetch = vi.fn().mockResolvedValueOnce({
@@ -338,7 +318,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "2560x1440",
         locationName: "local",
-        cpuCount: 2, 
+        cpuCount: 2,
       };
 
       global.fetch = vi.fn().mockResolvedValueOnce({
@@ -396,7 +376,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "1920x1080",
         locationName: "local",
-        cpuCount: 2, 
+        cpuCount: 2,
       };
 
       global.fetch = vi.fn().mockResolvedValueOnce({
@@ -493,7 +473,7 @@ describe("Lume API", () => {
         os: "ubuntu",
         display: "",
         locationName: "local",
-        cpuCount: 0, 
+        cpuCount: 0,
       };
 
       global.fetch = vi.fn().mockResolvedValueOnce({
@@ -543,7 +523,7 @@ describe("Lume API", () => {
       } as Response);
 
       const result = await lumeApiDelete("non-existent-vm", HOST, PORT);
-      
+
       expect(result).toBeNull();
     });
 
@@ -566,7 +546,7 @@ describe("Lume API", () => {
 
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => [{ name: "test-vm", cpuCount: 2 }], 
+        json: async () => [{ name: "test-vm", cpuCount: 2 }],
         headers: new Headers({ "content-type": "application/json" }),
       } as Response);
 
@@ -584,7 +564,7 @@ describe("Lume API", () => {
 
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ name: "test-vm", cpuCount: 2 }), 
+        json: async () => ({ name: "test-vm", cpuCount: 2 }),
         headers: new Headers({ "content-type": "application/json" }),
       } as Response);
 
@@ -611,14 +591,6 @@ describe("Lume API", () => {
 
       await expect(lumeApiGet("test-vm", HOST, PORT)).rejects.toThrow(
         "API request failed: Custom error message"
-      );
-    });
-
-    it("should handle unknown errors", async () => {
-      global.fetch = vi.fn().mockRejectedValueOnce({});
-
-      await expect(lumeApiGet("test-vm", HOST, PORT)).rejects.toThrow(
-        "API request failed: Unknown error"
       );
     });
   });

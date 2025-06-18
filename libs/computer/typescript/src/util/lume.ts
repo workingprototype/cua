@@ -40,11 +40,11 @@ export interface VMInfo {
 }
 
 export interface RunOptions {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface UpdateOptions {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -63,8 +63,8 @@ export async function lumeApiGet(
   host: string,
   port: number,
   storage?: string,
-  debug: boolean = false,
-  verbose: boolean = false
+  debug = false,
+  verbose = false
 ): Promise<VMInfo[]> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -111,16 +111,17 @@ export async function lumeApiGet(
     }
 
     return result;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
       errorMsg =
         "Operation timeout - the API server is taking too long to respond";
-    } else if (error.code === "ECONNREFUSED") {
+    } else if (error.message.includes("ECONNREFUSED")) {
       errorMsg =
         "Failed to connect to the API server - it might still be starting up";
-    } else if (error.code === "ENOTFOUND") {
+    } else if (error.message.includes("ENOTFOUND")) {
       errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
@@ -149,8 +150,8 @@ export async function lumeApiRun(
   port: number,
   runOpts: RunOptions,
   storage?: string,
-  debug: boolean = false,
-  verbose: boolean = false
+  debug = false,
+  verbose = false
 ): Promise<VMInfo> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -199,14 +200,18 @@ export async function lumeApiRun(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
       errorMsg =
         "Operation timeout - the API server is taking too long to respond";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMsg = "Failed to connect to the API server";
+    } else if (error.message.includes("ECONNREFUSED")) {
+      errorMsg =
+        "Failed to connect to the API server - it might still be starting up";
+    } else if (error.message.includes("ENOTFOUND")) {
+      errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
     }
@@ -232,8 +237,8 @@ export async function lumeApiStop(
   host: string,
   port: number,
   storage?: string,
-  debug: boolean = false,
-  verbose: boolean = false
+  debug = false,
+  verbose = false
 ): Promise<VMInfo> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -278,14 +283,18 @@ export async function lumeApiStop(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
       errorMsg =
         "Operation timeout - the API server is taking too long to respond";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMsg = "Failed to connect to the API server";
+    } else if (error.message.includes("ECONNREFUSED")) {
+      errorMsg =
+        "Failed to connect to the API server - it might still be starting up";
+    } else if (error.message.includes("ENOTFOUND")) {
+      errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
     }
@@ -313,8 +322,8 @@ export async function lumeApiUpdate(
   port: number,
   updateOpts: UpdateOptions,
   storage?: string,
-  debug: boolean = false,
-  verbose: boolean = false
+  debug = false,
+  verbose = false
 ): Promise<VMInfo> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -363,14 +372,18 @@ export async function lumeApiUpdate(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
       errorMsg =
         "Operation timeout - the API server is taking too long to respond";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMsg = "Failed to connect to the API server";
+    } else if (error.message.includes("ECONNREFUSED")) {
+      errorMsg =
+        "Failed to connect to the API server - it might still be starting up";
+    } else if (error.message.includes("ENOTFOUND")) {
+      errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
     }
@@ -400,10 +413,10 @@ export async function lumeApiPull(
   host: string,
   port: number,
   storage?: string,
-  registry: string = "ghcr.io",
-  organization: string = "trycua",
-  debug: boolean = false,
-  verbose: boolean = false
+  registry = "ghcr.io",
+  organization = "trycua",
+  debug = false,
+  verbose = false
 ): Promise<VMInfo> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -459,13 +472,18 @@ export async function lumeApiPull(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
-      errorMsg = "Operation timeout - the pull is taking too long";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMsg = "Failed to connect to the API server";
+      errorMsg =
+        "Operation timeout - the API server is taking too long to respond";
+    } else if (error.message.includes("ECONNREFUSED")) {
+      errorMsg =
+        "Failed to connect to the API server - it might still be starting up";
+    } else if (error.message.includes("ENOTFOUND")) {
+      errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
     }
@@ -491,8 +509,8 @@ export async function lumeApiDelete(
   host: string,
   port: number,
   storage?: string,
-  debug: boolean = false,
-  verbose: boolean = false
+  debug = false,
+  verbose = false
 ): Promise<VMInfo | null> {
   // URL encode the storage parameter for the query
   let storageParam = "";
@@ -537,10 +555,10 @@ export async function lumeApiDelete(
     // Try to parse JSON response, but handle empty responses
     let data: VMInfo | null = null;
     const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
+    if (contentType?.includes("application/json")) {
       try {
         data = (await response.json()) as VMInfo;
-      } catch (e) {
+      } catch {
         // Empty response is OK for DELETE
       }
     } else {
@@ -552,14 +570,18 @@ export async function lumeApiDelete(
     }
 
     return data;
-  } catch (error: any) {
+  } catch (err) {
+    const error = err as Error;
     let errorMsg = "Unknown error";
 
     if (error.name === "AbortError") {
       errorMsg =
         "Operation timeout - the API server is taking too long to respond";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMsg = "Failed to connect to the API server";
+    } else if (error.message.includes("ECONNREFUSED")) {
+      errorMsg =
+        "Failed to connect to the API server - it might still be starting up";
+    } else if (error.message.includes("ENOTFOUND")) {
+      errorMsg = "Failed to resolve host - check the API server address";
     } else if (error.message) {
       errorMsg = error.message;
     }

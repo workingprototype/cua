@@ -15,18 +15,18 @@ export const logger = pino({ name: "computer" });
 /**
  * Factory class for creating the appropriate Computer instance
  */
-export class Computer {
+export const Computer = {
   /**
    * Create a computer instance based on the provided configuration
    * @param config The computer configuration
    * @returns The appropriate computer instance based on the VM provider type
    */
-  static create(
+  create: (
     config:
       | Partial<BaseComputerConfig>
       | Partial<CloudComputerConfig>
       | Partial<LumeComputerConfig>
-  ): BaseComputer {
+  ): BaseComputer => {
     // Apply defaults to the configuration
     const fullConfig = applyDefaults(config);
 
@@ -41,7 +41,5 @@ export class Computer {
           `Unsupported VM provider type: ${fullConfig.vmProvider}`
         );
     }
-
-    throw new Error(`Unsupported VM provider type`);
-  }
-}
+  },
+};

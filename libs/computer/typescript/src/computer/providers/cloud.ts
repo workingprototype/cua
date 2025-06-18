@@ -8,8 +8,10 @@ const logger = pino({ name: "cloud" });
  * Cloud-specific computer implementation
  */
 export class CloudComputer extends BaseComputer {
+  private apiKey: string;
   constructor(config: CloudComputerConfig) {
     super(config);
+    this.apiKey = config.apiKey;
   }
 
   /**

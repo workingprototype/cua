@@ -1,5 +1,5 @@
 import { OSType, VMProviderType } from "./types";
-import type { BaseComputerConfig, Display } from "./types";
+import type { BaseComputerConfig } from "./types";
 
 /**
  * Default configuration values for Computer

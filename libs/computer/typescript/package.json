@@ -1,20 +1,19 @@
 {
   "name": "@cua/computer",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "packageManager": "pnpm@10.11.0",
-  "description": "",
+  "description": "Typescript SDK for c/ua computer interaction",
   "type": "module",
   "license": "MIT",
   "homepage": "",
   "bugs": {
-    "url": ""
+    "url": "https://github.com/trycua/cua/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/trycua/cua.git"
   },
-  "author": "",
-  "funding": "",
+  "author": "c/ua",
   "files": [
     "dist"
   ],
@@ -29,8 +28,8 @@
     "access": "public"
   },
   "scripts": {
-    "lint": "biome lint --cache .",
-    "lint:fix": "biome lint --cache --fix .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --fix .",
     "build": "tsdown",
     "dev": "tsdown --watch",
     "test": "vitest",

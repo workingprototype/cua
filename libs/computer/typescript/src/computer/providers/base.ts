@@ -63,8 +63,8 @@ export abstract class BaseComputer {
     }
 
     return {
-      width: parseInt(match[1], 10),
-      height: parseInt(match[2], 10),
+      width: Number.parseInt(match[1], 10),
+      height: Number.parseInt(match[2], 10),
     };
   }
 
@@ -93,14 +93,13 @@ export abstract class BaseComputer {
       throw new Error(`Invalid memory format: ${memoryStr}`);
     }
 
-    const value = parseFloat(match[1]);
+    const value = Number.parseFloat(match[1]);
     const unit = match[2] || "MB"; // Default to MB if no unit specified
 
     // Convert to MB
     if (unit === "GB") {
       return Math.round(value * 1024);
-    } else {
-      return Math.round(value);
     }
+    return Math.round(value);
   }
 }
