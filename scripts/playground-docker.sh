@@ -246,7 +246,14 @@ if [[ "$USE_CLOUD" == "false" && "$COMPUTER_TYPE" == "macos" ]]; then
     
     if [[ $CONTINUE =~ ^[Yy]$ ]]; then
       print_info "Pulling macOS CUA image (this may take a while)..."
-      lume pull macos-sequoia-cua:latest
+      
+      # Use caffeinate on macOS to prevent system sleep during the pull
+      if command -v caffeinate &> /dev/null; then
+        print_info "Using caffeinate to prevent system sleep during download..."
+        caffeinate -i lume pull macos-sequoia-cua:latest
+      else
+        lume pull macos-sequoia-cua:latest
+      fi
     else
       print_error "Installation cancelled."
       exit 1
