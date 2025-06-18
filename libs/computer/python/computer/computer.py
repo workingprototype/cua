@@ -106,7 +106,15 @@ class Computer:
         # The default is currently to use non-ephemeral storage
         if storage and ephemeral and storage != "ephemeral":
             raise ValueError("Storage path and ephemeral flag cannot be used together")
-        self.storage = "ephemeral" if ephemeral else storage
+        
+        # Windows Sandbox always uses ephemeral storage
+        if self.provider_type == VMProviderType.WINSANDBOX:
+            if not ephemeral and storage != None and storage != "ephemeral":
+                self.logger.warning("Windows Sandbox storage is always ephemeral. Setting ephemeral=True.")
+            self.ephemeral = True
+            self.storage = "ephemeral"
+        else:
+            self.storage = "ephemeral" if ephemeral else storage
         
         # For Lumier provider, store the first shared directory path to use
         # for VM file sharing
@@ -285,6 +293,15 @@ class Computer:
                                     api_key=self.api_key,
                                     verbose=verbose,
                                 )
+                            elif self.provider_type == VMProviderType.WINSANDBOX:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                )
                             else:
                                 raise ValueError(f"Unsupported provider type: {self.provider_type}")
                             self._provider_context = await self.config.vm_provider.__aenter__()
@@ -383,7 +400,6 @@ class Computer:
                 # Wait for VM to be ready with a valid IP address
                 self.logger.info("Waiting for VM to be ready with a valid IP address...")
                 try:
-                    # Increased values for Lumier provider which needs more time for initial setup
                     if self.provider_type == VMProviderType.LUMIER:
                         max_retries = 60  # Increased for Lumier VM startup which takes longer
                         retry_delay = 3    # 3 seconds between retries for Lumier
@@ -513,7 +529,7 @@ class Computer:
         return
 
     # @property
-    async def get_ip(self, max_retries: int = 15, retry_delay: int = 2) -> str:
+    async def get_ip(self, max_retries: int = 15, retry_delay: int = 3) -> str:
         """Get the IP address of the VM or localhost if using host computer server.
         
         This method delegates to the provider's get_ip method, which waits indefinitely 
