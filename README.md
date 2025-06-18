@@ -53,15 +53,15 @@
 
 
 
-### Option 1: Fully-managed install (recommended)
-*Guided install for quick use*
+### Option 1: Fully-managed install with Docker (recommended)
+*Docker-based guided install for quick use*
 
 **macOS/Linux/Windows (via WSL):**
 ```bash
-# Requires Python 3.11+
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
+# Requires Docker
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground-docker.sh)"
 ```
-This script will guide you through setup and launch the Computer-Use Agent UI.
+This script will guide you through setup using Docker containers and launch the Computer-Use Agent UI.
 
 ---
 
