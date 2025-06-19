@@ -53,15 +53,15 @@
 
 
 
-### Option 1: Fully-managed install (recommended)
-*Guided install for quick use*
+### Option 1: Fully-managed install with Docker (recommended)
+*Docker-based guided install for quick use*
 
 **macOS/Linux/Windows (via WSL):**
 ```bash
-# Requires Python 3.11+
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
+# Requires Docker
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground-docker.sh)"
 ```
-This script will guide you through setup and launch the Computer-Use Agent UI.
+This script will guide you through setup using Docker containers and launch the Computer-Use Agent UI.
 
 ---
 
@@ -72,26 +72,47 @@ This repository includes a [Dev Container](./.devcontainer/README.md) configurat
 
 1. **Install the Dev Containers extension ([VS Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) or [WindSurf](https://docs.windsurf.com/windsurf/advanced#dev-containers-beta))**
 2. **Open the repository in the Dev Container:**
-  - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
-  - Select `Dev Containers: Clone Repository in Container Volume...` and paste the repository URL: `https://github.com/trycua/cua.git` (if not cloned) or `Dev Containers: Open Folder in Container...` (if already cloned). **Note**: On WindSurf, the post install hook might not run automatically. If so, run `/bin/bash .devcontainer/post-install.sh` manually.
-3. **Run the Agent UI example:** Click ![Run Agent UI](https://github.com/user-attachments/assets/7a61ef34-4b22-4dab-9864-f86bf83e290b)
+    - Press `Ctrl+Shift+P` (or `⌘+Shift+P` on macOS)
+    - Select `Dev Containers: Clone Repository in Container Volume...` and paste the repository URL: `https://github.com/trycua/cua.git` (if not cloned) or `Dev Containers: Open Folder in Container...` (if git cloned).
+     > **Note**: On WindSurf, the post install hook might not run automatically. If so, run `/bin/bash .devcontainer/post-install.sh` manually.
+3. **Open the VS Code workspace:** Once the post-install.sh is done running, open the `.vscode/py.code-workspace` workspace and press ![Open Workspace](https://github.com/user-attachments/assets/923bdd43-8c8f-4060-8d78-75bfa302b48c)
+.
+4. **Run the Agent UI example:** Click ![Run Agent UI](https://github.com/user-attachments/assets/7a61ef34-4b22-4dab-9864-f86bf83e290b)
  to start the Gradio UI. If prompted to install **debugpy (Python Debugger)** to enable remote debugging, select 'Yes' to proceed.
-4. **Access the Gradio UI:** The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
+5. **Access the Gradio UI:** The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
 
 ---
 
-*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module provides local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
-### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+### Option 3: PyPI
+*Direct Python package installation*
+
+```bash
+# conda create -yn cua python==3.12
+
+pip install -U "cua-computer[all]" "cua-agent[all]"
+python -m agent.ui # Start the agent UI
+```
+
+Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK in your own code.
+
+---
+
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
+## 🖥️ Compatibility
 
+For detailed compatibility information including host OS support, VM emulation capabilities, and model provider compatibility, see the [Compatibility Matrix](./COMPATIBILITY.md).
 
-# 💻 Developer Guide
+<br/>
+<br/>
 
-Follow these steps to use C/ua in your own code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
+# 🐍 Usage Guide
+
+Follow these steps to use C/ua in your own Python code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 1: Install Lume CLI
 
