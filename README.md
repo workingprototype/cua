@@ -81,6 +81,19 @@ This repository includes a [Dev Container](./.devcontainer/README.md) configurat
 
 ---
 
+### Option 3: PyPI
+*Direct Python package installation*
+
+```bash
+# conda create -yn cua python==3.12
+
+pip install -U "cua-computer[all]" "cua-agent[all]"
+python -m agent.ui # Start the agent UI
+```
+
+Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK in your own code.
+
+---
 
 ## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
@@ -88,16 +101,16 @@ This repository includes a [Dev Container](./.devcontainer/README.md) configurat
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
-## 🖥️ OS Compatibility
+## 🖥️ Compatibility
 
-For detailed compatibility information including host OS support and VM emulation capabilities, see the [**Compatibility Matrix**](./COMPATIBILITY.md).
+For detailed compatibility information including host OS support, VM emulation capabilities, and model provider compatibility, see the [Compatibility Matrix](./COMPATIBILITY.md).
 
 <br/>
 <br/>
 
-# 💻 Developer Guide
+# 🐍 Usage Guide
 
-Follow these steps to use C/ua in your own code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
+Follow these steps to use C/ua in your own Python code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 1: Install Lume CLI
 

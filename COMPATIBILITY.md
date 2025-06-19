@@ -6,7 +6,7 @@
   - [Ubuntu/Linux Host](#ubuntulinux-host)
   - [Windows Host](#windows-host)
 - [VM Emulation Support](#vm-emulation-support)
-- [Installation Method Details](#installation-method-details)
+- [Model Provider Compatibility](#model-provider-compatibility)
 
 ---
 
@@ -71,49 +71,16 @@
 | **Cloud** | 🚧 Coming soon | ✅ Full support | 🚧 Coming soon | Currently Ubuntu only, macOS/Windows in development |
 | **Winsandbox** | ❌ Not supported | ❌ Not supported | ✅ Windows only | Windows Sandbox environments only |
 
-### VM Emulation Details
-
-#### Lume VM Support
-- **macOS VMs**: ✅ Full native support with official images
-- **Ubuntu/Linux VMs**: ⚠️ Limited support - requires custom image creation
-- **Windows VMs**: ⚠️ Limited support - requires custom image creation
-
-#### Cloud VM Support  
-- **Ubuntu/Linux VMs**: ✅ Full support with managed cloud instances
-- **macOS VMs**: 🚧 Coming soon - in development
-- **Windows VMs**: 🚧 Coming soon - in development
-
-#### Windows Sandbox VM Support
-- **Windows VMs**: ✅ Full support for Windows Sandbox environments
-- **macOS/Linux VMs**: ❌ Not supported - Windows Sandbox only runs Windows
-
 ---
 
-## Installation Method Details
+## Model Provider Compatibility
 
-### playground-docker.sh
-- **Containerized setup** using Docker
-- Handles all dependencies automatically
-- Requires Docker Desktop (Windows/macOS) or Docker Engine (Linux)
-- **Windows note**: Must run in WSL2 environment
+*This section shows which **AI model providers** are supported on each host operating system.*
 
-### Dev Container
-- **Development-focused** setup for contributors
-- Integrates with VS Code and WindSurf IDEs
-- Provides consistent development environment
-- **Windows note**: Requires WSL2 backend for Docker
-
-### PyPI packages
-- **Manual installation** via pip
-- Most flexible installation method
-- Allows custom configurations and integrations
-- **Windows note**: Shell scripts require WSL2, but Python packages work natively
-
----
-
-## Legend
-
-- ✅ **Full support**: All features work natively without limitations
-- ⚠️ **Partial support**: Requires additional setup (e.g., WSL2) or has limitations
-- ❌ **Not supported**: Feature/provider combination is not available
-- 🚧 **Coming soon**: Feature/provider combination is in development
+| Provider | macOS Host | Ubuntu/Linux Host | Windows Host | Notes |
+|----------|------------|-------------------|--------------|-------|
+| **Anthropic** | ✅ Full support | ✅ Full support | ✅ Full support | Cloud-based API |
+| **OpenAI** | ✅ Full support | ✅ Full support | ✅ Full support | Cloud-based API |
+| **Ollama** | ✅ Full support | ✅ Full support | ✅ Full support | Local model serving |
+| **OpenAI Compatible** | ✅ Full support | ✅ Full support | ✅ Full support | Any OpenAI-compatible API endpoint |
+| **MLX VLM** | ✅ macOS only | ❌ Not supported | ❌ Not supported | Apple Silicon required. PyPI installation only. |
