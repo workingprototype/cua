@@ -56,9 +56,21 @@ print_success "Docker is installed and running!"
 # Save the original working directory
 ORIGINAL_DIR="$(pwd)"
 
-# Directories used by the script
 DEMO_DIR="$HOME/.cua"
-REPO_DIR="$DEMO_DIR/cua"
+mkdir -p "$DEMO_DIR"
+
+
+# Check if we're already in the cua repository
+# Look for the specific trycua identifier in pyproject.toml
+if [[ -f "pyproject.toml" ]] && grep -q "gh@trycua.com" "pyproject.toml"; then
+  print_success "Already in C/ua repository - using current directory"
+  REPO_DIR="$ORIGINAL_DIR"
+  USE_EXISTING_REPO=true
+else
+  # Directories used by the script when not in repo
+  REPO_DIR="$DEMO_DIR/cua"
+  USE_EXISTING_REPO=false
+fi
 
 # Function to clean up on exit
 cleanup() {
@@ -167,21 +179,26 @@ else
   exit 1
 fi
 
-# Create demo directory
-mkdir -p "$DEMO_DIR"
+print_success "All checks passed! 🎉"
 
-# Clone or update the repository
-if [[ ! -d "$REPO_DIR" ]]; then
-  print_info "Cloning C/ua repository..."
-  cd "$DEMO_DIR"
-  git clone https://github.com/trycua/cua.git
-else
-  print_info "Updating C/ua repository..."
+# Create demo directory and handle repository
+if [[ "$USE_EXISTING_REPO" == "true" ]]; then
+  print_info "Using existing repository in current directory"
   cd "$REPO_DIR"
-  git pull origin main
+else  
+  # Clone or update the repository
+  if [[ ! -d "$REPO_DIR" ]]; then
+    print_info "Cloning C/ua repository..."
+    cd "$DEMO_DIR"
+    git clone https://github.com/trycua/cua.git
+  else
+    print_info "Updating C/ua repository..."
+    cd "$REPO_DIR"
+    git pull origin main
+  fi
+  
+  cd "$REPO_DIR"
 fi
-
-cd "$REPO_DIR"
 
 # Create .env.local file with API keys
 ENV_FILE="$REPO_DIR/.env.local"
