@@ -39,6 +39,7 @@ export abstract class BaseComputerInterface {
   protected ws: WebSocket;
   protected apiKey?: string;
   protected vmName?: string;
+  protected secure?: boolean;
 
   protected logger = pino({ name: "interface-base" });
 
@@ -47,13 +48,15 @@ export abstract class BaseComputerInterface {
     username = "lume",
     password = "lume",
     apiKey?: string,
-    vmName?: string
+    vmName?: string,
+    secure?: boolean
   ) {
     this.ipAddress = ipAddress;
     this.username = username;
     this.password = password;
     this.apiKey = apiKey;
     this.vmName = vmName;
+    this.secure = secure;
 
     // Initialize WebSocket with headers if needed
     const headers: { [key: string]: string } = {};
@@ -71,9 +74,15 @@ export abstract class BaseComputerInterface {
    * Subclasses can override this to customize the URI.
    */
   protected get wsUri(): string {
-    // Use secure WebSocket for cloud provider with API key
-    const protocol = this.apiKey ? "wss" : "ws";
-    const port = this.apiKey ? "8443" : "8000";
+    const protocol = this.secure ? "wss" : "ws";
+    
+    // Check if ipAddress already includes a port
+    if (this.ipAddress.includes(":")) {
+      return `${protocol}://${this.ipAddress}/ws`;
+    }
+    
+    // Otherwise, append the default port
+    const port = this.secure ? "8443" : "8000";
     return `${protocol}://${this.ipAddress}:${port}/ws`;
   }
 

@@ -4,7 +4,7 @@ import { MacOSComputerInterface } from "../../src/interface/macos.ts";
 
 describe("LinuxComputerInterface", () => {
   const testParams = {
-    ipAddress: "192.0.2.1", // TEST-NET-1 address (RFC 5737) - guaranteed not to be routable
+    ipAddress: "test.cua.com", // TEST-NET-1 address (RFC 5737) - guaranteed not to be routable
     username: "testuser",
     password: "testpass",
     apiKey: "test-api-key",
