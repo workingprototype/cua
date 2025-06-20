@@ -23,8 +23,7 @@ export class CloudComputer extends BaseComputer {
   }
 
   get ip() {
-    return "192.168.64.9";
-    //return `${this.name}.containers.cloud.trycua.com`;
+    return `${this.name}.containers.cloud.trycua.com`;
   }
 
   /**
@@ -35,8 +34,6 @@ export class CloudComputer extends BaseComputer {
       logger.info("Computer already initialized, skipping initialization");
       return;
     }
-
-    logger.info("Starting cloud computer...");
 
     try {
       // For cloud provider, the VM is already running, we just need to connect
@@ -67,7 +64,7 @@ export class CloudComputer extends BaseComputer {
    * Stop the cloud computer (disconnect interface)
    */
   async stop(): Promise<void> {
-    logger.info("Stopping cloud computer...");
+    logger.info("Disconnecting from cloud computer...");
 
     if (this.iface) {
       this.iface.disconnect();
@@ -75,7 +72,7 @@ export class CloudComputer extends BaseComputer {
     }
 
     this.initialized = false;
-    logger.info("Cloud computer stopped");
+    logger.info("Disconnected from cloud computer");
   }
 
   /**

@@ -39,7 +39,6 @@ export abstract class BaseComputerInterface {
   protected ws: WebSocket;
   protected apiKey?: string;
   protected vmName?: string;
-  protected secure?: boolean;
 
   protected logger = pino({ name: "interface-base" });
 
@@ -48,15 +47,13 @@ export abstract class BaseComputerInterface {
     username = "lume",
     password = "lume",
     apiKey?: string,
-    vmName?: string,
-    secure?: boolean
+    vmName?: string
   ) {
     this.ipAddress = ipAddress;
     this.username = username;
     this.password = password;
     this.apiKey = apiKey;
     this.vmName = vmName;
-    this.secure = secure;
 
     // Initialize WebSocket with headers if needed
     const headers: { [key: string]: string } = {};
@@ -74,7 +71,7 @@ export abstract class BaseComputerInterface {
    * Subclasses can override this to customize the URI.
    */
   protected get wsUri(): string {
-    const protocol = this.secure ? "wss" : "ws";
+    const protocol = this.apiKey ? "wss" : "ws";
 
     // Check if ipAddress already includes a port
     if (this.ipAddress.includes(":")) {
@@ -82,7 +79,7 @@ export abstract class BaseComputerInterface {
     }
 
     // Otherwise, append the default port
-    const port = this.secure ? "8443" : "8000";
+    const port = this.apiKey ? "8443" : "8000";
     return `${protocol}://${this.ipAddress}:${port}/ws`;
   }
 
@@ -99,6 +96,7 @@ export abstract class BaseComputerInterface {
         await this.connect();
         return;
       } catch (error) {
+        console.log(error);
         // Wait a bit before retrying
         this.logger.error(
           `Error connecting to websocket: ${JSON.stringify(error)}`
@@ -115,6 +113,42 @@ export abstract class BaseComputerInterface {
    */
   public async connect(): Promise<void> {
     if (this.ws.readyState === WebSocket.OPEN) {
+      // send authentication message if needed
+      if (this.apiKey && this.vmName) {
+        this.logger.info("Performing authentication handshake...");
+        const authMessage = {
+          command: "authenticate",
+          params: {
+            api_key: this.apiKey,
+            container_name: this.vmName,
+          },
+        };
+
+        return new Promise<void>((resolve, reject) => {
+          const authHandler = (data: WebSocket.RawData) => {
+            try {
+              const authResult = JSON.parse(data.toString());
+              if (!authResult.success) {
+                const errorMsg = authResult.error || "Authentication failed";
+                this.logger.error(`Authentication failed: ${errorMsg}`);
+                this.ws.close();
+                reject(new Error(`Authentication failed: ${errorMsg}`));
+              } else {
+                this.logger.info("Authentication successful");
+                this.ws.off("message", authHandler);
+                resolve();
+              }
+            } catch (error) {
+              this.ws.off("message", authHandler);
+              reject(error);
+            }
+          };
+
+          this.ws.on("message", authHandler);
+          this.ws.send(JSON.stringify(authMessage));
+        });
+      }
+
       return;
     }
 
