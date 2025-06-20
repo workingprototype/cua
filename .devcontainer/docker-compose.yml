@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   devcontainer:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: python:3.12-slim
     volumes:
       - ..:/workspace:cached
       - /var/run/docker.sock:/var/run/docker.sock
