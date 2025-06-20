@@ -1,5 +1,5 @@
 ---
-title: Computer
+title: Computer (Python)
 ---
 
 <div
@@ -38,13 +38,7 @@ title: Computer
   </a>
 </div>
 
-**cua-computer** is a Computer-Use Interface (CUI) framework powering Cua for interacting with local macOS and Linux sandboxes, PyAutoGUI-compatible, and pluggable with any AI agent systems (Cua, Langchain, CrewAI, AutoGen). Computer relies on [Lume](https://github.com/trycua/lume) for creating and managing sandbox environments.
-
-### Get started with Computer
-
-<div align="center">
-  <img src="/img/computer.png" />
-</div>
+## Python API
 
 ```python
 from computer import Computer
@@ -74,13 +68,13 @@ finally:
 
 ## Install
 
-To install the Computer-Use Interface (CUI):
+To install the Computer-Use Interface (CUI) for Python:
 
 ```bash
-pip install "cua-computer[all]"
+pip install "@cua/computer[all]"
 ```
 
-The `cua-computer` PyPi package pulls automatically the latest executable version of Lume through [pylume](https://github.com/trycua/pylume).
+The `@cua/computer` PyPi package pulls automatically the latest executable version of Lume through [pylume](https://github.com/trycua/pylume).
 
 ## Run
 
@@ -94,7 +88,7 @@ The computer module includes a Gradio UI for creating and sharing demonstration 
 
 ```bash
 # Install with UI support
-pip install "cua-computer[ui]"
+pip install "@cua/computer[ui]"
 ```
 
 > **Note:** For precise control of the computer, we recommend using VNC or Screen Sharing instead of the Computer Gradio UI.
