@@ -39,11 +39,6 @@ export const baseOptions: BaseLayoutProps = {
   githubUrl: 'https://github.com/trycua/cua',
   links: [
     {
-      url: '/home',
-      text: 'Documentation Home',
-      icon: <HomeIcon />,
-    },
-    {
       url: 'https://trycua.com',
       text: 'cua home',
       type: 'icon',

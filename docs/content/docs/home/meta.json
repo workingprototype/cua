@@ -1,6 +1,12 @@
 {
   "title": "Home",
-  "description": "Documentation Home", 
+  "description": "Documentation Home",
   "root": true,
-  "defaultOpen": true
+  "defaultOpen": true,
+  "pages": [
+    "libraries",
+    "faq",
+    "developer-guide",
+    "telemetry"
+  ]
 }

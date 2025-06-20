@@ -2,10 +2,7 @@
   "title": "Libraries",
   "description": "Libraries",
   "icon": "Library",
-  "root": true,
   "pages": [
-    "index",
-    "---Libraries---",
     "agent",
     "computer",
     "computer-server",
