@@ -125,15 +125,6 @@ export function Sidebar({
           className="flex justify-between w-full h-14 text-sm xl:text-lg font-normal items-center "
         >
           <div className="flex gap-3 items-center ">
-            {!isCollapsed && !isMobile && (
-              <Image
-                src="/ollama.png"
-                alt="AI"
-                width={28}
-                height={28}
-                className="dark:invert hidden 2xl:block"
-              />
-            )}
             New chat
           </div>
           <SquarePen size={18} className="shrink-0 w-4 h-4" />
