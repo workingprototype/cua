@@ -40,7 +40,7 @@ if [ -f .env.local ]; then
     print_success "Environment variables loaded"
 else
     print_error ".env.local file not found"
-    exit 1
+    # exit 1
 fi
 
 # Clean up existing environments and cache
@@ -113,7 +113,12 @@ pip install -e ".[dev,test,docs]"
 
 # Create a .env file for VS Code to use the virtual environment
 print_step "Creating .env file for VS Code..."
-echo "PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server" > .env
+PYTHONPATH_LINE="PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server"
+if grep -q '^PYTHONPATH=' .env 2>/dev/null; then
+    sed -i "s|^PYTHONPATH=.*|$PYTHONPATH_LINE|" .env
+else
+    echo "$PYTHONPATH_LINE" >> .env
+fi
 
 print_success "All packages installed successfully!"
 print_step "Your virtual environment is ready. To activate it:"
