@@ -20,12 +20,10 @@ pnpm add @cua/computer
 import { Computer } from '@cua/computer';
 
 // Create a new computer instance
-const computer = new Computer({
-  display: '1024x768',
-  memory: '8GB',
-  cpu: '4',
-  osType: 'macos',
-  image: 'macos-sequoia-cua:latest'
+const computer = new CloudComputer({
+  osType: OSType.LINUX,
+  name: 's-linux-vm_id'
+  apiKey: 'your-api-key'
 });
 
 // Start the computer
@@ -59,12 +57,12 @@ The library is organized into the following structure:
 
 ### Provider Implementations
 
-- **LumeComputer**: Implementation for Lume API-based VMs
+- **LumeComputer**: Implementation for Lume API-based VMs (Unmaintained)
 - **CloudComputer**: Implementation for cloud-based VMs
 
 ### Utility Functions
 
-- **Lume API Utilities**: Functions for interacting with the Lume API (lumeApiGet, lumeApiRun, lumeApiStop, etc.)
+- **Lume API Utilities**: Functions for interacting with the Lume API (lumeApiGet, lumeApiRun, lumeApiStop, etc.) (Unmaintained)
 - **Helper Functions**: Parsing utilities for display and memory strings
 
 ## Development
@@ -96,7 +94,6 @@ pnpm typecheck
 ## Disclaimer
 
 **WARNING:** Some parts of this library, particularly the provider implementations (like Lume), were created as test/example implementations and are not maintained or expected to work in production environments. They serve as references for how providers might be implemented but should not be used in production.
-
 
 ## License
 

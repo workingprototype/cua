@@ -75,12 +75,12 @@ export abstract class BaseComputerInterface {
    */
   protected get wsUri(): string {
     const protocol = this.secure ? "wss" : "ws";
-    
+
     // Check if ipAddress already includes a port
     if (this.ipAddress.includes(":")) {
       return `${protocol}://${this.ipAddress}/ws`;
     }
-    
+
     // Otherwise, append the default port
     const port = this.secure ? "8443" : "8000";
     return `${protocol}://${this.ipAddress}:${port}/ws`;
@@ -162,10 +162,10 @@ export abstract class BaseComputerInterface {
   /**
    * Send a command to the WebSocket server.
    */
-  public async sendCommand(command: {
-    action: string;
-    [key: string]: unknown;
-  }): Promise<{ [key: string]: unknown }> {
+  public async sendCommand(
+    command: string,
+    params: { [key: string]: unknown } = {}
+  ): Promise<{ [key: string]: unknown }> {
     // Create a new promise for this specific command
     const commandPromise = new Promise<{ [key: string]: unknown }>(
       (resolve, reject) => {
@@ -190,11 +190,12 @@ export abstract class BaseComputerInterface {
                 } catch (error) {
                   innerReject(error);
                 }
-                this.ws!.off("message", messageHandler);
+                this.ws.off("message", messageHandler);
               };
 
-              this.ws!.on("message", messageHandler);
-              this.ws!.send(JSON.stringify(command));
+              this.ws.on("message", messageHandler);
+              const wsCommand = { command, params };
+              this.ws.send(JSON.stringify(wsCommand));
             }
           );
         };

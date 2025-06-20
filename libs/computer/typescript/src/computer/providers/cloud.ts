@@ -12,9 +12,9 @@ const logger = pino({ name: "computer-cloud" });
  * Cloud-specific computer implementation
  */
 export class CloudComputer extends BaseComputer {
-  protected apiKey: string;
   protected static vmProviderType: VMProviderType.CLOUD;
-  private interface?: BaseComputerInterface;
+  protected apiKey: string;
+  private iface?: BaseComputerInterface;
   private initialized = false;
 
   constructor(config: CloudComputerConfig) {
@@ -23,7 +23,8 @@ export class CloudComputer extends BaseComputer {
   }
 
   get ip() {
-    return `${this.name}.containers.cloud.trycua.com`;
+    return "192.168.64.9";
+    //return `${this.name}.containers.cloud.trycua.com`;
   }
 
   /**
@@ -43,7 +44,7 @@ export class CloudComputer extends BaseComputer {
       logger.info(`Connecting to cloud VM at ${ipAddress}`);
 
       // Create the interface with API key authentication
-      this.interface = InterfaceFactory.createInterfaceForOS(
+      this.iface = InterfaceFactory.createInterfaceForOS(
         this.osType,
         ipAddress,
         this.apiKey,
@@ -52,7 +53,7 @@ export class CloudComputer extends BaseComputer {
 
       // Wait for the interface to be ready
       logger.info("Waiting for interface to be ready...");
-      await this.interface.waitForReady();
+      await this.iface.waitForReady();
 
       this.initialized = true;
       logger.info("Cloud computer ready");
@@ -68,9 +69,9 @@ export class CloudComputer extends BaseComputer {
   async stop(): Promise<void> {
     logger.info("Stopping cloud computer...");
 
-    if (this.interface) {
-      this.interface.disconnect();
-      this.interface = undefined;
+    if (this.iface) {
+      this.iface.disconnect();
+      this.iface = undefined;
     }
 
     this.initialized = false;
@@ -80,53 +81,11 @@ export class CloudComputer extends BaseComputer {
   /**
    * Get the computer interface
    */
-  getInterface(): BaseComputerInterface {
-    if (!this.interface) {
+  get interface(): BaseComputerInterface {
+    if (!this.iface) {
       throw new Error("Computer not initialized. Call run() first.");
     }
-    return this.interface;
-  }
-
-  /**
-   * Take a screenshot
-   */
-  async screenshot(): Promise<Buffer> {
-    return this.getInterface().screenshot();
-  }
-
-  /**
-   * Click at coordinates
-   */
-  async click(x?: number, y?: number): Promise<void> {
-    return this.getInterface().leftClick(x, y);
-  }
-
-  /**
-   * Type text
-   */
-  async type(text: string): Promise<void> {
-    return this.getInterface().typeText(text);
-  }
-
-  /**
-   * Press a key
-   */
-  async key(key: string): Promise<void> {
-    return this.getInterface().pressKey(key);
-  }
-
-  /**
-   * Press hotkey combination
-   */
-  async hotkey(...keys: string[]): Promise<void> {
-    return this.getInterface().hotkey(...keys);
-  }
-
-  /**
-   * Run a command
-   */
-  async runCommand(command: string): Promise<[string, string]> {
-    return this.getInterface().runCommand(command);
+    return this.iface;
   }
 
   /**
