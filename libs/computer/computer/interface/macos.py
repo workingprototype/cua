@@ -29,7 +29,7 @@ class MacOSComputerInterface(BaseComputerInterface):
         self._command_lock = asyncio.Lock()  # Lock to ensure only one command at a time
 
         # Set logger name for macOS interface
-        self.logger = Logger("cua.interface.macos", LogLevel.NORMAL)
+        self.logger = Logger("computer.interface.macos", LogLevel.NORMAL)
 
     @property
     def ws_uri(self) -> str:

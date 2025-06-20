@@ -12,8 +12,8 @@ import os
 import aiohttp
 
 # Set up logging with more detail
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Configure WebSocket with larger message size
 WEBSOCKET_MAX_SIZE = 1024 * 1024 * 10  # 10MB limit
