@@ -11,6 +11,8 @@ services:
       - PYTHONPATH=/workspace/libs/core:/workspace/libs/computer:/workspace/libs/agent:/workspace/libs/som:/workspace/libs/pylume:/workspace/libs/computer-server:/workspace/libs/mcp-server
       - PYLUME_HOST=host.docker.internal
     command: sleep infinity
+    depends_on:
+      - ui-dev
     networks:
       - cua-network
 
@@ -20,12 +22,12 @@ services:
     volumes:
       - ../libs/playground:/app:cached
     ports:
-      - "3001:3000"
+      - "3000:3000"
     depends_on:
       - ui-api-dev
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://ui-api-dev:8000
-    command: sh -c "yarn install && yarn dev"
+    command: sh -c "rm -f package-lock.json && rm -rf node_modules && yarn install && yarn dev"
     networks:
       - cua-network
 
@@ -35,8 +37,8 @@ services:
     volumes:
       - ../libs/playground:/app:cached
     ports:
-      - "8001:8000"
-    command: sh -c "pip install poetry && poetry install && uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload"
+      - "8000:8000"
+    command: sh -c "ls . && pip install poetry && poetry lock && poetry install && poetry run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - cua-network
 
