@@ -5,6 +5,10 @@
             "path": ".."
         },
         {
+            "name": "playground",
+            "path": "../libs/playground"
+        },
+        {
             "name": "computer",
             "path": "../libs/computer"
         },
