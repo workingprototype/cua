@@ -28,13 +28,7 @@ import functools
 import logging
 
 # simple, nicely formatted logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S',
-    stream=sys.stdout
-)
-logger = logging.getLogger("diorama.draw")
+logger = logging.getLogger(__name__)
 
 from computer_server.diorama.safezone import (
     get_menubar_bounds,

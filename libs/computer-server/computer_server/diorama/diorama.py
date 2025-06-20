@@ -15,13 +15,7 @@ from computer_server.diorama.diorama_computer import DioramaComputer
 from computer_server.handlers.macos import *
 
 # simple, nicely formatted logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [%(levelname)s] %(message)s',
-    datefmt='%H:%M:%S',
-    stream=sys.stdout
-)
-logger = logging.getLogger("diorama.virtual_desktop")
+logger = logging.getLogger(__name__)
 
 automation_handler = MacOSAutomationHandler()
 

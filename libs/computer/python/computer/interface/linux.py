@@ -30,7 +30,7 @@ class LinuxComputerInterface(BaseComputerInterface):
         self._command_lock = asyncio.Lock()  # Lock to ensure only one command at a time
 
         # Set logger name for Linux interface
-        self.logger = Logger("cua.interface.linux", LogLevel.NORMAL)
+        self.logger = Logger("computer.interface.linux", LogLevel.NORMAL)
 
     @property
     def ws_uri(self) -> str:

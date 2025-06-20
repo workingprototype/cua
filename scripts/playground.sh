@@ -209,13 +209,6 @@ echo "📦 Updating C/ua packages..."
 pip install -U pip setuptools wheel Cmake
 pip install -U cua-computer "cua-agent[all]"
 
-# Install mlx-vlm on Apple Silicon Macs
-if [[ $(uname -m) == 'arm64' ]]; then
-  echo "Installing mlx-vlm for Apple Silicon Macs..."
-  pip install git+https://github.com/Blaizzy/mlx-vlm.git
-  # pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
-fi
-
 # Create a simple demo script
 mkdir -p "$DEMO_DIR"
 
