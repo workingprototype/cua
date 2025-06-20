@@ -3,9 +3,9 @@
   import Icon from '@iconify/svelte';
   let { id, data, selected }: NodeProps = $props();
   // Type guard for data
-  let label = '';
-  let gif: string | undefined = undefined;
-  let isStart = false;
+  let label = $state('');
+  let gif = $state<string | undefined>(undefined);
+  let isStart = $state(false);
   if (data && typeof data === 'object') {
     const d = data as { label?: unknown; gif?: unknown; isStart?: unknown };
     label = typeof d.label === 'string' ? d.label : '';
@@ -22,17 +22,32 @@
     console.log('Options for node:', id);
     // TODO: Implement options functionality
   }
+
+  function handleRun() {
+    console.log('Run node:', id);
+    // TODO: Implement run functionality
+  }
 </script>
 
 <NodeToolbar position={Position.Top} align="center">
   <div class="flex gap-1 bg-white rounded-lg shadow-lg border border-gray-200 p-1">
-    <button 
-      class="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800 transition-colors"
-      onclick={handleOptions}
-      title="Options"
-    >
-      <Icon icon="mdi:dots-horizontal" width="16" height="16" />
-    </button>
+    {#if selected}
+      <button 
+        class="p-1.5 hover:bg-green-100 rounded text-green-600 hover:text-green-700 transition-colors"
+        onclick={handleRun}
+        title="Run Node"
+      >
+        <Icon icon="mdi:play" width="16" height="16" />
+      </button>
+    {:else}
+      <button 
+        class="p-1.5 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-800 transition-colors"
+        onclick={handleOptions}
+        title="Options"
+      >
+        <Icon icon="mdi:dots-horizontal" width="16" height="16" />
+      </button>
+    {/if}
     <button 
       class="p-1.5 hover:bg-red-100 rounded text-gray-600 hover:text-red-600 transition-colors"
       onclick={handleDelete}
