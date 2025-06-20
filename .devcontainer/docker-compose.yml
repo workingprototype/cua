@@ -16,25 +16,29 @@ services:
     networks:
       - cua-network
 
-  ui:
-    build:
-      context: ../libs/playground
-      dockerfile: Dockerfile-UI
+  ui-dev:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ../libs/playground:/app:cached
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
-      - ui-api
+      - ui-api-dev
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://ui-api:8000
+      - NEXT_PUBLIC_API_BASE_URL=http://ui-api-dev:8000
+    command: sh -c "yarn install && yarn dev"
     networks:
       - cua-network
 
-  ui-api:
-    build:
-      context: ../libs/playground
-      dockerfile: Dockerfile-UI-API
+  ui-api-dev:
+    image: python:3.11-slim-buster
+    working_dir: /app
+    volumes:
+      - ../libs/playground:/app:cached
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    command: sh -c "pip install poetry && poetry install && uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - cua-network
 
