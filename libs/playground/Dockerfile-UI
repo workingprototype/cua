@@ -1,0 +1,18 @@
+# Use the official Node.js image
+FROM node:18-alpine
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json yarn.lock ./
+RUN yarn install
+
+# Copy the application files
+COPY . .
+
+# Expose the frontend port
+EXPOSE 3000
+
+# Command to start the development server
+CMD ["yarn", "dev"]

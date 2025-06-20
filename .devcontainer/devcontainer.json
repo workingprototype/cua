@@ -1,8 +1,8 @@
 {
 	"name": "C/ua - OSS",
-	"build": {
-		"dockerfile": "../Dockerfile"
-	},
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "devcontainer",
+	"workspaceFolder": "/workspace",
 	"containerEnv": {
 		"DISPLAY": "",
 		"PYTHONPATH": "/app/libs/core:/app/libs/computer:/app/libs/agent:/app/libs/som:/app/libs/pylume:/app/libs/computer-server:/app/libs/mcp-server",

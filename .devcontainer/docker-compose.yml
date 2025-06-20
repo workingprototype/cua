@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DISPLAY=
+      - PYTHONPATH=/workspace/libs/core:/workspace/libs/computer:/workspace/libs/agent:/workspace/libs/som:/workspace/libs/pylume:/workspace/libs/computer-server:/workspace/libs/mcp-server
+      - PYLUME_HOST=host.docker.internal
+    networks:
+      - cua-network
+
+  ui:
+    build:
+      context: ../libs/playground
+      dockerfile: Dockerfile-UI
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ui-api
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://ui-api:8000
+    networks:
+      - cua-network
+
+  ui-api:
+    build:
+      context: ../libs/playground
+      dockerfile: Dockerfile-UI-API
+    ports:
+      - "8000:8000"
+    networks:
+      - cua-network
+
+networks:
+  cua-network:
+    driver: bridge
