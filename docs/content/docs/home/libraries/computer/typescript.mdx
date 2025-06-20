@@ -40,43 +40,6 @@ title: Computer (TypeScript)
 
 ## TypeScript API
 
-```typescript
-import { Computer } from '@cua/computer';
-
-const main = async () => {
-  const computer = new Computer({
-    osType: "macos", 
-    display: "1024x768", 
-    memory: "8GB", 
-    cpu: "4"
-  });
-  
-  try {
-    await computer.run();
-
-    const screenshot = await computer.interface.screenshot();
-    // Save screenshot using fs or other method
-    require('fs').writeFileSync('screenshot.png', screenshot);
-
-    await computer.interface.moveCursor(100, 100);
-    await computer.interface.leftClick();
-    await computer.interface.rightClick(300, 300);
-    await computer.interface.doubleClick(400, 400);
-
-    await computer.interface.type("Hello, World!");
-    await computer.interface.pressKey("enter");
-
-    await computer.interface.setClipboard("Test clipboard");
-    const content = await computer.interface.copyToClipboard();
-    console.log(`Clipboard content: ${content}`);
-  } finally {
-    await computer.stop();
-  }
-};
-
-main().catch(console.error);
-```
-
 ## Install
 
 To install the Computer-Use Interface (CUI) for TypeScript:
@@ -87,102 +50,49 @@ npm install @cua/computer
 yarn add @cua/computer
 ```
 
-The TypeScript package automatically handles the necessary dependencies for working with Lume.
-
-## Provider System
-
-The TypeScript implementation includes a flexible provider system:
-
-- **Lume Provider**: For local macOS and Linux sandboxes
-- **Lumier Provider**: For Docker-based containers
-- **Cloud Provider**: For remote cloud-based VMs
-
 ```typescript
-// Using specific provider options
-import { Computer } from '@cua/computer';
-
-const computer = new Computer({
-  osType: "macos",
-  provider: "lume",
-  providerOptions: {
-    ephemeral: true,
-    sharedDirectories: [
-      { hostPath: "/path/to/share", tag: "shared", readOnly: true }
-    ]
-  }
-});
-```
-
-## Interface System
-
-The TypeScript implementation provides a comprehensive interface system for interacting with virtual machines:
-
-```typescript
-// Example of using the interface
-import { Computer } from '@cua/computer';
+import { CloudComputer, OSType } from '@cua/computer';
 
 const main = async () => {
-  const computer = new Computer({ osType: "macos" });
-  await computer.run();
-  
-  // Screenshot and image operations
-  const screenshot = await computer.interface.screenshot();
-  
+  // Create a cloud-based computer
+  const computer = new CloudComputer({
+    name: 'cloud-vm',
+    osType: OSType.Linux,
+    apiKey: 'your-api-key',
+  });
+
+  // Access the interface
+  const interface = computer.interface;
+
+  // Screenshot operations
+  const screenshot = await interface.screenshot();
+
   // Mouse operations
-  await computer.interface.moveCursor(100, 100);
-  await computer.interface.leftClick();
-  
+  await interface.moveCursor(100, 100);
+  await interface.leftClick();
+  await interface.rightClick(300, 300);
+  await interface.doubleClick(400, 400);
+  await interface.dragTo(500, 500, 'left', 1000); // Drag with left button for 1 second
+
   // Keyboard operations
-  await computer.interface.type("Hello from TypeScript!");
-  await computer.interface.hotkey(["command", "a"]);
-  
+  await interface.typeText('Hello from TypeScript!');
+  await interface.pressKey('enter');
+  await interface.hotkey('command', 'a'); // Select all
+
   // Clipboard operations
-  await computer.interface.setClipboard("Clipboard content");
-  const content = await computer.interface.copyToClipboard();
-  
-  await computer.stop();
+  await interface.setClipboard('Clipboard content');
+  const content = await interface.copyToClipboard();
+
+  // File operations
+  await interface.writeText('/tmp/test.txt', 'Hello world');
+  const fileContent = await interface.readText('/tmp/test.txt');
+
+  // Run a command in the VM
+  const [stdout, stderr] = await interface.runCommand('ls -la');
+
+  // Disconnect from the cloud VM
+  await computer.disconnect();
 };
+
+main().catch(console.error);
 ```
-
-## Advanced Usage
-
-### Cloud Provider
-
-For using the cloud provider with WebSocket communication:
-
-```typescript
-import { Computer } from '@cua/computer';
-
-const computer = new Computer({
-  osType: "macos",
-  provider: "cloud",
-  providerOptions: {
-    apiKey: "your-api-key",
-    endpoint: "wss://your-cloud-endpoint.com"
-  }
-});
-
-await computer.run();
-// Use computer.interface methods as usual
-await computer.stop();
-```
-
-### Telemetry
-
-The TypeScript implementation includes built-in telemetry tracking:
-
-```typescript
-import { TelemetryManager } from '@cua/computer';
-
-// Disable telemetry if needed
-TelemetryManager.getInstance().disable();
-
-// Or track custom events
-TelemetryManager.getInstance().trackEvent('custom_event', { 
-  property: 'value' 
-});
-```
-
-## Examples
-
-For more examples and detailed usage, refer to the [TypeScript examples](https://github.com/trycua/cua/tree/main/examples/typescript) in the repository.
