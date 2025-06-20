@@ -1,12 +1,15 @@
 """
 Helper functions and decorators for the Computer module.
 """
+import logging
 import asyncio
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, cast
 
 # Global reference to the default computer instance
 _default_computer = None
+
+logger = logging.getLogger(__name__)
 
 def set_default_computer(computer):
     """
@@ -41,7 +44,7 @@ def sandboxed(venv_name: str = "default", computer: str = "default", max_retries
                 try:
                     return await comp.venv_exec(venv_name, func, *args, **kwargs)
                 except Exception as e:
-                    print(f"Attempt {i+1} failed: {e}")
+                    logger.error(f"Attempt {i+1} failed: {e}")
                     await asyncio.sleep(1)
                     if i == max_retries - 1:
                         raise e
