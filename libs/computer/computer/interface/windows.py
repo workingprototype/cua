@@ -30,7 +30,7 @@ class WindowsComputerInterface(BaseComputerInterface):
         self._command_lock = asyncio.Lock()  # Lock to ensure only one command at a time
 
         # Set logger name for Windows interface
-        self.logger = Logger("cua.interface.windows", LogLevel.NORMAL)
+        self.logger = Logger("computer.interface.windows", LogLevel.NORMAL)
 
     @property
     def ws_uri(self) -> str:

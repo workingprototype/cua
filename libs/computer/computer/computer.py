@@ -85,7 +85,7 @@ class Computer:
             experiments: Optional list of experimental features to enable (e.g. ["app-use"])
         """
 
-        self.logger = Logger("cua.computer", verbosity)
+        self.logger = Logger("computer", verbosity)
         self.logger.info("Initializing Computer...")
 
         # Store original parameters
@@ -132,11 +132,11 @@ class Computer:
 
         # Configure root logger
         self.verbosity = verbosity
-        self.logger = Logger("cua", verbosity)
+        self.logger = Logger("computer", verbosity)
 
         # Configure component loggers with proper hierarchy
-        self.vm_logger = Logger("cua.vm", verbosity)
-        self.interface_logger = Logger("cua.interface", verbosity)
+        self.vm_logger = Logger("computer.vm", verbosity)
+        self.interface_logger = Logger("computer.interface", verbosity)
 
         if not use_host_computer_server:
             if ":" not in image or len(image.split(":")) != 2:
