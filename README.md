@@ -70,15 +70,13 @@ This script will guide you through setup and launch the Computer-Use Agent UI.
 
 This repository includes a [Dev Container](./.devcontainer/README.md) configuration that simplifies setup to a few steps:
 
-1. **Install Dev Containers extension** in VS Code
-2. **Clone and open in container:**
-   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-   - Type `Dev Containers: Clone Repository in Container Volume...`
-   - Paste the repository URL: `https://github.com/trycua/cua.git`
-   - Open the `.vscode/py.code-workspace` workspace
-3. **Run the Agent UI example:** Click <img height="24" alt="image" src="https://github.com/user-attachments/assets/7a1b7111-f676-4d86-b7bf-ea337df90d5b" /> to start the Gradio UI
-
-The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
+1. **Install the Dev Containers extension ([VS Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) or [WindSurf](https://docs.windsurf.com/windsurf/advanced#dev-containers-beta))**
+2. **Open the repository in the Dev Container:**
+  - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
+  - Select `Dev Containers: Clone Repository in Container Volume...` and paste the repository URL: `https://github.com/trycua/cua.git` (if not cloned) or `Dev Containers: Open Folder in Container...` (if already cloned). **Note**: On WindSurf, the post install hook might not run automatically. If so, run `/bin/bash .devcontainer/post-install.sh` manually.
+3. **Run the Agent UI example:** Click ![Run Agent UI](https://github.com/user-attachments/assets/7a61ef34-4b22-4dab-9864-f86bf83e290b)
+ to start the Gradio UI. If prompted to install **debugpy (Python Debugger)** to enable remote debugging, select 'Yes' to proceed.
+4. **Access the Gradio UI:** The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
 
 ---
 
@@ -221,7 +219,6 @@ docker run -it --rm \
 | [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install "cua-agent[all]"` |
 | [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
 | [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
-| [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` |
 | [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
 | [**Core**](./libs/core/README.md) | Core utilities | `pip install cua-core` |
 
@@ -378,14 +375,6 @@ Thank you to all our supporters!
       <td align="center" valign="top" width="14.28%"><a href="https://ricterz.me"><img src="https://avatars.githubusercontent.com/u/5282759?v=4?s=100" width="100px;" alt="Ricter Zheng"/><br /><sub><b>Ricter Zheng</b></sub></a><br /><a href="#code-RicterZ" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://www.trytruffle.ai/"><img src="https://avatars.githubusercontent.com/u/50844303?v=4?s=100" width="100px;" alt="Rahul Karajgikar"/><br /><sub><b>Rahul Karajgikar</b></sub></a><br /><a href="#code-rahulkarajgikar" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/trospix"><img src="https://avatars.githubusercontent.com/u/81363696?v=4?s=100" width="100px;" alt="trospix"/><br /><sub><b>trospix</b></sub></a><br /><a href="#code-trospix" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://wavee.world/invitation/b96d00e6-b802-4a1b-8a66-2e3854a01ffd"><img src="https://avatars.githubusercontent.com/u/22633385?v=4?s=100" width="100px;" alt="Ikko Eltociear Ashimine"/><br /><sub><b>Ikko Eltociear Ashimine</b></sub></a><br /><a href="#code-eltociear" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/dp221125"><img src="https://avatars.githubusercontent.com/u/10572119?v=4?s=100" width="100px;" alt="한석호(MilKyo)"/><br /><sub><b>한석호(MilKyo)</b></sub></a><br /><a href="#code-dp221125" title="Code">💻</a></td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.encona.com/"><img src="https://avatars.githubusercontent.com/u/891558?v=4?s=100" width="100px;" alt="Rahim Nathwani"/><br /><sub><b>Rahim Nathwani</b></sub></a><br /><a href="#code-rahimnathwani" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://mjspeck.github.io/"><img src="https://avatars.githubusercontent.com/u/20689127?v=4?s=100" width="100px;" alt="Matt Speck"/><br /><sub><b>Matt Speck</b></sub></a><br /><a href="#code-mjspeck" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/FinnBorge"><img src="https://avatars.githubusercontent.com/u/9272726?v=4?s=100" width="100px;" alt="FinnBorge"/><br /><sub><b>FinnBorge</b></sub></a><br /><a href="#code-FinnBorge" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jklapacz"><img src="https://avatars.githubusercontent.com/u/5343758?v=4?s=100" width="100px;" alt="Jakub Klapacz"/><br /><sub><b>Jakub Klapacz</b></sub></a><br /><a href="#code-jklapacz" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/evnsnclr"><img src="https://avatars.githubusercontent.com/u/139897548?v=4?s=100" width="100px;" alt="Evan smith"/><br /><sub><b>Evan smith</b></sub></a><br /><a href="#code-evnsnclr" title="Code">💻</a></td>
     </tr>
   </tbody>
