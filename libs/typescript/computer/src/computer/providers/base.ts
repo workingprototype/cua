@@ -1,9 +1,10 @@
-import { Telemetry } from "@cua/core";
-import type { OSType } from "../../types";
-import type { BaseComputerConfig, Display, VMProviderType } from "../types";
-import pino from "pino";
+import { Telemetry } from '@cua/core';
+import type { OSType } from '../../types';
+import type { BaseComputerConfig, Display, VMProviderType } from '../types';
+import pino from 'pino';
+import os from 'node:os';
 
-const logger = pino({ name: "computer-base" });
+const logger = pino({ name: 'computer-base' });
 
 /**
  * Base Computer class with shared functionality
@@ -12,18 +13,23 @@ export abstract class BaseComputer {
   protected name: string;
   protected osType: OSType;
   protected vmProvider?: VMProviderType;
-  protected telemetry: Telemetry
+  protected telemetry: Telemetry;
 
   constructor(config: BaseComputerConfig) {
     this.name = config.name;
     this.osType = config.osType;
     this.telemetry = new Telemetry();
-    this.telemetry.recordEvent('module_init',            {
-      module: "computer",
+    this.telemetry.recordEvent('module_init', {
+      module: 'computer',
       version: process.env.npm_package_version,
       node_version: process.version,
-  },
-)
+    });
+
+    this.telemetry.recordEvent('computer_initialized', {
+      os: os.platform(),
+      os_version: os.version(),
+      node_version: process.version,
+    });
   }
 
   /**
@@ -100,10 +106,10 @@ export abstract class BaseComputer {
     }
 
     const value = Number.parseFloat(match[1]);
-    const unit = match[2] || "MB"; // Default to MB if no unit specified
+    const unit = match[2] || 'MB'; // Default to MB if no unit specified
 
     // Convert to MB
-    if (unit === "GB") {
+    if (unit === 'GB') {
       return Math.round(value * 1024);
     }
     return Math.round(value);
