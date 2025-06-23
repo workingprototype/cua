@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "name": "computer-ts",
-      "path": "../libs/typescript/computer"
+      "name": "core-ts",
+      "path": "../libs/typescript/core"
     }
   ],
   "extensions": {
