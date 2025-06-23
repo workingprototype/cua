@@ -249,7 +249,8 @@ For complete examples, see [computer_examples.py](./examples/computer_examples.p
 
 ```python
 # Shell Actions
-await computer.interface.run_command(cmd)       # Run shell command
+result = await computer.interface.run_command(cmd)       # Run shell command
+# result.stdout, result.stderr, result.returncode
 
 # Mouse Actions
 await computer.interface.left_click(x, y)       # Left click at coordinates

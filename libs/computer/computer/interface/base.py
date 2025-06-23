@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Tuple, List
 from ..logger import Logger, LogLevel
-from .models import MouseButton
+from ..models import Computer, CommandResult, MouseButton
 
 
 class BaseComputerInterface(ABC):
@@ -234,8 +234,31 @@ class BaseComputerInterface(ABC):
         pass
     
     @abstractmethod
-    async def run_command(self, command: str) -> Tuple[str, str]:
-        """Run shell command."""
+    async def run_command(self, command: str) -> CommandResult:
+        """Run shell command and return structured result.
+        
+        Executes a shell command using subprocess.run with shell=True and check=False.
+        The command is run in the target environment and captures both stdout and stderr.
+        
+        Args:
+            command (str): The shell command to execute
+            
+        Returns:
+            CommandResult: A structured result containing:
+                - stdout (str): Standard output from the command
+                - stderr (str): Standard error from the command  
+                - returncode (int): Exit code from the command (0 indicates success)
+                
+        Raises:
+            RuntimeError: If the command execution fails at the system level
+            
+        Example:
+            result = await interface.run_command("ls -la")
+            if result.returncode == 0:
+                print(f"Output: {result.stdout}")
+            else:
+                print(f"Error: {result.stderr}, Exit code: {result.returncode}")
+        """
         pass
 
     # Accessibility Actions
