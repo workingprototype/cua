@@ -7,10 +7,8 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "dist",
-      "node_modules"
-    ]
+    "include": ["core/**/*.ts", "computer/**/*.ts"],
+    "ignore": ["dist", "node_modules"]
   },
   "formatter": {
     "enabled": true,
@@ -59,12 +57,8 @@
           "level": "warn",
           "fix": "safe",
           "options": {
-            "attributes": [
-              "className"
-            ],
-            "functions": [
-              "cn"
-            ]
+            "attributes": ["className"],
+            "functions": ["cn"]
           }
         }
       }

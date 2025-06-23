@@ -1,8 +1,8 @@
+import os from 'node:os';
 import { Telemetry } from '@cua/core';
+import pino from 'pino';
 import type { OSType } from '../../types';
 import type { BaseComputerConfig, Display, VMProviderType } from '../types';
-import pino from 'pino';
-import os from 'node:os';
 
 const logger = pino({ name: 'computer-base' });
 

@@ -2,12 +2,12 @@
  * Telemetry client using PostHog for collecting anonymous usage data.
  */
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { pino } from 'pino';
 import { PostHog } from 'posthog-node';
 import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
-import { pino } from 'pino';
 const logger = pino({ name: 'core.telemetry' });
 
 // Controls how frequently telemetry will be sent (percentage)

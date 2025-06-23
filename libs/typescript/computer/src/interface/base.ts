@@ -2,11 +2,11 @@
  * Base interface for computer control.
  */
 
-import type { ScreenSize } from "../types";
-import WebSocket from "ws";
-import pino from "pino";
+import pino from 'pino';
+import WebSocket from 'ws';
+import type { ScreenSize } from '../types';
 
-export type MouseButton = "left" | "middle" | "right";
+export type MouseButton = 'left' | 'middle' | 'right';
 
 export interface CursorPosition {
   x: number;
@@ -40,12 +40,12 @@ export abstract class BaseComputerInterface {
   protected apiKey?: string;
   protected vmName?: string;
 
-  protected logger = pino({ name: "interface-base" });
+  protected logger = pino({ name: 'interface-base' });
 
   constructor(
     ipAddress: string,
-    username = "lume",
-    password = "lume",
+    username = 'lume',
+    password = 'lume',
     apiKey?: string,
     vmName?: string
   ) {
@@ -58,8 +58,8 @@ export abstract class BaseComputerInterface {
     // Initialize WebSocket with headers if needed
     const headers: { [key: string]: string } = {};
     if (this.apiKey && this.vmName) {
-      headers["X-API-Key"] = this.apiKey;
-      headers["X-VM-Name"] = this.vmName;
+      headers['X-API-Key'] = this.apiKey;
+      headers['X-VM-Name'] = this.vmName;
     }
 
     // Create the WebSocket instance
@@ -71,15 +71,15 @@ export abstract class BaseComputerInterface {
    * Subclasses can override this to customize the URI.
    */
   protected get wsUri(): string {
-    const protocol = this.apiKey ? "wss" : "ws";
+    const protocol = this.apiKey ? 'wss' : 'ws';
 
     // Check if ipAddress already includes a port
-    if (this.ipAddress.includes(":")) {
+    if (this.ipAddress.includes(':')) {
       return `${protocol}://${this.ipAddress}/ws`;
     }
 
     // Otherwise, append the default port
-    const port = this.apiKey ? "8443" : "8000";
+    const port = this.apiKey ? '8443' : '8000';
     return `${protocol}://${this.ipAddress}:${port}/ws`;
   }
 
@@ -115,9 +115,9 @@ export abstract class BaseComputerInterface {
     if (this.ws.readyState === WebSocket.OPEN) {
       // send authentication message if needed
       if (this.apiKey && this.vmName) {
-        this.logger.info("Performing authentication handshake...");
+        this.logger.info('Performing authentication handshake...');
         const authMessage = {
-          command: "authenticate",
+          command: 'authenticate',
           params: {
             api_key: this.apiKey,
             container_name: this.vmName,
@@ -129,22 +129,22 @@ export abstract class BaseComputerInterface {
             try {
               const authResult = JSON.parse(data.toString());
               if (!authResult.success) {
-                const errorMsg = authResult.error || "Authentication failed";
+                const errorMsg = authResult.error || 'Authentication failed';
                 this.logger.error(`Authentication failed: ${errorMsg}`);
                 this.ws.close();
                 reject(new Error(`Authentication failed: ${errorMsg}`));
               } else {
-                this.logger.info("Authentication successful");
-                this.ws.off("message", authHandler);
+                this.logger.info('Authentication successful');
+                this.ws.off('message', authHandler);
                 resolve();
               }
             } catch (error) {
-              this.ws.off("message", authHandler);
+              this.ws.off('message', authHandler);
               reject(error);
             }
           };
 
-          this.ws.on("message", authHandler);
+          this.ws.on('message', authHandler);
           this.ws.send(JSON.stringify(authMessage));
         });
       }
@@ -159,8 +159,8 @@ export abstract class BaseComputerInterface {
     ) {
       const headers: { [key: string]: string } = {};
       if (this.apiKey && this.vmName) {
-        headers["X-API-Key"] = this.apiKey;
-        headers["X-VM-Name"] = this.vmName;
+        headers['X-API-Key'] = this.apiKey;
+        headers['X-VM-Name'] = this.vmName;
       }
       this.ws = new WebSocket(this.wsUri, { headers });
     }
@@ -168,23 +168,23 @@ export abstract class BaseComputerInterface {
     return new Promise((resolve, reject) => {
       // If already connecting, wait for it to complete
       if (this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.addEventListener("open", () => resolve(), { once: true });
-        this.ws.addEventListener("error", (error) => reject(error), {
+        this.ws.addEventListener('open', () => resolve(), { once: true });
+        this.ws.addEventListener('error', (error) => reject(error), {
           once: true,
         });
         return;
       }
 
       // Set up event handlers
-      this.ws.on("open", () => {
+      this.ws.on('open', () => {
         resolve();
       });
 
-      this.ws.on("error", (error: Error) => {
+      this.ws.on('error', (error: Error) => {
         reject(error);
       });
 
-      this.ws.on("close", () => {
+      this.ws.on('close', () => {
         if (!this.closed) {
           // Attempt to reconnect
           setTimeout(() => this.connect(), 1000);
@@ -224,10 +224,10 @@ export abstract class BaseComputerInterface {
                 } catch (error) {
                   innerReject(error);
                 }
-                this.ws.off("message", messageHandler);
+                this.ws.off('message', messageHandler);
               };
 
-              this.ws.on("message", messageHandler);
+              this.ws.on('message', messageHandler);
               const wsCommand = { command, params };
               this.ws.send(JSON.stringify(wsCommand));
             }

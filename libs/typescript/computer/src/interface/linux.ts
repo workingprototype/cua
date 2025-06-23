@@ -2,7 +2,7 @@
  * Linux computer interface implementation.
  */
 
-import { MacOSComputerInterface } from "./macos";
+import { MacOSComputerInterface } from './macos';
 
 /**
  * Linux interface implementation.

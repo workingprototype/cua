@@ -1,4 +1,4 @@
-import type { OSType, ScreenSize } from "../types";
+import type { OSType, ScreenSize } from '../types';
 
 /**
  * Display configuration for the computer.
@@ -32,5 +32,5 @@ export interface CloudComputerConfig extends BaseComputerConfig {
 }
 
 export enum VMProviderType {
-  CLOUD = "cloud",
+  CLOUD = 'cloud',
 }

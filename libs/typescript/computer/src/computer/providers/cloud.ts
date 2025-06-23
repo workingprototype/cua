@@ -1,12 +1,12 @@
-import { BaseComputer } from "./base";
-import type { CloudComputerConfig, VMProviderType } from "../types";
+import pino from 'pino';
 import {
-  InterfaceFactory,
   type BaseComputerInterface,
-} from "../../interface/index";
-import pino from "pino";
+  InterfaceFactory,
+} from '../../interface/index';
+import type { CloudComputerConfig, VMProviderType } from '../types';
+import { BaseComputer } from './base';
 
-const logger = pino({ name: "computer-cloud" });
+const logger = pino({ name: 'computer-cloud' });
 
 /**
  * Cloud-specific computer implementation
@@ -31,7 +31,7 @@ export class CloudComputer extends BaseComputer {
    */
   async run(): Promise<void> {
     if (this.initialized) {
-      logger.info("Computer already initialized, skipping initialization");
+      logger.info('Computer already initialized, skipping initialization');
       return;
     }
 
@@ -49,11 +49,11 @@ export class CloudComputer extends BaseComputer {
       );
 
       // Wait for the interface to be ready
-      logger.info("Waiting for interface to be ready...");
+      logger.info('Waiting for interface to be ready...');
       await this.iface.waitForReady();
 
       this.initialized = true;
-      logger.info("Cloud computer ready");
+      logger.info('Cloud computer ready');
     } catch (error) {
       logger.error(`Failed to initialize cloud computer: ${error}`);
       throw new Error(`Failed to initialize cloud computer: ${error}`);
@@ -64,7 +64,7 @@ export class CloudComputer extends BaseComputer {
    * Stop the cloud computer (disconnect interface)
    */
   async stop(): Promise<void> {
-    logger.info("Disconnecting from cloud computer...");
+    logger.info('Disconnecting from cloud computer...');
 
     if (this.iface) {
       this.iface.disconnect();
@@ -72,7 +72,7 @@ export class CloudComputer extends BaseComputer {
     }
 
     this.initialized = false;
-    logger.info("Disconnected from cloud computer");
+    logger.info('Disconnected from cloud computer');
   }
 
   /**
@@ -80,7 +80,7 @@ export class CloudComputer extends BaseComputer {
    */
   get interface(): BaseComputerInterface {
     if (!this.iface) {
-      throw new Error("Computer not initialized. Call run() first.");
+      throw new Error('Computer not initialized. Call run() first.');
     }
     return this.iface;
   }

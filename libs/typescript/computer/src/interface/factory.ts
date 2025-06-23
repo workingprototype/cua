@@ -2,11 +2,11 @@
  * Factory for creating computer interfaces.
  */
 
-import type { BaseComputerInterface } from "./base";
-import { MacOSComputerInterface } from "./macos";
-import { LinuxComputerInterface } from "./linux";
-import { WindowsComputerInterface } from "./windows";
-import type { OSType } from "../types";
+import type { OSType } from '../types';
+import type { BaseComputerInterface } from './base';
+import { LinuxComputerInterface } from './linux';
+import { MacOSComputerInterface } from './macos';
+import { WindowsComputerInterface } from './windows';
 
 export const InterfaceFactory = {
   /**
@@ -26,27 +26,27 @@ export const InterfaceFactory = {
     vmName?: string
   ): BaseComputerInterface {
     switch (os) {
-      case "macos":
+      case 'macos':
         return new MacOSComputerInterface(
           ipAddress,
-          "lume",
-          "lume",
+          'lume',
+          'lume',
           apiKey,
           vmName
         );
-      case "linux":
+      case 'linux':
         return new LinuxComputerInterface(
           ipAddress,
-          "lume",
-          "lume",
+          'lume',
+          'lume',
           apiKey,
           vmName
         );
-      case "windows":
+      case 'windows':
         return new WindowsComputerInterface(
           ipAddress,
-          "lume",
-          "lume",
+          'lume',
+          'lume',
           apiKey,
           vmName
         );
