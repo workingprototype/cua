@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@cua/core':
+        specifier: link:../core
+        version: link:../core
       pino:
         specifier: ^9.7.0
         version: 9.7.0

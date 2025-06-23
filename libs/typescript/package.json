@@ -1,0 +1,21 @@
+{
+  "name": "cua-ts",
+  "version": "1.0.0",
+  "description": "The c/ua typescript libs.",
+  "keywords": [],
+  "author": "c/ua",
+  "license": "MIT",
+  "scripts": {
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --fix ."
+  },
+  "packageManager": "pnpm@10.6.5",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@biomejs/biome"
+    ]
+  }
+}

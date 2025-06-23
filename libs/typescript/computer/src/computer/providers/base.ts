@@ -1,3 +1,4 @@
+import { Telemetry } from "@cua/core";
 import type { OSType } from "../../types";
 import type { BaseComputerConfig, Display, VMProviderType } from "../types";
 import pino from "pino";
@@ -11,10 +12,18 @@ export abstract class BaseComputer {
   protected name: string;
   protected osType: OSType;
   protected vmProvider?: VMProviderType;
+  protected telemetry: Telemetry
 
   constructor(config: BaseComputerConfig) {
     this.name = config.name;
     this.osType = config.osType;
+    this.telemetry = new Telemetry();
+    this.telemetry.recordEvent('module_init',            {
+      module: "computer",
+      version: process.env.npm_package_version,
+      node_version: process.version,
+  },
+)
   }
 
   /**

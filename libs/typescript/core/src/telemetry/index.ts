@@ -4,4 +4,4 @@
  * It provides a low-overhead way to collect anonymous usage data.
  */
 
-export * from './telemetry';
+export { PostHogTelemetryClient as Telemetry } from './clients';

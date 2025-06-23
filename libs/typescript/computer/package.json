@@ -38,6 +38,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "@cua/core": "link:../core",
     "pino": "^9.7.0",
     "ws": "^8.18.0"
   },
