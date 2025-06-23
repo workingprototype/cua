@@ -7,18 +7,6 @@ from typing import Optional, Any, Dict
 from .providers.base import BaseVMProvider
 
 @dataclass
-class CommandResult:
-    """Command result."""
-    stdout: str
-    stderr: str  
-    returncode: int
-    
-    def __init__(self, stdout: str, stderr: str, returncode: int):
-        self.stdout = stdout
-        self.stderr = stderr
-        self.returncode = returncode
-    
-@dataclass
 class Display:
     """Display configuration."""
     width: int

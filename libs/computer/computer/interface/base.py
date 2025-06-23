@@ -3,8 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Tuple, List
 from ..logger import Logger, LogLevel
-from ..models import Computer, CommandResult, MouseButton
-
+from .models import MouseButton, CommandResult
 
 class BaseComputerInterface(ABC):
     """Base class for computer control interfaces."""

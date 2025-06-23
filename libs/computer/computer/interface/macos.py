@@ -9,8 +9,7 @@ import websockets
 from ..logger import Logger, LogLevel
 from .base import BaseComputerInterface
 from ..utils import decode_base64_image, encode_base64_image, bytes_to_image, draw_box, resize_image
-from ..models import Computer, CommandResult, Key, KeyType, MouseButton
-
+from .models import Key, KeyType, MouseButton, CommandResult
 
 class MacOSComputerInterface(BaseComputerInterface):
     """Interface for macOS."""
