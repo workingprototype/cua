@@ -1,1 +1,1 @@
-export { BaseComputer, CloudComputer, LumeComputer } from "./providers";
+export { BaseComputer, CloudComputer } from "./providers";

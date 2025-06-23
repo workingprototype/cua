@@ -1,6 +1,6 @@
-# C/UA Computer TypeScript Library
+# C/ua Computer TypeScript Library
 
-The TypeScript library for C/UA Computer - a powerful computer control and automation library.
+The TypeScript library for C/cua Computer - a powerful computer control and automation library.
 
 ## Overview
 
@@ -20,7 +20,7 @@ pnpm add @cua/computer
 import { Computer } from '@cua/computer';
 
 // Create a new computer instance
-const computer = new CloudComputer({
+const computer = new Computer({
   osType: OSType.LINUX,
   name: 's-linux-vm_id'
   apiKey: 'your-api-key'
@@ -57,13 +57,7 @@ The library is organized into the following structure:
 
 ### Provider Implementations
 
-- **LumeComputer**: Implementation for Lume API-based VMs (Unmaintained)
-- **CloudComputer**: Implementation for cloud-based VMs
-
-### Utility Functions
-
-- **Lume API Utilities**: Functions for interacting with the Lume API (lumeApiGet, lumeApiRun, lumeApiStop, etc.) (Unmaintained)
-- **Helper Functions**: Parsing utilities for display and memory strings
+- **Computer**: Implementation for cloud-based VMs
 
 ## Development
 
@@ -90,10 +84,6 @@ pnpm build
 ```bash
 pnpm typecheck
 ```
-
-## Disclaimer
-
-**WARNING:** Some parts of this library, particularly the provider implementations (like Lume), were created as test/example implementations and are not maintained or expected to work in production environments. They serve as references for how providers might be implemented but should not be used in production.
 
 ## License
 

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { OSType } from "../../src/types";
-import { CloudComputer } from "../../src/computer/providers/cloud";
+import { Computer } from "../../src";
 
 describe("Computer Cloud", () => {
   it("Should create computer instance", () => {
-    const cloud = new CloudComputer({
+    const cloud = new Computer({
       apiKey: "asdf",
       name: "s-linux-1234",
       osType: OSType.LINUX,
     });
-    expect(cloud).toBeInstanceOf(CloudComputer);
+    expect(cloud).toBeInstanceOf(Computer);
   });
 });
