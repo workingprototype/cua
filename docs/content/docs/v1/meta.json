@@ -4,9 +4,11 @@
   "root": true,
   "defaultOpen": true,
   "pages": [
-    "---Libraries---",
+    "---[House]C/ua---",
+    "...cua",
+    "---[Library]Libraries---",
     "...libraries",
-    "---API Reference---",
+    "---[CodeXml]API Reference---",
     "...api"
   ]
 }

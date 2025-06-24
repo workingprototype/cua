@@ -1,9 +1,11 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
-import Image from 'next/image';
-import logoBlack from '@/assets/logo-black.svg';
-import logoWhite from '@/assets/logo-white.svg';
-import { HomeIcon } from 'lucide-react';
+import Image from "next/image";
+import LogoBlack from "@/assets/logo-black.svg";
+import LogoWhite from "@/assets/logo-white.svg";
+import DiscordWhite from "@/assets/discord-white.svg";
+import DiscordBlack from "@/assets/discord-black.svg";
+import { HomeIcon } from "lucide-react";
 
 /**
  * Shared layout configurations
@@ -19,7 +21,7 @@ export const baseOptions: BaseLayoutProps = {
         <Image
           width={30}
           height={30}
-          src={logoBlack}
+          src={LogoBlack}
           aria-label="Logo"
           className="block dark:hidden"
           alt="Logo"
@@ -27,7 +29,7 @@ export const baseOptions: BaseLayoutProps = {
         <Image
           width={30}
           height={30}
-          src={logoWhite}
+          src={LogoWhite}
           aria-label="Logo"
           className="hidden dark:block"
           alt="Logo"
@@ -36,13 +38,36 @@ export const baseOptions: BaseLayoutProps = {
       </>
     ),
   },
-  githubUrl: 'https://github.com/trycua/cua',
+  githubUrl: "https://github.com/trycua/cua",
   links: [
     {
-      url: 'https://trycua.com',
-      text: 'cua home',
-      type: 'icon',
+      url: "https://trycua.com",
+      text: "c/ua home",
+      type: "icon",
       icon: <HomeIcon />,
+    },
+    {
+      url: "https://discord.com/invite/mVnXXpdE85",
+      text: "c/ua discord",
+      type: "icon",
+      icon: (
+        <>
+          <Image
+            width={20}
+            height={20}
+            alt="Discord"
+            className="hidden dark:block opacity-70 hover:opacity-100"
+            src={DiscordWhite}
+          />
+          <Image
+            width={20}
+            height={20}
+            alt="Discord"
+            className="dark:hidden block opacity-55 hover:opacity-100"
+            src={DiscordBlack}
+          />
+        </>
+      ),
     },
   ],
 };
