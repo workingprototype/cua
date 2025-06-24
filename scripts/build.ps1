@@ -89,7 +89,6 @@ try {
 Print-Step "Cleaning up existing environments..."
 Get-ChildItem -Path . -Recurse -Directory -Name "__pycache__" | ForEach-Object { Remove-Item -Path $_ -Recurse -Force }
 Get-ChildItem -Path . -Recurse -Directory -Name ".pytest_cache" | ForEach-Object { Remove-Item -Path $_ -Recurse -Force }
-Get-ChildItem -Path . -Recurse -Directory -Name "dist" | ForEach-Object { Remove-Item -Path $_ -Recurse -Force }
 Get-ChildItem -Path . -Recurse -Directory -Name "*.egg-info" | ForEach-Object { Remove-Item -Path $_ -Recurse -Force }
 
 # Function to install a package and its dependencies
