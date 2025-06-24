@@ -132,6 +132,13 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
 # Detect if current device is MacOS
 is_mac = platform.system().lower() == "darwin"
 
+# Detect if lume is available (host device is macOS)
+is_lume_available = is_mac or (os.environ.get("PYLUME_HOST", "localhost") != "localhost")
+
+print("PYLUME_HOST: ", os.environ.get("PYLUME_HOST", "localhost"))
+print("is_mac: ", is_mac)
+print("Lume available: ", is_lume_available)
+
 # Map model names to specific provider model names
 MODEL_MAPPINGS = {
     "openai": {
@@ -733,9 +740,9 @@ if __name__ == "__main__":
                     is_mac = platform.system().lower() == "darwin"
                     
                     providers = ["cloud"]
-                    if is_mac:
+                    if is_lume_available:
                         providers += ["lume"]
-                    elif is_windows:
+                    if is_windows:
                         providers += ["winsandbox"]
 
                     computer_provider = gr.Radio(
