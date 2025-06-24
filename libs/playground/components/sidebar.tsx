@@ -37,6 +37,8 @@ interface SidebarProps {
   chatId: string;
   setMessages: (messages: Message[]) => void;
   closeSidebar?: () => void;
+  visible?: boolean;
+  setVisible?: (visible: boolean) => void;
 }
 
 export function Sidebar({
@@ -45,7 +47,9 @@ export function Sidebar({
   isMobile,
   chatId,
   setMessages,
-  closeSidebar
+  closeSidebar,
+  visible,
+  setVisible
 }: SidebarProps) {
   const [localChats, setLocalChats] = useState<
     { chatId: string; messages: Message[] }[]

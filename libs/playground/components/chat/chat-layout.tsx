@@ -19,6 +19,8 @@ interface ChatLayoutProps {
   navCollapsedSize: number;
   chatId: string;
   setMessages: (messages: Message[]) => void;
+  sidebarVisible?: boolean;
+  setSidebarVisible?: (visible: boolean) => void;
 }
 
 type MergedProps = ChatLayoutProps & ChatProps;
@@ -40,6 +42,8 @@ export function ChatLayout({
   formRef,
   setMessages,
   setInput,
+  sidebarVisible,
+  setSidebarVisible,
 }: MergedProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
   const [isMobile, setIsMobile] = useState(false);
@@ -101,6 +105,8 @@ export function ChatLayout({
           isMobile={isMobile}
           chatId={chatId}
           setMessages={setMessages}
+          visible={sidebarVisible}
+          setVisible={setSidebarVisible}
         />
       </ResizablePanel>
       <ResizableHandle className={cn("hidden md:flex")} withHandle />

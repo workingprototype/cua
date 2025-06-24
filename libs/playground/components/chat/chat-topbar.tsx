@@ -20,6 +20,8 @@ import { CaretSortIcon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Sidebar } from "../sidebar";
 import { Message } from "ai/react";
 import { getSelectedModel } from "@/lib/model-helper";
+import { useComputerStore } from "../../app/hooks/useComputerStore";
+import Image from "next/image";
 
 interface ChatTopbarProps {
   setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
@@ -38,11 +40,24 @@ export default function ChatTopbar({
 }: ChatTopbarProps) {
   const [models, setModels] = React.useState<string[]>([]);
   const [open, setOpen] = React.useState(false);
+  const [computerOpen, setComputerOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [currentModel, setCurrentModel] = React.useState<string | null>(null);
+  const [selectedComputer, setSelectedComputer] = React.useState<string | null>(null);
+  
+  const { getAvailableInstances } = useComputerStore();
+  const availableInstances = getAvailableInstances();
 
   useEffect(() => {
     setCurrentModel(getSelectedModel());
+    
+    // Load saved computer selection
+    if (typeof window !== 'undefined') {
+      const savedComputer = localStorage.getItem("selectedComputer");
+      if (savedComputer) {
+        setSelectedComputer(savedComputer);
+      }
+    }
 
     const env = process.env.NODE_ENV;
 
@@ -90,12 +105,37 @@ export default function ChatTopbar({
     setOpen(false);
   };
 
+  const handleComputerChange = (computerId: string) => {
+    setSelectedComputer(computerId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("selectedComputer", computerId);
+    }
+    setComputerOpen(false);
+  };
+
   const handleCloseSidebar = () => {
     setSheetOpen(false);  // Close the sidebar
   };
 
+  const getOSIcon = (os: string) => {
+    switch (os) {
+      case "ubuntu":
+        return <Image src="/os-icons/ubuntu.svg" alt="Ubuntu" width={16} height={16} className="flex-shrink-0 dark:invert" />;
+      case "debian":
+      case "centos":
+        return <Image src="/os-icons/linux.svg" alt="Linux" width={16} height={16} className="flex-shrink-0 dark:invert" />;
+      case "macos-sequoia":
+        return <Image src="/os-icons/apple.svg" alt="macOS" width={16} height={16} className="flex-shrink-0 dark:invert" />;
+      case "windows":
+      case "windows-server":
+        return <Image src="/os-icons/windows.svg" alt="Windows" width={16} height={16} className="flex-shrink-0 dark:invert" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="w-full flex px-4 py-6  items-center justify-between lg:justify-center ">
+    <div className="w-full flex px-4 py-6 items-center justify-between lg:justify-center gap-4">
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetTrigger>
           <HamburgerMenuIcon className="lg:hidden w-5 h-5" />
@@ -112,40 +152,85 @@ export default function ChatTopbar({
         </SheetContent>
       </Sheet>
 
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            disabled={isLoading}
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-[300px] justify-between"
-          >
-            {currentModel || "Select model"}
-            <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-1">
-          {models.length > 0 ? (
-            models.map((model) => (
-              <Button
-                key={model}
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  handleModelChange(model);
-                }}
-              >
-                {model}
-              </Button>
-            ))
-          ) : (
-            <Button variant="ghost" disabled className=" w-full">
-              No models available
+      <div className="flex gap-4">
+        {/* Model Dropdown */}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              disabled={isLoading}
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-[250px] justify-between"
+            >
+              {currentModel || "Select model"}
+              <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          )}
-        </PopoverContent>
-      </Popover>
+          </PopoverTrigger>
+          <PopoverContent className="w-[250px] p-1">
+            {models.length > 0 ? (
+              models.map((model) => (
+                <Button
+                  key={model}
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    handleModelChange(model);
+                  }}
+                >
+                  {model}
+                </Button>
+              ))
+            ) : (
+              <Button variant="ghost" disabled className="w-full">
+                No models available
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Computer Dropdown */}
+        <Popover open={computerOpen} onOpenChange={setComputerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              disabled={isLoading}
+              variant="outline"
+              role="combobox"
+              aria-expanded={computerOpen}
+              className="w-[250px] justify-between"
+            >
+              {selectedComputer 
+                ? availableInstances.find(c => c.id === selectedComputer)?.name || "Select computer"
+                : "Select computer"
+              }
+              <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[250px] p-1">
+            {availableInstances.length > 0 ? (
+              availableInstances.map((computer) => (
+                <Button
+                  key={computer.id}
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    handleComputerChange(computer.id);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {getOSIcon(computer.os)}
+                    <span>{computer.name}</span>
+                  </div>
+                </Button>
+              ))
+            ) : (
+              <Button variant="ghost" disabled className="w-full">
+                No available computers
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 }

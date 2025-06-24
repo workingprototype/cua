@@ -1,18 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageCircle, Monitor, Settings } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface PlaygroundLayoutProps {
   children: React.ReactNode;
 }
 
 export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
-  const [activeTab, setActiveTab] = useState("chat");
+  const router = useRouter();
+  const [pathname, setPathname] = useState("");
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+
+  // Get current pathname
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPathname(window.location.pathname);
+    }
+  }, []);
+
+  // Determine active tab based on current path
+  const getActiveTab = () => {
+    if (pathname === "/" || pathname.startsWith("/chat")) return "chat";
+    if (pathname.startsWith("/computers")) return "computers";
+    if (pathname.startsWith("/settings")) return "settings";
+    return "chat";
+  };
+
+  const [activeTab, setActiveTab] = useState(getActiveTab());
+
+  // Update active tab when pathname changes
+  useEffect(() => {
+    setActiveTab(getActiveTab());
+  }, [pathname]);
 
   const sidebarItems = [
     {
@@ -22,10 +47,10 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
       href: "/",
     },
     {
-      id: "vm-instances",
+      id: "computers",
       icon: Monitor,
-      label: "VM Instances",
-      href: "/vm-instances",
+      label: "Computers",
+      href: "/computers",
     },
   ];
 
@@ -38,6 +63,13 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
     },
   ];
 
+  const handleNavigation = (item: { id: string; href: string }) => {
+    // Navigate to new page
+    setActiveTab(item.id);
+    router.push(item.href);
+    setPathname(item.href);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Icon-based Sidebar */}
@@ -46,14 +78,14 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
         <div className="flex items-center justify-center h-16 border-b border-border">
           <div className="w-8 h-8 relative">
             <Image
-              src="https://www.trycua.com/logo-white.svg"
+              src="/logo-white.svg"
               alt="CUA Logo"
               width={32}
               height={32}
               className="dark:block hidden"
             />
             <Image
-              src="https://www.trycua.com/logo-black.svg"
+              src="/logo-black.svg"
               alt="CUA Logo"
               width={32}
               height={32}
@@ -79,7 +111,7 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
                         "w-10 h-10 rounded-lg",
                         isActive && "bg-primary text-primary-foreground"
                       )}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => handleNavigation(item)}
                     >
                       <Icon className="h-5 w-5" />
                     </Button>
@@ -110,7 +142,7 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
                         "w-10 h-10 rounded-lg",
                         isActive && "bg-primary text-primary-foreground"
                       )}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => handleNavigation(item)}
                     >
                       <Icon className="h-5 w-5" />
                     </Button>
@@ -124,10 +156,12 @@ export function PlaygroundLayout({ children }: PlaygroundLayoutProps) {
           </TooltipProvider>
         </div>
       </div>
-
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {children}
+      <div className="flex-1 overflow-hidden">
+        {React.cloneElement(children as React.ReactElement, { 
+          sidebarVisible,
+          setSidebarVisible 
+        })}
       </div>
     </div>
   );

@@ -90,7 +90,7 @@ export default function ChatList({
           <div></div>
           <div className="flex flex-col gap-4 items-center">
             <Image
-              src="/ollama.png"
+              src="/logo-black.svg"
               alt="AI"
               width={60}
               height={60}
@@ -198,7 +198,7 @@ export default function ChatList({
                 <div className="flex items-end gap-2">
                   <Avatar className="flex justify-start items-center">
                     <AvatarImage
-                      src="/ollama.png"
+                      src="/logo-black.svg"
                       alt="AI"
                       width={6}
                       height={6}
@@ -238,7 +238,7 @@ export default function ChatList({
           <div className="flex pl-4 pb-4 gap-2 items-center">
             <Avatar className="flex justify-start items-center">
               <AvatarImage
-                src="/ollama.png"
+                src="/logo-black.svg"
                 alt="AI"
                 width={6}
                 height={6}

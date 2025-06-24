@@ -8,8 +8,8 @@ import { PlaygroundLayout } from "@/components/playground-layout";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ollama UI",
-  description: "Ollama chatbot web interface",
+  title: "C/ua Playground",
+  description: "C/ua playground web interface",
 };
 
 export const viewport = {
