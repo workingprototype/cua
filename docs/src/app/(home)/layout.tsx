@@ -13,7 +13,16 @@ export default function Layout({ children }: { children: ReactNode }) {
 					{
 						url: "/v1",
 						title: "API v1",
-						icon: <CodeXml />,
+						icon: <div
+										className="rounded-lg bg-blue-500/10 border max-md:p-1.5 p-1"
+										style={
+											{
+												color: 'var(--color-blue-500)',
+											} as object
+										}
+									>
+										<CodeXml />                
+									</div>
 					},
 				],
 			}}

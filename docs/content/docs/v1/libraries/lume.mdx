@@ -44,16 +44,23 @@ title: Lume
 lume run macos-sequoia-vanilla:latest
 ```
 
-## Development Environment
+## Install
 
-If you're working on Lume in the context of the C/ua monorepo, we recommend using the dedicated VS Code workspace configuration:
+Install with a single command:
 
 ```bash
-# Open VS Code workspace from the root of the monorepo
-code .vscode/lume.code-workspace
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
-This workspace is preconfigured with Swift language support, build tasks, and debug configurations.
+By default, Lume is installed as a background service that starts automatically on login. If you prefer to start the Lume API service manually when needed, you can use the `--no-background-service` option:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh) --no-background-service"
+```
+
+**Note:** With this option, you'll need to manually start the Lume API service by running `lume serve` in your terminal whenever you need to use tools or libraries that rely on the Lume API (such as the Computer-Use Agent).
+
+You can also download the `lume.pkg.tar.gz` archive from the [latest release](https://github.com/trycua/lume/releases), extract it, and install the package manually.
 
 ## Usage
 
@@ -156,24 +163,6 @@ Command Options:
     --port <port>        Port to listen on (default: 7777)
 ```
 
-## Install
-
-Install with a single command:
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-```
-
-By default, Lume is installed as a background service that starts automatically on login. If you prefer to start the Lume API service manually when needed, you can use the `--no-background-service` option:
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh) --no-background-service"
-```
-
-**Note:** With this option, you'll need to manually start the Lume API service by running `lume serve` in your terminal whenever you need to use tools or libraries that rely on the Lume API (such as the Computer-Use Agent).
-
-You can also download the `lume.pkg.tar.gz` archive from the [latest release](https://github.com/trycua/lume/releases), extract it, and install the package manually.
-
 ## Prebuilt Images
 
 Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages).
@@ -201,13 +190,69 @@ For additional disk space, resize the VM disk after pulling the image using the 
 lume serve
 ```
 
-For detailed API documentation, please refer to [API Reference](./api-reference).
+For detailed API documentation, see the [API Reference](/v1/api/lume).
 
-## Docs
+## Development
 
-- [API Reference](./api-reference)
-- [Development](./development)
-- [FAQ](./faq)
+If you're working on Lume in the context of the C/ua monorepo, we recommend using the dedicated VS Code workspace configuration:
+
+```bash
+# Open VS Code workspace from the root of the monorepo
+code .vscode/lume.code-workspace
+```
+
+This workspace is preconfigured with Swift language support, build tasks, and debug configurations.
+
+## FAQ
+
+### What is Lume?
+
+Lume is a lightweight Command Line Interface and local API server to create, run and manage macOS and Linux virtual machines (VMs) with near-native performance on Apple Silicon, using Apple's `Virtualization.Framework`.
+
+### What are the system requirements?
+
+- Apple Silicon Mac (M1, M2, M3, etc.)
+- macOS 13.0 or later
+- At least 8GB of RAM (16GB recommended)
+- At least 50GB of free disk space
+
+### How do I change the default password for VMs?
+
+The default password for all prebuilt images is `lume`. For security, change it immediately after your first login using the `passwd` command.
+
+### Can I run multiple VMs simultaneously?
+
+Yes, you can run multiple VMs at the same time as long as your system has sufficient resources (CPU, memory, and disk space).
+
+### How do I share files between the host and VM?
+
+Use the `--shared-dir` option when running a VM:
+
+```bash
+lume run my-vm --shared-dir ~/Projects:rw
+```
+
+The shared directory will be automatically mounted in the VM.
+
+### Where are VM files stored?
+
+By default, VMs are stored in `~/.lume/vms/`. You can configure additional storage locations using the `lume config storage` commands.
+
+### How do I access the VM's display?
+
+Lume automatically starts a VNC client when you run a VM. You can also connect manually using any VNC client to the port shown in the VM details.
+
+### Can I use Lume programmatically?
+
+Yes, Lume provides a local HTTP API server. Start it with `lume serve` and access it at `http://localhost:7777/lume`.
+
+### How do I update Lume?
+
+Run the install script again to update to the latest version:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
+```
 
 ## Contributing
 

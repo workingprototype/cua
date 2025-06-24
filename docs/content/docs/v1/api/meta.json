@@ -1,5 +1,15 @@
 {
   "title": "API Reference",
   "description": "API Reference",
-  "root": true
+  "pages": [
+    "agent",
+    "computer",
+    "computer-server",
+    "core",
+    "lume",
+    "lumier",
+    "mcp-server",
+    "pylume",
+    "som"
+  ]
 }
