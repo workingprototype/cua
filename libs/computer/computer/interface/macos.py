@@ -9,8 +9,7 @@ import websockets
 from ..logger import Logger, LogLevel
 from .base import BaseComputerInterface
 from ..utils import decode_base64_image, encode_base64_image, bytes_to_image, draw_box, resize_image
-from .models import Key, KeyType, MouseButton
-
+from .models import Key, KeyType, MouseButton, CommandResult
 
 class MacOSComputerInterface(BaseComputerInterface):
     """Interface for macOS."""
@@ -623,11 +622,15 @@ class MacOSComputerInterface(BaseComputerInterface):
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to delete directory"))
 
-    async def run_command(self, command: str) -> Tuple[str, str]:
+    async def run_command(self, command: str) -> CommandResult:
         result = await self._send_command("run_command", {"command": command})
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to run command"))
-        return result.get("stdout", ""), result.get("stderr", "")
+        return CommandResult(
+            stdout=result.get("stdout", ""),
+            stderr=result.get("stderr", ""),
+            returncode=result.get("return_code", 0)
+        )
 
     # Accessibility Actions
     async def get_accessibility_tree(self) -> Dict[str, Any]:
