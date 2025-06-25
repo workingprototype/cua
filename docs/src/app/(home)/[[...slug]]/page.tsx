@@ -45,8 +45,11 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  let title = `c/ua Docs: ${page.data.title}`;
+  if (page.url.includes('api')) title = `c/ua API: ${page.data.title}`;
+
   return {
-    title: page.data.title,
+    title,
     description: page.data.description,
   };
 }
