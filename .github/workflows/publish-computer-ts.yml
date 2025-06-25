@@ -1,0 +1,32 @@
+name: Publish @cua/computer to npm
+
+on:
+  push:
+    tags:
+      - 'computer-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        working-directory: ./libs/typescript/computer
+        run: npm ci
+
+      - name: Build package
+        working-directory: ./libs/typescript/computer
+        run: npm run build --if-present
+
+      - name: Publish to npm
+        working-directory: ./libs/typescript/computer
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
