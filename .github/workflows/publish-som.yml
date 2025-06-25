@@ -3,17 +3,17 @@ name: Publish SOM Package
 on:
   push:
     tags:
-      - 'som-v*'
+      - "som-v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (without v prefix)'
+        description: "Version to publish (without v prefix)"
         required: true
-        default: '0.1.0'
+        default: "0.1.0"
   workflow_call:
     inputs:
       version:
-        description: 'Version to publish'
+        description: "Version to publish"
         required: true
         type: string
     outputs:
@@ -31,37 +31,37 @@ jobs:
     outputs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
-    - uses: actions/checkout@v4
-      
-    - name: Determine version
-      id: get-version
-      run: |
-        if [ "${{ github.event_name }}" == "push" ]; then
-          # Extract version from tag (for package-specific tags)
-          if [[ "${{ github.ref }}" =~ ^refs/tags/som-v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-            VERSION=${BASH_REMATCH[1]}
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # Extract version from tag (for package-specific tags)
+            if [[ "${{ github.ref }}" =~ ^refs/tags/som-v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+              VERSION=${BASH_REMATCH[1]}
+            else
+              echo "Invalid tag format for som"
+              exit 1
+            fi
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Use version from workflow dispatch
+            VERSION=${{ github.event.inputs.version }}
           else
-            echo "Invalid tag format for som"
-            exit 1
+            # Use version from workflow_call
+            VERSION=${{ inputs.version }}
           fi
-        elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          # Use version from workflow dispatch
-          VERSION=${{ github.event.inputs.version }}
-        else
-          # Use version from workflow_call
-          VERSION=${{ inputs.version }}
-        fi
-        echo "VERSION=$VERSION"
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   publish:
     needs: determine-version
     uses: ./.github/workflows/reusable-publish.yml
     with:
       package_name: "som"
-      package_dir: "libs/som"
+      package_dir: "libs/python/som"
       version: ${{ needs.determine-version.outputs.version }}
       is_lume_package: false
       base_package_name: "cua-som"
     secrets:
-      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }} 
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
