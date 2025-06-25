@@ -7,7 +7,14 @@
   "license": "MIT",
   "scripts": {
     "lint": "biome check",
-    "lint:fix": "biome check --fix"
+    "lint:fix": "biome check --fix",
+    "build:core": "pnpm --filter @cua/core build",
+    "build:computer": "pnpm --filter @cua/computer build",
+    "build": "pnpm build:core && pnpm build:computer",
+    "test:core": "pnpm --filter @cua/core test",
+    "test:computer": "pnpm --filter @cua/computer test",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
   },
   "packageManager": "pnpm@10.6.5",
   "devDependencies": {
@@ -15,7 +22,8 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@biomejs/biome"
+      "@biomejs/biome",
+      "esbuild"
     ]
   }
 }
