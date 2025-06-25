@@ -19,7 +19,7 @@ dependencies = [
     "pydantic>=2.6.4,<3.0.0",
     "rich>=13.7.1,<14.0.0",
     "python-dotenv>=1.0.1,<2.0.0",
-    "cua-computer>=0.2.0,<0.3.0",
+    "cua-computer>=0.3.0,<0.4.0",
     "cua-core>=0.1.0,<0.2.0",
     "certifi>=2024.2.2"
 ]
