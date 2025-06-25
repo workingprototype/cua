@@ -4,7 +4,7 @@ import pino from 'pino';
 import type { OSType } from '../../types';
 import type { BaseComputerConfig, Display, VMProviderType } from '../types';
 
-const logger = pino({ name: 'computer-base' });
+const logger = pino({ name: 'computer.provider_base' });
 
 /**
  * Base Computer class with shared functionality

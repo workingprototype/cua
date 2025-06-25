@@ -16,7 +16,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },
-  "packageManager": "pnpm@10.6.5",
+  "packageManager": "pnpm@10.12.3",
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"
   },

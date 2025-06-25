@@ -40,7 +40,7 @@ export abstract class BaseComputerInterface {
   protected apiKey?: string;
   protected vmName?: string;
 
-  protected logger = pino({ name: 'interface-base' });
+  protected logger = pino({ name: 'computer.interface-base' });
 
   constructor(
     ipAddress: string,
@@ -109,47 +109,59 @@ export abstract class BaseComputerInterface {
   }
 
   /**
+   * Authenticate with the WebSocket server.
+   * This should be called immediately after the WebSocket connection is established.
+   */
+  private async authenticate(): Promise<void> {
+    if (!this.apiKey || !this.vmName) {
+      // No authentication needed
+      return;
+    }
+
+    this.logger.info('Performing authentication handshake...');
+    const authMessage = {
+      command: 'authenticate',
+      params: {
+        api_key: this.apiKey,
+        container_name: this.vmName,
+      },
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      const authHandler = (data: WebSocket.RawData) => {
+        try {
+          const authResult = JSON.parse(data.toString());
+          if (!authResult.success) {
+            const errorMsg = authResult.error || 'Authentication failed';
+            this.logger.error(`Authentication failed: ${errorMsg}`);
+            this.ws.close();
+            reject(new Error(`Authentication failed: ${errorMsg}`));
+          } else {
+            this.logger.info('Authentication successful');
+            this.ws.off('message', authHandler);
+            resolve();
+          }
+        } catch (error) {
+          this.ws.off('message', authHandler);
+          reject(error);
+        }
+      };
+
+      this.ws.on('message', authHandler);
+      this.ws.send(JSON.stringify(authMessage));
+    });
+  }
+
+  /**
    * Connect to the WebSocket server.
    */
   public async connect(): Promise<void> {
+    // If the WebSocket is already open, check if we need to authenticate
     if (this.ws.readyState === WebSocket.OPEN) {
-      // send authentication message if needed
-      if (this.apiKey && this.vmName) {
-        this.logger.info('Performing authentication handshake...');
-        const authMessage = {
-          command: 'authenticate',
-          params: {
-            api_key: this.apiKey,
-            container_name: this.vmName,
-          },
-        };
-
-        return new Promise<void>((resolve, reject) => {
-          const authHandler = (data: WebSocket.RawData) => {
-            try {
-              const authResult = JSON.parse(data.toString());
-              if (!authResult.success) {
-                const errorMsg = authResult.error || 'Authentication failed';
-                this.logger.error(`Authentication failed: ${errorMsg}`);
-                this.ws.close();
-                reject(new Error(`Authentication failed: ${errorMsg}`));
-              } else {
-                this.logger.info('Authentication successful');
-                this.ws.off('message', authHandler);
-                resolve();
-              }
-            } catch (error) {
-              this.ws.off('message', authHandler);
-              reject(error);
-            }
-          };
-
-          this.ws.on('message', authHandler);
-          this.ws.send(JSON.stringify(authMessage));
-        });
-      }
-
-      return;
+      this.logger.info(
+        'Websocket is open, ensuring authentication is complete.'
+      );
+      return this.authenticate();
     }
 
     // If the WebSocket is closed or closing, reinitialize it
@@ -157,18 +169,31 @@ export abstract class BaseComputerInterface {
       this.ws.readyState === WebSocket.CLOSED ||
       this.ws.readyState === WebSocket.CLOSING
     ) {
+      this.logger.info('Websocket is closed. Reinitializing connection.');
       const headers: { [key: string]: string } = {};
       if (this.apiKey && this.vmName) {
         headers['X-API-Key'] = this.apiKey;
         headers['X-VM-Name'] = this.vmName;
       }
       this.ws = new WebSocket(this.wsUri, { headers });
+      return this.authenticate();
     }
 
+    // Connect and authenticate
     return new Promise((resolve, reject) => {
-      // If already connecting, wait for it to complete
+      const onOpen = async () => {
+        try {
+          // Always authenticate immediately after connection
+          await this.authenticate();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      // If already connecting, wait for it to complete then authenticate
       if (this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.addEventListener('open', () => resolve(), { once: true });
+        this.ws.addEventListener('open', onOpen, { once: true });
         this.ws.addEventListener('error', (error) => reject(error), {
           once: true,
         });
@@ -176,9 +201,7 @@ export abstract class BaseComputerInterface {
       }
 
       // Set up event handlers
-      this.ws.on('open', () => {
-        resolve();
-      });
+      this.ws.on('open', onOpen);
 
       this.ws.on('error', (error: Error) => {
         reject(error);

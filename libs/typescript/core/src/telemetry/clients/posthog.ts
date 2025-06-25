@@ -8,7 +8,6 @@ import * as path from 'node:path';
 import { pino } from 'pino';
 import { PostHog } from 'posthog-node';
 import { v4 as uuidv4 } from 'uuid';
-const logger = pino({ name: 'core.telemetry' });
 
 // Controls how frequently telemetry will be sent (percentage)
 export const TELEMETRY_SAMPLE_RATE = 100; // 100% sampling rate
@@ -37,6 +36,8 @@ export class PostHogTelemetryClient {
   private posthogClient?: PostHog;
   private counters: Record<string, number> = {};
 
+  private logger = pino({ name: 'core.telemetry' });
+
   constructor() {
     // set up config
     this.config = {
@@ -63,11 +64,13 @@ export class PostHogTelemetryClient {
 
     // Log telemetry status on startup
     if (this.config.enabled) {
-      logger.info(`Telemetry enabled (sampling at ${this.config.sampleRate}%)`);
+      this.logger.info(
+        `Telemetry enabled (sampling at ${this.config.sampleRate}%)`
+      );
       // Initialize PostHog client if config is available
       this._initializePosthog();
     } else {
-      logger.info('Telemetry disabled');
+      this.logger.info('Telemetry disabled');
     }
   }
 
@@ -84,7 +87,7 @@ export class PostHogTelemetryClient {
         return fs.readFileSync(idFile, 'utf-8').trim();
       }
     } catch (error) {
-      logger.debug(`Failed to read installation ID: ${error}`);
+      this.logger.debug(`Failed to read installation ID: ${error}`);
     }
 
     // Create new ID if not exists
@@ -97,7 +100,7 @@ export class PostHogTelemetryClient {
       fs.writeFileSync(idFile, newId);
       return newId;
     } catch (error) {
-      logger.debug(`Failed to write installation ID: ${error}`);
+      this.logger.debug(`Failed to write installation ID: ${error}`);
     }
 
     // Fallback to in-memory ID if file operations fail
@@ -119,13 +122,13 @@ export class PostHogTelemetryClient {
         flushInterval: 30000, // Send events every 30 seconds
       });
       this.initialized = true;
-      logger.debug('PostHog client initialized successfully');
+      this.logger.debug('PostHog client initialized successfully');
 
       // Process any queued events
       this._processQueuedEvents();
       return true;
     } catch (error) {
-      logger.error(`Failed to initialize PostHog client: ${error}`);
+      this.logger.error(`Failed to initialize PostHog client: ${error}`);
       return false;
     }
   }
@@ -171,7 +174,7 @@ export class PostHogTelemetryClient {
         properties: eventProperties,
       });
     } catch (error) {
-      logger.debug(`Failed to capture event: ${error}`);
+      this.logger.debug(`Failed to capture event: ${error}`);
     }
   }
 
@@ -257,13 +260,13 @@ export class PostHogTelemetryClient {
       }
 
       await this.posthogClient.flush();
-      logger.debug('Telemetry flushed successfully');
+      this.logger.debug('Telemetry flushed successfully');
 
       // Clear counters after sending
       this.counters = {};
       return true;
     } catch (error) {
-      logger.debug(`Failed to flush telemetry: ${error}`);
+      this.logger.debug(`Failed to flush telemetry: ${error}`);
       return false;
     }
   }
@@ -273,7 +276,7 @@ export class PostHogTelemetryClient {
      * Enable telemetry collection.
      */
     this.config.enabled = true;
-    logger.info('Telemetry enabled');
+    this.logger.info('Telemetry enabled');
     if (!this.initialized) {
       this._initializePosthog();
     }
@@ -285,7 +288,7 @@ export class PostHogTelemetryClient {
      */
     this.config.enabled = false;
     await this.posthogClient?.disable();
-    logger.info('Telemetry disabled');
+    this.logger.info('Telemetry disabled');
   }
 
   get enabled(): boolean {

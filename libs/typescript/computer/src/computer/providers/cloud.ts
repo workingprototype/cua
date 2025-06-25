@@ -6,8 +6,6 @@ import {
 import type { CloudComputerConfig, VMProviderType } from '../types';
 import { BaseComputer } from './base';
 
-const logger = pino({ name: 'computer-cloud' });
-
 /**
  * Cloud-specific computer implementation
  */
@@ -16,6 +14,8 @@ export class CloudComputer extends BaseComputer {
   protected apiKey: string;
   private iface?: BaseComputerInterface;
   private initialized = false;
+
+  protected logger = pino({ name: 'computer.provider_cloud' });
 
   constructor(config: CloudComputerConfig) {
     super(config);
@@ -31,14 +31,14 @@ export class CloudComputer extends BaseComputer {
    */
   async run(): Promise<void> {
     if (this.initialized) {
-      logger.info('Computer already initialized, skipping initialization');
+      this.logger.info('Computer already initialized, skipping initialization');
       return;
     }
 
     try {
       // For cloud provider, the VM is already running, we just need to connect
       const ipAddress = this.ip;
-      logger.info(`Connecting to cloud VM at ${ipAddress}`);
+      this.logger.info(`Connecting to cloud VM at ${ipAddress}`);
 
       // Create the interface with API key authentication
       this.iface = InterfaceFactory.createInterfaceForOS(
@@ -49,13 +49,13 @@ export class CloudComputer extends BaseComputer {
       );
 
       // Wait for the interface to be ready
-      logger.info('Waiting for interface to be ready...');
+      this.logger.info('Waiting for interface to be ready...');
       await this.iface.waitForReady();
 
       this.initialized = true;
-      logger.info('Cloud computer ready');
+      this.logger.info('Cloud computer ready');
     } catch (error) {
-      logger.error(`Failed to initialize cloud computer: ${error}`);
+      this.logger.error(`Failed to initialize cloud computer: ${error}`);
       throw new Error(`Failed to initialize cloud computer: ${error}`);
     }
   }
@@ -64,7 +64,7 @@ export class CloudComputer extends BaseComputer {
    * Stop the cloud computer (disconnect interface)
    */
   async stop(): Promise<void> {
-    logger.info('Disconnecting from cloud computer...');
+    this.logger.info('Disconnecting from cloud computer...');
 
     if (this.iface) {
       this.iface.disconnect();
@@ -72,7 +72,7 @@ export class CloudComputer extends BaseComputer {
     }
 
     this.initialized = false;
-    logger.info('Disconnected from cloud computer');
+    this.logger.info('Disconnected from cloud computer');
   }
 
   /**
