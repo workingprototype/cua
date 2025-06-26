@@ -28,24 +28,24 @@ for path in pythonpath.split(":"):
         sys.path.insert(0, path)  # Insert at beginning to prioritize
         print(f"Added to sys.path: {path}")
 
-from computer.computer import Computer
+from computer import Computer, VMProviderType
 
 @pytest.fixture(scope="session")
 async def computer():
     """Shared Computer instance for all test cases."""
-    # # Create a remote Linux computer with C/ua
-    # computer = Computer(
-    #     os_type="linux",
-    #     api_key=os.getenv("CUA_API_KEY"),
-    #     name=str(os.getenv("CUA_CONTAINER_NAME")),
-    #     provider_type=VMProviderType.CLOUD,
-    # )
+    # Create a remote Linux computer with C/ua
+    computer = Computer(
+        os_type="linux",
+        api_key=os.getenv("CUA_API_KEY"),
+        name=str(os.getenv("CUA_CONTAINER_NAME")),
+        provider_type=VMProviderType.CLOUD,
+    )
     
     # Create a local macOS computer with C/ua
     # computer = Computer()
     
     # Connect to host computer
-    computer = Computer(use_host_computer_server=True)
+    # computer = Computer(use_host_computer_server=True)
     
     try:
         await computer.run()
