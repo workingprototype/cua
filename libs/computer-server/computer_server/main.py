@@ -172,6 +172,7 @@ async def websocket_endpoint(websocket: WebSocket):
         "write_text": manager.file_handler.write_text,
         "read_bytes": manager.file_handler.read_bytes,
         "write_bytes": manager.file_handler.write_bytes,
+        "get_file_size": manager.file_handler.get_file_size,
         "delete_file": manager.file_handler.delete_file,
         "create_dir": manager.file_handler.create_dir,
         "delete_dir": manager.file_handler.delete_dir,

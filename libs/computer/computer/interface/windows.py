@@ -587,12 +587,56 @@ class WindowsComputerInterface(BaseComputerInterface):
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to write file"))
 
-    async def read_bytes(self, path: str) -> bytes:
-        result = await self._send_command("read_bytes", {"path": path})
+    async def read_bytes(self, path: str, offset: int = 0, length: Optional[int] = None) -> bytes:
+        # For large files, use chunked reading
+        if length is None:
+            # Get file size first to determine if we need chunking
+            file_size = await self.get_file_size(path)
+            # If file is larger than 5MB, read in chunks
+            if file_size > 5 * 1024 * 1024:  # 5MB threshold
+                return await self._read_bytes_chunked(path, offset, file_size - offset if offset > 0 else file_size)
+        
+        result = await self._send_command("read_bytes", {
+            "path": path, 
+            "offset": offset, 
+            "length": length
+        })
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to read file"))
         content_b64 = result.get("content_b64", "")
         return decode_base64_image(content_b64)
+
+    async def get_file_size(self, path: str) -> int:
+        result = await self._send_command("get_file_size", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to get file size"))
+        return result.get("size", 0)
+
+    async def _read_bytes_chunked(self, path: str, offset: int, total_length: int, chunk_size: int = 1024 * 1024) -> bytes:
+        """Read large files in chunks to avoid memory issues."""
+        chunks = []
+        current_offset = offset
+        remaining = total_length
+        
+        while remaining > 0:
+            read_size = min(chunk_size, remaining)
+            result = await self._send_command("read_bytes", {
+                "path": path,
+                "offset": current_offset,
+                "length": read_size
+            })
+            
+            if not result.get("success", False):
+                raise RuntimeError(result.get("error", "Failed to read file chunk"))
+            
+            content_b64 = result.get("content_b64", "")
+            chunk_data = decode_base64_image(content_b64)
+            chunks.append(chunk_data)
+            
+            current_offset += read_size
+            remaining -= read_size
+        
+        return b''.join(chunks)
 
     async def write_bytes(self, path: str, content: bytes) -> None:
         result = await self._send_command("write_bytes", {"path": path, "content_b64": encode_base64_image(content)})
