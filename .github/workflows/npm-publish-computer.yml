@@ -7,14 +7,17 @@ on:
 
 jobs:
   publish:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js LTS
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
@@ -27,6 +30,6 @@ jobs:
 
       - name: Publish to npm
         working-directory: ./libs/typescript/computer
-        run: npm publish --access public
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
