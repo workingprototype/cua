@@ -5,7 +5,7 @@
   "description": "Typescript SDK for c/ua core",
   "type": "module",
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/trycua/cua/tree/feature/computer/typescript/libs/typescript/computer",
   "bugs": {
     "url": "https://github.com/trycua/cua/issues"
   },
