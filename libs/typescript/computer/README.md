@@ -9,15 +9,15 @@ This library is a TypeScript port of the Python computer library, providing the 
 ## Installation
 
 ```bash
-npm install @cua/computer
+npm install @trycua/computer
 # or
-pnpm add @cua/computer
+pnpm add @trycua/computer
 ```
 
 ## Usage
 
 ```typescript
-import { Computer } from '@cua/computer';
+import { Computer } from '@trycua/computer';
 
 // Create a new computer instance
 const computer = new Computer({

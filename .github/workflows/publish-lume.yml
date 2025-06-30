@@ -85,7 +85,7 @@ jobs:
 
           # Update version in Main.swift
           echo "Updating version in Main.swift to $VERSION"
-          sed -i '' "s/static let current: String = \".*\"/static let current: String = \"$VERSION\"/" libs/swift/lume/src/Main.swift
+          sed -i '' "s/static let current: String = \".*\"/static let current: String = \"$VERSION\"/" libs/lume/src/Main.swift
 
           # Set output for later steps
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -147,7 +147,7 @@ jobs:
           CERT_APPLICATION_NAME: "Developer ID Application: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.TEAM_ID }})"
           CERT_INSTALLER_NAME: "Developer ID Installer: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.TEAM_ID }})"
           VERSION: ${{ steps.set_version.outputs.version }}
-        working-directory: ./libs/swift/lume
+        working-directory: ./libs/lume
         run: |
           # Minimal debug information
           echo "Starting build process..."
@@ -185,7 +185,7 @@ jobs:
 
       - name: Generate SHA256 Checksums
         id: generate_checksums
-        working-directory: ./libs/swift/lume/.release
+        working-directory: ./libs/lume/.release
         run: |
           # Use existing checksums file if it exists, otherwise generate one
           if [ -f "checksums.txt" ]; then
@@ -208,7 +208,7 @@ jobs:
           ls -la
 
       - name: Create Standard Version Releases
-        working-directory: ./libs/swift/lume/.release
+        working-directory: ./libs/lume/.release
         run: |
           VERSION=${{ steps.set_version.outputs.version }}
           ARCH=$(uname -m)
@@ -230,14 +230,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lume-notarized-tarball
-          path: ./libs/swift/lume/${{ steps.build_notarize.outputs.tarball_path }}
+          path: ./libs/lume/${{ steps.build_notarize.outputs.tarball_path }}
           if-no-files-found: error
 
       - name: Upload Notarized Package (Installer)
         uses: actions/upload-artifact@v4
         with:
           name: lume-notarized-installer
-          path: ./libs/swift/lume/${{ steps.build_notarize.outputs.pkg_path }}
+          path: ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
           if-no-files-found: error
 
       - name: Create Release
@@ -245,18 +245,18 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./libs/swift/lume/${{ steps.build_notarize.outputs.tarball_path }}
-            ./libs/swift/lume/${{ steps.build_notarize.outputs.pkg_path }}
-            ./libs/swift/lume/.release/lume-darwin.tar.gz
-            ./libs/swift/lume/.release/lume-darwin.pkg.tar.gz
-            ./libs/swift/lume/.release/lume.tar.gz
-            ./libs/swift/lume/.release/lume.pkg.tar.gz
+            ./libs/lume/${{ steps.build_notarize.outputs.tarball_path }}
+            ./libs/lume/${{ steps.build_notarize.outputs.pkg_path }}
+            ./libs/lume/.release/lume-darwin.tar.gz
+            ./libs/lume/.release/lume-darwin.pkg.tar.gz
+            ./libs/lume/.release/lume.tar.gz
+            ./libs/lume/.release/lume.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
 
             ### Installation with script
 
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/swift/lume/scripts/install.sh)"
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
             ```
           generate_release_notes: true
           make_latest: true

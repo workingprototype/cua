@@ -61,7 +61,7 @@ jobs:
 
   publish:
     needs: prepare
-    uses: ./.github/workflows/reusable-publish.yml
+    uses: ./.github/workflows/pypi-reusable-publish.yml
     with:
       package_name: "computer-server"
       package_dir: "libs/python/computer-server"

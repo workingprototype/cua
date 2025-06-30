@@ -2,8 +2,8 @@
 
 This repository contains TypeScript implementations of the C/UA libraries:
 
-- `@cua/core`: Core functionality including telemetry and logging
-- `@cua/computer`: Computer interaction SDK for VM management and control
+- `@trycua/core`: Core functionality including telemetry and logging
+- `@trycua/computer`: Computer interaction SDK for VM management and control
 
 ## Project Structure
 
@@ -48,10 +48,10 @@ Build specific packages:
 
 ```bash
 # Build core package
-pnpm --filter @cua/core build
+pnpm --filter @trycua/core build
 
 # Build computer package
-pnpm --filter @cua/computer build
+pnpm --filter @trycua/computer build
 ```
 
 ### Running Tests
@@ -66,10 +66,10 @@ Run tests for specific packages:
 
 ```bash
 # Test core package
-pnpm --filter @cua/core test
+pnpm --filter @trycua/core test
 
 # Test computer package
-pnpm --filter @cua/computer test
+pnpm --filter @trycua/computer test
 ```
 
 ### Linting
@@ -88,14 +88,14 @@ pnpm lint:fix:all
 
 ## Package Details
 
-### @cua/core
+### @trycua/core
 
 Core functionality for C/UA libraries including:
 
 - Telemetry with PostHog integration
 - Common utilities and types
 
-### @cua/computer
+### @trycua/computer
 
 Computer interaction SDK for managing and controlling virtual machines:
 

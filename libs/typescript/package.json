@@ -8,11 +8,11 @@
   "scripts": {
     "lint": "biome check",
     "lint:fix": "biome check --fix",
-    "build:core": "pnpm --filter @cua/core build",
-    "build:computer": "pnpm --filter @cua/computer build",
+    "build:core": "pnpm --filter @trycua/core build",
+    "build:computer": "pnpm --filter @trycua/computer build",
     "build": "pnpm build:core && pnpm build:computer",
-    "test:core": "pnpm --filter @cua/core test",
-    "test:computer": "pnpm --filter @cua/computer test",
+    "test:core": "pnpm --filter @trycua/core test",
+    "test:computer": "pnpm --filter @trycua/computer test",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },

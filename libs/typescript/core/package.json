@@ -1,5 +1,5 @@
 {
-  "name": "@cua/core",
+  "name": "@trycua/core",
   "version": "0.0.1",
   "packageManager": "pnpm@10.11.0",
   "description": "Typescript SDK for c/ua core",

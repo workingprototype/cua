@@ -1,9 +1,9 @@
-name: Publish @cua/computer to npm
+name: Publish @trycua/core to npm
 
 on:
   push:
     tags:
-      - 'computer-v*'
+      - "core-v*"
 
 jobs:
   publish:
@@ -15,18 +15,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        working-directory: ./libs/typescript/computer
+        working-directory: ./libs/typescript/core
         run: npm ci
 
       - name: Build package
-        working-directory: ./libs/typescript/computer
+        working-directory: ./libs/typescript/core
         run: npm run build --if-present
 
       - name: Publish to npm
-        working-directory: ./libs/typescript/computer
+        working-directory: ./libs/typescript/core
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

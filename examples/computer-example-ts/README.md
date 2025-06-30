@@ -1,10 +1,10 @@
 # cua-cloud-openai Example
 
-This example demonstrates how to control a c/ua Cloud container using the OpenAI `computer-use-preview` model and the `@cua/computer` TypeScript library.
+This example demonstrates how to control a c/ua Cloud container using the OpenAI `computer-use-preview` model and the `@trycua/computer` TypeScript library.
 
 ## Overview
 
-- Connects to a c/ua Cloud container via the `@cua/computer` library
+- Connects to a c/ua Cloud container via the `@trycua/computer` library
 - Sends screenshots and instructions to OpenAI's computer-use model
 - Executes AI-generated actions (clicks, typing, etc.) inside the container
 - Designed for Linux containers, but can be adapted for other OS types
@@ -12,6 +12,7 @@ This example demonstrates how to control a c/ua Cloud container using the OpenAI
 ## Getting Started
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
@@ -23,6 +24,7 @@ This example demonstrates how to control a c/ua Cloud container using the OpenAI
    - `CUA_CONTAINER_NAME` — the name of your provisioned container
 
 3. **Run the example:**
+
    ```bash
    npx tsx src/index.ts
    ```
