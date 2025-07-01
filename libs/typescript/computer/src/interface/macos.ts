@@ -148,33 +148,145 @@ export class MacOSComputerInterface extends BaseComputerInterface {
     return (response.files as string[]) || [];
   }
 
-  async readText(path: string): Promise<string> {
-    const response = await this.sendCommand('read_text', { path });
+  async getFileSize(path: string): Promise<number> {
+    const response = await this.sendCommand('get_file_size', { path });
     if (!response.success) {
-      throw new Error((response.error as string) || 'Failed to read file');
+      throw new Error((response.error as string) || 'Failed to get file size');
     }
-    return (response.content as string) || '';
+    return (response.size as number) || 0;
   }
 
-  async writeText(path: string, content: string): Promise<void> {
-    const response = await this.sendCommand('write_text', { path, content });
-    if (!response.success) {
-      throw new Error((response.error as string) || 'Failed to write file');
+  private async readBytesChunked(
+    path: string,
+    offset: number,
+    totalLength: number,
+    chunkSize: number = 1024 * 1024
+  ): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    let currentOffset = offset;
+    let remaining = totalLength;
+
+    while (remaining > 0) {
+      const readSize = Math.min(chunkSize, remaining);
+      const response = await this.sendCommand('read_bytes', {
+        path,
+        offset: currentOffset,
+        length: readSize,
+      });
+
+      if (!response.success) {
+        throw new Error(
+          (response.error as string) || 'Failed to read file chunk'
+        );
+      }
+
+      const chunkData = Buffer.from(response.content_b64 as string, 'base64');
+      chunks.push(chunkData);
+
+      currentOffset += readSize;
+      remaining -= readSize;
+    }
+
+    return Buffer.concat(chunks);
+  }
+
+  private async writeBytesChunked(
+    path: string,
+    content: Buffer,
+    append: boolean = false,
+    chunkSize: number = 1024 * 1024
+  ): Promise<void> {
+    const totalSize = content.length;
+    let currentOffset = 0;
+
+    while (currentOffset < totalSize) {
+      const chunkEnd = Math.min(currentOffset + chunkSize, totalSize);
+      const chunkData = content.subarray(currentOffset, chunkEnd);
+
+      // First chunk uses the original append flag, subsequent chunks always append
+      const chunkAppend = currentOffset === 0 ? append : true;
+
+      const response = await this.sendCommand('write_bytes', {
+        path,
+        content_b64: chunkData.toString('base64'),
+        append: chunkAppend,
+      });
+
+      if (!response.success) {
+        throw new Error(
+          (response.error as string) || 'Failed to write file chunk'
+        );
+      }
+
+      currentOffset = chunkEnd;
     }
   }
 
-  async readBytes(path: string): Promise<Buffer> {
-    const response = await this.sendCommand('read_bytes', { path });
+  async readText(path: string, encoding: BufferEncoding = 'utf8'): Promise<string> {
+    /**
+     * Read text from a file with specified encoding.
+     * 
+     * @param path - Path to the file to read
+     * @param encoding - Text encoding to use (default: 'utf8')
+     * @returns The decoded text content of the file
+     */
+    const contentBytes = await this.readBytes(path);
+    return contentBytes.toString(encoding);
+  }
+
+  async writeText(
+    path: string,
+    content: string,
+    encoding: BufferEncoding = 'utf8',
+    append: boolean = false
+  ): Promise<void> {
+    /**
+     * Write text to a file with specified encoding.
+     * 
+     * @param path - Path to the file to write
+     * @param content - Text content to write
+     * @param encoding - Text encoding to use (default: 'utf8')
+     * @param append - Whether to append to the file instead of overwriting
+     */
+    const contentBytes = Buffer.from(content, encoding);
+    await this.writeBytes(path, contentBytes, append);
+  }
+
+  async readBytes(path: string, offset: number = 0, length?: number): Promise<Buffer> {
+    // For large files, use chunked reading
+    if (length === undefined) {
+      // Get file size first to determine if we need chunking
+      const fileSize = await this.getFileSize(path);
+      // If file is larger than 5MB, read in chunks
+      if (fileSize > 5 * 1024 * 1024) {
+        const readLength = offset > 0 ? fileSize - offset : fileSize;
+        return await this.readBytesChunked(path, offset, readLength);
+      }
+    }
+
+    const response = await this.sendCommand('read_bytes', {
+      path,
+      offset,
+      length,
+    });
     if (!response.success) {
       throw new Error((response.error as string) || 'Failed to read file');
     }
     return Buffer.from(response.content_b64 as string, 'base64');
   }
 
-  async writeBytes(path: string, content: Buffer): Promise<void> {
+  async writeBytes(path: string, content: Buffer, append: boolean = false): Promise<void> {
+    // For large files, use chunked writing
+    if (content.length > 5 * 1024 * 1024) {
+      // 5MB threshold
+      await this.writeBytesChunked(path, content, append);
+      return;
+    }
+
     const response = await this.sendCommand('write_bytes', {
       path,
       content_b64: content.toString('base64'),
+      append,
     });
     if (!response.success) {
       throw new Error((response.error as string) || 'Failed to write file');
