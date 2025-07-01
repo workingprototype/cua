@@ -47,7 +47,7 @@ This will install:
 If you want to simplify installation, you can use this one-liner to download and run the installation script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/mcp-server/scripts/install_mcp_server.sh | bash
+curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/python/mcp-server/scripts/install_mcp_server.sh | bash
 ```
 
 This script will:
@@ -84,7 +84,7 @@ If you want to develop with the cua-mcp-server directly without installation, yo
   "mcpServers": {
     "cua-agent": {
       "command": "/bin/bash",
-      "args": ["~/cua/libs/mcp-server/scripts/start_mcp_server.sh"],
+      "args": ["~/cua/libs/python/mcp-server/scripts/start_mcp_server.sh"],
       "env": {
         "CUA_AGENT_LOOP": "UITARS",
         "CUA_MODEL_PROVIDER": "OAICOMPAT",
@@ -106,7 +106,7 @@ Just add this to your MCP client's configuration and it will use your local deve
 
 ### Troubleshooting
 
-If you get a `/bin/bash: ~/cua/libs/mcp-server/scripts/start_mcp_server.sh: No such file or directory` error, try changing the path to the script to be absolute instead of relative.
+If you get a `/bin/bash: ~/cua/libs/python/mcp-server/scripts/start_mcp_server.sh: No such file or directory` error, try changing the path to the script to be absolute instead of relative.
 
 To see the logs:
 ```

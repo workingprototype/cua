@@ -97,11 +97,11 @@ Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK
 
 ---
 
-## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
-- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
-- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
-- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
-- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops)
+- [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
+- [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
+- [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
+- [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
 ## 🖥️ Compatibility
 
@@ -224,8 +224,8 @@ docker run -it --rm \
 
 ## Resources
 
-- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/mcp-server/README.md) - One of the easiest ways to get started with C/ua
-- [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/agent/README.md)
+- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/python/mcp-server/README.md) - One of the easiest ways to get started with C/ua
+- [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/python/agent/README.md)
 - [How to use Lume CLI for managing desktops](./libs/lume/README.md)
 - [Training Computer-Use Models: Collecting Human Trajectories with C/ua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
 - [Build Your Own Operator on macOS (Part 1)](https://www.trycua.com/blog/build-your-own-operator-on-macos-1)
