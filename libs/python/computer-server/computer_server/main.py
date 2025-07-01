@@ -5,6 +5,7 @@ import logging
 import asyncio
 import json
 import traceback
+import inspect
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 from .handlers.factory import HandlerFactory
@@ -218,7 +219,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 try:
-                    result = await handlers[command](**params)
+                    # Filter params to only include those accepted by the handler function
+                    handler_func = handlers[command]
+                    sig = inspect.signature(handler_func)
+                    filtered_params = {k: v for k, v in params.items() if k in sig.parameters}
+                    
+                    result = await handler_func(**filtered_params)
                     await websocket.send_json({"success": True, **result})
                 except Exception as cmd_error:
                     logger.error(f"Error executing command {command}: {str(cmd_error)}")
