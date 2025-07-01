@@ -7,7 +7,7 @@ Includes:
 """
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .base import BaseFileHandler
 import base64
 
@@ -47,16 +47,36 @@ class GenericFileHandler(BaseFileHandler):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def write_bytes(self, path: str, content_b64: str) -> Dict[str, Any]:
+    async def write_bytes(self, path: str, content_b64: str, append: bool = False) -> Dict[str, Any]:
         try:
-            resolve_path(path).write_bytes(base64.b64decode(content_b64))
+            mode = 'ab' if append else 'wb'
+            with open(resolve_path(path), mode) as f:
+                f.write(base64.b64decode(content_b64))
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
         
-    async def read_bytes(self, path: str) -> Dict[str, Any]:
+    async def read_bytes(self, path: str, offset: int = 0, length: Optional[int] = None) -> Dict[str, Any]:
         try:
-            return {"success": True, "content_b64": base64.b64encode(resolve_path(path).read_bytes()).decode('utf-8')}
+            file_path = resolve_path(path)
+            with open(file_path, 'rb') as f:
+                if offset > 0:
+                    f.seek(offset)
+                
+                if length is not None:
+                    content = f.read(length)
+                else:
+                    content = f.read()
+                
+            return {"success": True, "content_b64": base64.b64encode(content).decode('utf-8')}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    async def get_file_size(self, path: str) -> Dict[str, Any]:
+        try:
+            file_path = resolve_path(path)
+            size = file_path.stat().st_size
+            return {"success": True, "size": size}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

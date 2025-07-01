@@ -262,11 +262,28 @@ class WinSandboxProvider(BaseVMProvider):
                 self.logger.info(f"Shared directories: {len(folder_mappers)}")
             
             # Create the sandbox without logon script
-            sandbox = winsandbox.new_sandbox(
-                memory_mb=str(memory_mb),
-                networking=networking,
-                folder_mappers=folder_mappers
-            )
+            try:
+                # Try with memory_mb parameter (newer pywinsandbox version)
+                sandbox = winsandbox.new_sandbox(
+                    memory_mb=str(memory_mb),
+                    networking=networking,
+                    folder_mappers=folder_mappers
+                )
+            except TypeError as e:
+                if "memory_mb" in str(e):
+                    # Fallback for older pywinsandbox version that doesn't support memory_mb
+                    self.logger.warning(
+                        f"Your pywinsandbox version doesn't support memory_mb parameter. "
+                        f"Using default memory settings. To use custom memory settings, "
+                        f"please update pywinsandbox: pip install -U git+https://github.com/karkason/pywinsandbox.git"
+                    )
+                    sandbox = winsandbox.new_sandbox(
+                        networking=networking,
+                        folder_mappers=folder_mappers
+                    )
+                else:
+                    # Re-raise if it's a different TypeError
+                    raise
             
             # Store the sandbox
             self._active_sandboxes[name] = sandbox

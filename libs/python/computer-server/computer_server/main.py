@@ -5,6 +5,7 @@ import logging
 import asyncio
 import json
 import traceback
+import inspect
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 from .handlers.factory import HandlerFactory
@@ -172,6 +173,7 @@ async def websocket_endpoint(websocket: WebSocket):
         "write_text": manager.file_handler.write_text,
         "read_bytes": manager.file_handler.read_bytes,
         "write_bytes": manager.file_handler.write_bytes,
+        "get_file_size": manager.file_handler.get_file_size,
         "delete_file": manager.file_handler.delete_file,
         "create_dir": manager.file_handler.create_dir,
         "delete_dir": manager.file_handler.delete_dir,
@@ -217,7 +219,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 try:
-                    result = await handlers[command](**params)
+                    # Filter params to only include those accepted by the handler function
+                    handler_func = handlers[command]
+                    sig = inspect.signature(handler_func)
+                    filtered_params = {k: v for k, v in params.items() if k in sig.parameters}
+                    
+                    result = await handler_func(**filtered_params)
                     await websocket.send_json({"success": True, **result})
                 except Exception as cmd_error:
                     logger.error(f"Error executing command {command}: {str(cmd_error)}")

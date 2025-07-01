@@ -45,11 +45,6 @@ class BaseFileHandler(ABC):
         pass
     
     @abstractmethod
-    async def read_bytes(self, path: str) -> Dict[str, Any]:
-        """Read the binary contents of a file. Sent over the websocket as a base64 string."""
-        pass
-
-    @abstractmethod
     async def write_bytes(self, path: str, content_b64: str) -> Dict[str, Any]:
         """Write binary content to a file. Sent over the websocket as a base64 string."""
         pass
@@ -67,6 +62,22 @@ class BaseFileHandler(ABC):
     @abstractmethod
     async def delete_dir(self, path: str) -> Dict[str, Any]:
         """Delete a directory."""
+        pass
+
+    @abstractmethod
+    async def read_bytes(self, path: str, offset: int = 0, length: Optional[int] = None) -> Dict[str, Any]:
+        """Read the binary contents of a file. Sent over the websocket as a base64 string.
+        
+        Args:
+            path: Path to the file
+            offset: Byte offset to start reading from (default: 0)
+            length: Number of bytes to read (default: None for entire file)
+        """
+        pass
+
+    @abstractmethod
+    async def get_file_size(self, path: str) -> Dict[str, Any]:
+        """Get the size of a file in bytes."""
         pass
 
 class BaseAutomationHandler(ABC):

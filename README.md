@@ -285,8 +285,8 @@ await computer.interface.copy_to_clipboard()    # Get clipboard content
 # File System Operations
 await computer.interface.file_exists(path)      # Check if file exists
 await computer.interface.directory_exists(path) # Check if directory exists
-await computer.interface.read_text(path)        # Read file content
-await computer.interface.write_text(path, content) # Write file content
+await computer.interface.read_text(path, encoding="utf-8")        # Read file content
+await computer.interface.write_text(path, content, encoding="utf-8") # Write file content
 await computer.interface.read_bytes(path)       # Read file content as bytes
 await computer.interface.write_bytes(path, content) # Write file content as bytes
 await computer.interface.delete_file(path)      # Delete file

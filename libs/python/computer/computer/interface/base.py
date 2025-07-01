@@ -208,8 +208,14 @@ class BaseComputerInterface(ABC):
         pass
     
     @abstractmethod
-    async def read_bytes(self, path: str) -> bytes:
-        """Read file binary contents."""
+    async def read_bytes(self, path: str, offset: int = 0, length: Optional[int] = None) -> bytes:
+        """Read file binary contents with optional seeking support.
+        
+        Args:
+            path: Path to the file
+            offset: Byte offset to start reading from (default: 0)
+            length: Number of bytes to read (default: None for entire file)
+        """
         pass
     
     @abstractmethod
@@ -230,6 +236,11 @@ class BaseComputerInterface(ABC):
     @abstractmethod
     async def delete_dir(self, path: str) -> None:
         """Delete directory."""
+        pass
+    
+    @abstractmethod
+    async def get_file_size(self, path: str) -> int:
+        """Get the size of a file in bytes."""
         pass
     
     @abstractmethod
