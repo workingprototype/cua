@@ -337,16 +337,30 @@ class GenericComputerInterface(BaseComputerInterface):
         content_b64 = result.get("content_b64", "")
         return decode_base64_image(content_b64)
 
-    async def read_text(self, path: str) -> str:
-        result = await self._send_command("read_text", {"path": path})
-        if not result.get("success", False):
-            raise RuntimeError(result.get("error", "Failed to read file"))
-        return result.get("content", "")
+    async def read_text(self, path: str, encoding: str = 'utf-8') -> str:
+        """Read text from a file with specified encoding.
+        
+        Args:
+            path: Path to the file to read
+            encoding: Text encoding to use (default: 'utf-8')
+            
+        Returns:
+            str: The decoded text content of the file
+        """
+        content_bytes = await self.read_bytes(path)
+        return content_bytes.decode(encoding)
 
-    async def write_text(self, path: str, content: str) -> None:
-        result = await self._send_command("write_text", {"path": path, "content": content})
-        if not result.get("success", False):
-            raise RuntimeError(result.get("error", "Failed to write file"))
+    async def write_text(self, path: str, content: str, encoding: str = 'utf-8', append: bool = False) -> None:
+        """Write text to a file with specified encoding.
+        
+        Args:
+            path: Path to the file to write
+            content: Text content to write
+            encoding: Text encoding to use (default: 'utf-8')
+            append: Whether to append to the file instead of overwriting
+        """
+        content_bytes = content.encode(encoding)
+        await self.write_bytes(path, content_bytes, append)
 
     async def get_file_size(self, path: str) -> int:
         result = await self._send_command("get_file_size", {"path": path})
