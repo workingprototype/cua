@@ -105,12 +105,9 @@ class Watchdog:
                 try:
                     response = await asyncio.wait_for(websocket.recv(), timeout=5)
                     logger.debug(f"Ping response received: {response[:100]}...")
+                    return True
                 except asyncio.TimeoutError:
-                    # No response is fine for a ping
-                    logger.debug("Ping sent successfully (no response expected)")
-                
-                return True
-                
+                    return False
         except Exception as e:
             logger.warning(f"Ping failed: {e}")
             return False
