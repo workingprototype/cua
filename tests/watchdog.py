@@ -49,7 +49,7 @@ async def computer():
         await computer.disconnect()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_simple_server_ping(computer):
     """
     Simple test to verify server connectivity before running watchdog tests.
@@ -66,7 +66,7 @@ async def test_simple_server_ping(computer):
         pytest.fail(f"Basic server connectivity test failed: {e}")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_watchdog_recovery_after_hanging_command(computer):
     """
     Test that the watchdog can recover the server after a hanging command.
@@ -80,15 +80,16 @@ async def test_watchdog_recovery_after_hanging_command(computer):
     print("Starting watchdog recovery test...")
     
     async def hanging_command():
-        """Execute a command that takes 5 minutes to complete."""
+        """Execute a command that sleeps forever to hang the server."""
         try:
-            print("Starting hanging command (sleep 300)...")
-            result = await computer.interface.run_command("sleep 300")
-            print(f"Hanging command completed: {result}")
-            return result
+            print("Starting hanging command (sleep infinity)...")
+            # Use a very long sleep that should never complete naturally
+            result = await computer.interface.run_command("sleep 999999")
+            print(f"Hanging command completed unexpectedly: {result}")
+            return True  # Should never reach here if watchdog works
         except Exception as e:
-            print(f"Hanging command failed (expected if watchdog restarts): {e}")
-            return None
+            print(f"Hanging command interrupted (expected if watchdog restarts): {e}")
+            return None  # Expected result when watchdog kills the process
     
     async def ping_server():
         """Ping the server every 30 seconds with echo commands."""
@@ -183,13 +184,22 @@ async def test_watchdog_recovery_after_hanging_command(computer):
             # Test passes if we had some successful pings, indicating recovery
             assert successful_pings > 0, f"No successful pings detected. Server may not have recovered."
             
+            # Check if hanging command was killed (indicating watchdog restart)
+            if hanging_result is None:
+                print("✅ SUCCESS: Hanging command was killed - watchdog restart detected")
+            elif hanging_result is True:
+                print("⚠️  WARNING: Hanging command completed naturally - watchdog may not have restarted")
+            
             # If we had failures followed by successes, that indicates watchdog recovery
             if failed_pings > 0 and successful_pings > 0:
                 print("✅ SUCCESS: Watchdog recovery detected - server became unresponsive then recovered")
+                # Additional check: hanging command should be None if watchdog worked
+                assert hanging_result is None, "Expected hanging command to be killed by watchdog restart"
             elif successful_pings > 0 and failed_pings == 0:
                 print("✅ SUCCESS: Server remained responsive throughout test")
             
             print(f"Test completed: {successful_pings} successful pings, {failed_pings} failed pings")
+            print(f"Hanging command result: {hanging_result} (None = killed by watchdog, True = completed naturally)")
         else:
             pytest.fail("Ping task did not complete - unable to assess server recovery")
             
