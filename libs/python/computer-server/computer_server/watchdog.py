@@ -89,14 +89,13 @@ class Watchdog:
         try:
             # Create a simple ping message
             ping_message = {
-                "type": "ping",
-                "timestamp": time.time()
+                "command": "get_screen_size",
+                "params": {}
             }
             
             # Try to connect to the WebSocket
             async with websockets.connect(
                 self.ws_uri,
-                timeout=10,
                 max_size=1024 * 1024 * 10  # 10MB limit to match server
             ) as websocket:
                 # Send ping message
