@@ -47,9 +47,11 @@ class GenericFileHandler(BaseFileHandler):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def write_bytes(self, path: str, content_b64: str) -> Dict[str, Any]:
+    async def write_bytes(self, path: str, content_b64: str, append: bool = False) -> Dict[str, Any]:
         try:
-            resolve_path(path).write_bytes(base64.b64decode(content_b64))
+            mode = 'ab' if append else 'wb'
+            with open(resolve_path(path), mode) as f:
+                f.write(base64.b64decode(content_b64))
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
