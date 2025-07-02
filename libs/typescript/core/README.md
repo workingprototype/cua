@@ -1,6 +1,6 @@
-# tsdown-starter
+# C/ua Core TypeScript Library
 
-A starter for creating a tsdown package.
+The core c/ua library with support for telemetry and other utilities.
 
 ## Development
 
