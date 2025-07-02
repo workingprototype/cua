@@ -2,7 +2,7 @@
   "name": "@trycua/core",
   "version": "0.1.0",
   "packageManager": "pnpm@10.11.0",
-  "description": "Typescript SDK for c/ua core",
+  "description": "Typescript SDK for c/ua core.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/trycua/cua/tree/feature/computer/typescript/libs/typescript/computer",

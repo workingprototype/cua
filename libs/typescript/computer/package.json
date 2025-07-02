@@ -38,7 +38,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@trycua/core": "link:../core",
+    "@trycua/core": "^0.1.0",
     "pino": "^9.7.0",
     "ws": "^8.18.0"
   },
