@@ -32,6 +32,21 @@ class GenericComputerInterface(BaseComputerInterface):
         # Set logger name for the interface
         self.logger = Logger(logger_name, LogLevel.NORMAL)
 
+        # Optional default delay time between commands (in seconds)
+        self.delay = 0.0
+
+    async def _handle_delay(self, delay: Optional[float] = None):
+        """Handle delay between commands using async sleep.
+        
+        Args:
+            delay: Optional delay in seconds. If None, uses self.delay.
+        """
+        if delay is not None:
+            if isinstance(delay, float) and delay > 0:
+                await asyncio.sleep(delay)
+        elif isinstance(self.delay, float) and self.delay > 0:
+            await asyncio.sleep(self.delay)
+
     @property
     def ws_uri(self) -> str:
         """Get the WebSocket URI using the current IP address.
@@ -44,42 +59,52 @@ class GenericComputerInterface(BaseComputerInterface):
         return f"{protocol}://{self.ip_address}:{port}/ws"
 
     # Mouse actions
-    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> None:
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left", delay: Optional[float] = None) -> None:
         await self._send_command("mouse_down", {"x": x, "y": y, "button": button})
+        await self._handle_delay(delay)
     
-    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> None:
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left", delay: Optional[float] = None) -> None:
         await self._send_command("mouse_up", {"x": x, "y": y, "button": button})
+        await self._handle_delay(delay)
     
-    async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
+    async def left_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
         await self._send_command("left_click", {"x": x, "y": y})
+        await self._handle_delay(delay)
 
-    async def right_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
+    async def right_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
         await self._send_command("right_click", {"x": x, "y": y})
+        await self._handle_delay(delay)
 
-    async def double_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
+    async def double_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
         await self._send_command("double_click", {"x": x, "y": y})
+        await self._handle_delay(delay)
 
-    async def move_cursor(self, x: int, y: int) -> None:
+    async def move_cursor(self, x: int, y: int, delay: Optional[float] = None) -> None:
         await self._send_command("move_cursor", {"x": x, "y": y})
+        await self._handle_delay(delay)
 
-    async def drag_to(self, x: int, y: int, button: "MouseButton" = "left", duration: float = 0.5) -> None:
+    async def drag_to(self, x: int, y: int, button: "MouseButton" = "left", duration: float = 0.5, delay: Optional[float] = None) -> None:
         await self._send_command(
             "drag_to", {"x": x, "y": y, "button": button, "duration": duration}
         )
+        await self._handle_delay(delay)
 
-    async def drag(self, path: List[Tuple[int, int]], button: "MouseButton" = "left", duration: float = 0.5) -> None:
+    async def drag(self, path: List[Tuple[int, int]], button: "MouseButton" = "left", duration: float = 0.5, delay: Optional[float] = None) -> None:
         await self._send_command(
             "drag", {"path": path, "button": button, "duration": duration}
         )
+        await self._handle_delay(delay)
 
     # Keyboard Actions
-    async def key_down(self, key: "KeyType") -> None:
+    async def key_down(self, key: "KeyType", delay: Optional[float] = None) -> None:
         await self._send_command("key_down", {"key": key})
+        await self._handle_delay(delay)
     
-    async def key_up(self, key: "KeyType") -> None:
+    async def key_up(self, key: "KeyType", delay: Optional[float] = None) -> None:
         await self._send_command("key_up", {"key": key})
+        await self._handle_delay(delay)
     
-    async def type_text(self, text: str) -> None:
+    async def type_text(self, text: str, delay: Optional[float] = None) -> None:
         # Temporary fix for https://github.com/trycua/cua/issues/165
         # Check if text contains Unicode characters
         if any(ord(char) > 127 for char in text):
@@ -89,8 +114,9 @@ class GenericComputerInterface(BaseComputerInterface):
         else:
             # For ASCII text, use the regular typing method
             await self._send_command("type_text", {"text": text})
+        await self._handle_delay(delay)
 
-    async def press(self, key: "KeyType") -> None:
+    async def press(self, key: "KeyType", delay: Optional[float] = None) -> None:
         """Press a single key.
 
         Args:
@@ -126,16 +152,17 @@ class GenericComputerInterface(BaseComputerInterface):
             raise ValueError(f"Invalid key type: {type(key)}. Must be Key enum or string.")
 
         await self._send_command("press_key", {"key": actual_key})
+        await self._handle_delay(delay)
 
-    async def press_key(self, key: "KeyType") -> None:
+    async def press_key(self, key: "KeyType", delay: Optional[float] = None) -> None:
         """DEPRECATED: Use press() instead.
 
         This method is kept for backward compatibility but will be removed in a future version.
         Please use the press() method instead.
         """
-        await self.press(key)
+        await self.press(key, delay)
 
-    async def hotkey(self, *keys: "KeyType") -> None:
+    async def hotkey(self, *keys: "KeyType", delay: Optional[float] = None) -> None:
         """Press multiple keys simultaneously.
 
         Args:
@@ -169,16 +196,20 @@ class GenericComputerInterface(BaseComputerInterface):
                 raise ValueError(f"Invalid key type: {type(key)}. Must be Key enum or string.")
         
         await self._send_command("hotkey", {"keys": actual_keys})
+        await self._handle_delay(delay)
 
     # Scrolling Actions
-    async def scroll(self, x: int, y: int) -> None:
+    async def scroll(self, x: int, y: int, delay: Optional[float] = None) -> None:
         await self._send_command("scroll", {"x": x, "y": y})
+        await self._handle_delay(delay)
     
-    async def scroll_down(self, clicks: int = 1) -> None:
+    async def scroll_down(self, clicks: int = 1, delay: Optional[float] = None) -> None:
         await self._send_command("scroll_down", {"clicks": clicks})
-        
-    async def scroll_up(self, clicks: int = 1) -> None:
+        await self._handle_delay(delay)
+    
+    async def scroll_up(self, clicks: int = 1, delay: Optional[float] = None) -> None:
         await self._send_command("scroll_up", {"clicks": clicks})
+        await self._handle_delay(delay)
 
     # Screen actions
     async def screenshot(

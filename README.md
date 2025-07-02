@@ -155,6 +155,7 @@ async def main():
     )
 
     # Example: Direct control of a macOS VM with Computer
+    computer.interface.delay = 0.1 # Wait 0.1 seconds between kb/m actions
     await computer.interface.left_click(100, 200)
     await computer.interface.type_text("Hello, world!")
     screenshot_bytes = await computer.interface.screenshot()
@@ -296,6 +297,15 @@ await computer.interface.list_dir(path)         # List directory contents
 
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
+
+# Delay Configuration
+# Set default delay between all actions (in seconds)
+computer.interface.delay = 0.5  # 500ms delay between actions
+
+# Or specify delay for individual actions
+await computer.interface.left_click(x, y, delay=1.0)     # 1 second delay after click
+await computer.interface.type_text("Hello", delay=0.2)   # 200ms delay after typing
+await computer.interface.press_key("enter", delay=0.5)   # 500ms delay after key press
 
 # Python Virtual Environment Operations
 await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
