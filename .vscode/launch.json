@@ -165,9 +165,9 @@
             "name": "Run Playground Frontend",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder:cua-root}/libs/playground/node_modules/.bin/next",
+            "program": "${workspaceFolder:cua-root}/libs/typescript/playground/node_modules/.bin/next",
             "args": ["dev"],
-            "cwd": "${workspaceFolder:cua-root}/libs/playground",
+            "cwd": "${workspaceFolder:cua-root}/libs/typescript/playground",
             "console": "integratedTerminal",
             "env": {
                 "NODE_ENV": "development"
@@ -190,7 +190,7 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
-            "cwd": "${workspaceFolder:cua-root}/libs/playground-api",
+            "cwd": "${workspaceFolder:cua-root}/libs/python/playground-api",
             "env": {
                 "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume:${workspaceFolder:cua-root}/libs/python/computer-server:${workspaceFolder:cua-root}/libs/python/mcp-server:${workspaceFolder:cua-root}/libs/python/playground-api"
             }
