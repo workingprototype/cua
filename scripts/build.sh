@@ -127,7 +127,7 @@ install_package "libs/python/computer-server" "computer-server"
 install_package "libs/python/mcp-server" "mcp-server"
 
 # Install playground-api
-install_package "libs/playground-api" "playground-api"
+install_package "libs/python/playground-api" "playground-api"
 
 # Install development tools from root project
 print_step "Installing development dependencies..."

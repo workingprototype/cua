@@ -143,7 +143,7 @@ if (-not (Install-Package "libs/python/computer-server" "computer-server")) { ex
 if (-not (Install-Package "libs/python/mcp-server" "mcp-server")) { exit 1 }
 
 # Install playground-api
-if (-not (Install-Package "libs/playground-api" "playground-api")) { exit 1 }
+if (-not (Install-Package "libs/python/playground-api" "playground-api")) { exit 1 }
 
 # Install development tools from root project
 Print-Step "Installing development dependencies..."
