@@ -32,14 +32,17 @@ jobs:
           diff-search: true
 
       - name: Install dependencies
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm install --frozen-lockfile
 
       - name: Build package
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm run build --if-present
 
       - name: Publish to npm
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm publish --access public --no-git-checks
         env:
