@@ -10,7 +10,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -23,7 +23,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -36,7 +36,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -49,7 +49,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -62,7 +62,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -84,7 +84,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -106,7 +106,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -119,7 +119,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
             }
         },
         {
@@ -160,6 +160,40 @@
             "name": "Release lume (libs/lume)",
             "program": "${workspaceFolder:cua-root}/libs/lume/.build/release/lume",
             "preLaunchTask": "swift: Build Release lume (libs/lume)"
+        },
+        {
+            "name": "Run Playground Frontend",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder:cua-root}/libs/playground/node_modules/.bin/next",
+            "args": ["dev"],
+            "cwd": "${workspaceFolder:cua-root}/libs/playground",
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Run Playground API",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+            "cwd": "${workspaceFolder:cua-root}/libs/playground-api",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume:${workspaceFolder:cua-root}/libs/computer-server:${workspaceFolder:cua-root}/libs/mcp-server:${workspaceFolder:cua-root}/libs/playground-api"
+            }
         }
     ]
 }
