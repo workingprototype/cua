@@ -56,16 +56,16 @@ try {
 }
 
 # Create or update conda environment
-Print-Step "Creating/updating conda environment 'cua' with Python 3.12..."
+Print-Step "Creating/updating conda environment 'cua' with Python 3.12, Node.js, and yarn..."
 try {
     # Check if environment exists
     $envExists = conda env list | Select-String "^cua\s"
     if ($envExists) {
-        Print-Step "Environment 'cua' already exists. Updating..."
-        conda env update -n cua -f environment.yml --prune
+        Print-Step "Environment 'cua' already exists. Installing additional packages..."
+        conda install -n cua nodejs yarn -c conda-forge -y
     } else {
         Print-Step "Creating new environment 'cua'..."
-        conda create -n cua python=3.12 -y
+        conda create -n cua python=3.12 nodejs yarn -c conda-forge -y
     }
     Print-Success "Conda environment 'cua' ready"
 } catch {
@@ -142,13 +142,29 @@ if (-not (Install-Package "libs/computer-server" "computer-server")) { exit 1 }
 # Install mcp-server
 if (-not (Install-Package "libs/mcp-server" "mcp-server")) { exit 1 }
 
+# Install playground-api
+if (-not (Install-Package "libs/playground-api" "playground-api")) { exit 1 }
+
 # Install development tools from root project
 Print-Step "Installing development dependencies..."
 pip install -e ".[dev,test,docs]"
 
+# Install playground dependencies
+Print-Step "Installing playground dependencies..."
+Set-Location "libs/playground"
+try {
+    yarn install
+    Print-Success "Playground dependencies installed"
+} catch {
+    Print-Error "Failed to install playground dependencies"
+    Set-Location $PROJECT_ROOT
+    exit 1
+}
+Set-Location $PROJECT_ROOT
+
 # Create a .env file for VS Code to use the virtual environment
 Print-Step "Creating .env file for VS Code..."
-$pythonPath = "$PROJECT_ROOT/libs/core;$PROJECT_ROOT/libs/computer;$PROJECT_ROOT/libs/agent;$PROJECT_ROOT/libs/som;$PROJECT_ROOT/libs/pylume;$PROJECT_ROOT/libs/computer-server;$PROJECT_ROOT/libs/mcp-server"
+$pythonPath = "$PROJECT_ROOT/libs/core;$PROJECT_ROOT/libs/computer;$PROJECT_ROOT/libs/agent;$PROJECT_ROOT/libs/som;$PROJECT_ROOT/libs/pylume;$PROJECT_ROOT/libs/computer-server;$PROJECT_ROOT/libs/mcp-server;$PROJECT_ROOT/libs/playground-api"
 "PYTHONPATH=$pythonPath" | Out-File -FilePath ".env" -Encoding UTF8
 
 Print-Success "All packages installed successfully!"

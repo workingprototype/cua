@@ -60,6 +60,26 @@ source .venv/bin/activate
 print_step "Upgrading pip and installing build tools..."
 python -m pip install --upgrade pip setuptools wheel
 
+# Check if Node.js and yarn are available
+print_step "Checking Node.js and yarn availability..."
+if ! command -v node &> /dev/null; then
+    print_error "Node.js is not installed. Please install Node.js first."
+    print_error "Visit https://nodejs.org/ or use your package manager:"
+    print_error "  Ubuntu/Debian: sudo apt-get install nodejs npm"
+    print_error "  CentOS/RHEL: sudo yum install nodejs npm"
+    print_error "  macOS: brew install node"
+    exit 1
+fi
+
+if ! command -v yarn &> /dev/null; then
+    print_error "Yarn is not installed. Please install yarn first."
+    print_error "Visit https://yarnpkg.com/getting-started/install or run:"
+    print_error "  npm install -g yarn"
+    exit 1
+fi
+
+print_success "Node.js and yarn are available"
+
 # Function to install a package and its dependencies
 install_package() {
     local package_dir=$1
@@ -106,13 +126,27 @@ install_package "libs/computer-server" "computer-server"
 # Install mcp-server
 install_package "libs/mcp-server" "mcp-server"
 
+# Install playground-api
+install_package "libs/playground-api" "playground-api"
+
 # Install development tools from root project
 print_step "Installing development dependencies..."
 pip install -e ".[dev,test,docs]"
 
+# Install playground dependencies
+print_step "Installing playground dependencies..."
+cd "libs/playground"
+if yarn install; then
+    print_success "Playground dependencies installed"
+else
+    print_error "Failed to install playground dependencies"
+    exit 1
+fi
+cd "$PROJECT_ROOT"
+
 # Create a .env file for VS Code to use the virtual environment
 print_step "Creating .env file for VS Code..."
-PYTHONPATH_LINE="PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server"
+PYTHONPATH_LINE="PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server:${PROJECT_ROOT}/libs/playground-api"
 if grep -q '^PYTHONPATH=' .env 2>/dev/null; then
     sed -i "s|^PYTHONPATH=.*|$PYTHONPATH_LINE|" .env
 else
