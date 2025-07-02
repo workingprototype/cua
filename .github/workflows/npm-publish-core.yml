@@ -2,8 +2,7 @@ name: Publish @trycua/core to npm
 
 on:
   push:
-    tags:
-      - "core-v*"
+    branches: main
 
 jobs:
   publish:
@@ -20,15 +19,26 @@ jobs:
           node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Check if version changed
+        id: check-version
+        uses: EndBug/version-check@v2
+        with:
+          file-name: libs/typescript/core/package.json
+          static-checking: localIsNew
+          diff-search: true
+
       - name: Install dependencies
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm install --frozen-lockfile
 
       - name: Build package
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm run build --if-present
 
       - name: Publish to npm
+        if: steps.check-version.outputs.changed == 'true'
         working-directory: ./libs/typescript/core
         run: pnpm publish --access public --no-git-checks
         env:
