@@ -122,25 +122,25 @@ function Install-Package {
 Print-Step "Installing packages in development mode..."
 
 # Install core first (base package with telemetry support)
-if (-not (Install-Package "libs/core" "core")) { exit 1 }
+if (-not (Install-Package "libs/python/core" "core")) { exit 1 }
 
 # Install pylume (base dependency)
-if (-not (Install-Package "libs/pylume" "pylume")) { exit 1 }
+if (-not (Install-Package "libs/python/pylume" "pylume")) { exit 1 }
 
 # Install computer with all its dependencies and extras
-if (-not (Install-Package "libs/computer" "computer" "all")) { exit 1 }
+if (-not (Install-Package "libs/python/computer" "computer" "all")) { exit 1 }
 
 # Install omniparser
-if (-not (Install-Package "libs/som" "som")) { exit 1 }
+if (-not (Install-Package "libs/python/som" "som")) { exit 1 }
 
 # Install agent with all its dependencies and extras
-if (-not (Install-Package "libs/agent" "agent" "all")) { exit 1 }
+if (-not (Install-Package "libs/python/agent" "agent" "all")) { exit 1 }
 
 # Install computer-server
-if (-not (Install-Package "libs/computer-server" "computer-server")) { exit 1 }
+if (-not (Install-Package "libs/python/computer-server" "computer-server")) { exit 1 }
 
 # Install mcp-server
-if (-not (Install-Package "libs/mcp-server" "mcp-server")) { exit 1 }
+if (-not (Install-Package "libs/python/mcp-server" "mcp-server")) { exit 1 }
 
 # Install playground-api
 if (-not (Install-Package "libs/playground-api" "playground-api")) { exit 1 }
@@ -164,7 +164,7 @@ Set-Location $PROJECT_ROOT
 
 # Create a .env file for VS Code to use the virtual environment
 Print-Step "Creating .env file for VS Code..."
-$pythonPath = "$PROJECT_ROOT/libs/core;$PROJECT_ROOT/libs/computer;$PROJECT_ROOT/libs/agent;$PROJECT_ROOT/libs/som;$PROJECT_ROOT/libs/pylume;$PROJECT_ROOT/libs/computer-server;$PROJECT_ROOT/libs/mcp-server;$PROJECT_ROOT/libs/playground-api"
+$pythonPath = "$PROJECT_ROOT/libs/python/core;$PROJECT_ROOT/libs/python/computer;$PROJECT_ROOT/libs/python/agent;$PROJECT_ROOT/libs/python/som;$PROJECT_ROOT/libs/python/pylume;$PROJECT_ROOT/libs/python/computer-server;$PROJECT_ROOT/libs/python/mcp-server;$PROJECT_ROOT/libs/python/playground-api"
 "PYTHONPATH=$pythonPath" | Out-File -FilePath ".env" -Encoding UTF8
 
 Print-Success "All packages installed successfully!"

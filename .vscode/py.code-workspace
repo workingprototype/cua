@@ -10,7 +10,7 @@
         },
         {
             "name": "computer",
-            "path": "../libs/computer"
+            "path": "../libs/python/computer"
         },
         {
             "name": "workflow",
@@ -18,23 +18,23 @@
         },
         {
             "name": "agent",
-            "path": "../libs/agent"
+            "path": "../libs/python/agent"
         },
         {
             "name": "som",
-            "path": "../libs/som"
+            "path": "../libs/python/som"
         },
         {
             "name": "computer-server",
-            "path": "../libs/computer-server"
+            "path": "../libs/python/computer-server"
         },
         {
             "name": "pylume",
-            "path": "../libs/pylume"
+            "path": "../libs/python/pylume"
         },
         {
             "name": "core",
-            "path": "../libs/core"
+            "path": "../libs/python/core"
         }
     ],
     "settings": {
@@ -55,11 +55,11 @@
             "libs"
         ],
         "python.analysis.extraPaths": [
-            "${workspaceFolder:cua-root}/libs/core",
-            "${workspaceFolder:cua-root}/libs/computer",
-            "${workspaceFolder:cua-root}/libs/agent",
-            "${workspaceFolder:cua-root}/libs/som",
-            "${workspaceFolder:cua-root}/libs/pylume",
+            "${workspaceFolder:cua-root}/libs/python/core",
+            "${workspaceFolder:cua-root}/libs/python/computer",
+            "${workspaceFolder:cua-root}/libs/python/agent",
+            "${workspaceFolder:cua-root}/libs/python/som",
+            "${workspaceFolder:cua-root}/libs/python/pylume",
             "${workspaceFolder:cua-root}/.vscode/typings"
         ],
         "python.envFile": "${workspaceFolder:cua-root}/.env",
@@ -107,11 +107,11 @@
             }
         ],
         "python.autoComplete.extraPaths": [
-            "${workspaceFolder:cua-root}/libs/core",
-            "${workspaceFolder:cua-root}/libs/computer",
-            "${workspaceFolder:cua-root}/libs/agent",
-            "${workspaceFolder:cua-root}/libs/som",
-            "${workspaceFolder:cua-root}/libs/pylume"
+            "${workspaceFolder:cua-root}/libs/python/core",
+            "${workspaceFolder:cua-root}/libs/python/computer",
+            "${workspaceFolder:cua-root}/libs/python/agent",
+            "${workspaceFolder:cua-root}/libs/python/som",
+            "${workspaceFolder:cua-root}/libs/python/pylume"
         ],
         "python.languageServer": "None",
         "[python]": {
@@ -126,8 +126,8 @@
             "examples/agent_examples.py": "python"
         },
         "python.interpreterPaths": {
-            "examples/computer_examples.py": "${workspaceFolder}/libs/computer/.venv/bin/python",
-            "examples/agent_examples.py": "${workspaceFolder}/libs/agent/.venv/bin/python"
+            "examples/computer_examples.py": "${workspaceFolder}/libs/python/computer/.venv/bin/python",
+            "examples/agent_examples.py": "${workspaceFolder}/libs/python/agent/.venv/bin/python"
         }
     },
     "tasks": {
