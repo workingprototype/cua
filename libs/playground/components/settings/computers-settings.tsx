@@ -20,10 +20,6 @@ export function ComputersSettings() {
       provider: instance.provider,
       name: instance.name,
       os: instance.os,
-      type: instance.type,
-      status: instance.status,
-      ...(instance.ip && { ip: instance.ip }),
-      ...(instance.uptime && { uptime: instance.uptime })
     }));
     
     return yaml.dump({ computers: yamlData }, { 
@@ -45,12 +41,10 @@ export function ComputersSettings() {
       return parsed.computers.map((comp, index) => ({
         id: (index + 1).toString(),
         name: comp.name || `Computer ${index + 1}`,
-        status: comp.status || "stopped",
-        type: comp.type || "medium",
+        status: "stopped",
+        type: "medium",
         provider: comp.provider || "lume",
         os: comp.os || "ubuntu",
-        ip: comp.ip,
-        uptime: comp.uptime
       }));
     } catch (error) {
       throw new Error(`YAML parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -148,13 +142,9 @@ export function ComputersSettings() {
   - provider: lume
     name: macos-sequoia-cua:latest
     os: macos-sequoia
-    type: medium
-    status: running
   - provider: windows-sandbox
     name: Windows Sandbox
-    os: windows
-    type: small
-    status: running"
+    os: windows"
               className={`font-mono text-sm min-h-[400px] ${
                 !isValid ? 'border-destructive' : ''
               }`}
@@ -173,10 +163,6 @@ export function ComputersSettings() {
               <li><code className="bg-muted px-1 rounded">provider</code> - lume, windows-sandbox, cua-cloud</li>
               <li><code className="bg-muted px-1 rounded">name</code> - Display name for the computer</li>
               <li><code className="bg-muted px-1 rounded">os</code> - ubuntu, macos-sequoia, windows, etc.</li>
-              <li><code className="bg-muted px-1 rounded">type</code> - small, medium, large (optional)</li>
-              <li><code className="bg-muted px-1 rounded">status</code> - running, stopped, starting (optional)</li>
-              <li><code className="bg-muted px-1 rounded">ip</code> - IP address (optional)</li>
-              <li><code className="bg-muted px-1 rounded">uptime</code> - Uptime string (optional)</li>
             </ul>
           </div>
         </CardContent>

@@ -5,6 +5,7 @@ import ChatBottombar from "./chat-bottombar";
 import { Message, useChat } from "ai/react";
 import { ChatRequestOptions } from "ai";
 import { v4 as uuidv4 } from "uuid";
+import { AgentLoopConfig } from "./model-properties-sidebar";
 
 export interface ChatProps {
   chatId?: string;
@@ -24,6 +25,9 @@ export interface ChatProps {
   isMobile?: boolean;
   setInput?: React.Dispatch<React.SetStateAction<string>>;
   setMessages: (messages: Message[]) => void;
+  agentConfig?: AgentLoopConfig;
+  onAgentConfigChange?: (config: AgentLoopConfig) => void;
+  onToggleRightSidebar?: () => void;
 }
 
 export default function Chat({
@@ -40,7 +44,10 @@ export default function Chat({
   formRef,
   isMobile,
   setInput,
-  setMessages
+  setMessages,
+  agentConfig,
+  onAgentConfigChange,
+  onToggleRightSidebar
 }: ChatProps) {
   return (
     <div className="flex flex-col justify-between w-full max-w-3xl h-full ">
@@ -50,6 +57,9 @@ export default function Chat({
         chatId={chatId}
         messages={messages}
         setMessages={setMessages}
+        agentConfig={agentConfig}
+        onAgentConfigChange={onAgentConfigChange}
+        onToggleRightSidebar={onToggleRightSidebar}
       />
 
       <ChatList

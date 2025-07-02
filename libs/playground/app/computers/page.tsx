@@ -4,10 +4,10 @@ import React, { useState } from "react";
 import { ReusableSidebar } from "../../components/reusable-sidebar";
 import { AddInstanceDialog } from "../../components/add-instance-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { Plus, Monitor, Cpu, HardDrive, Wifi, ExternalLink, BookOpen } from "lucide-react";
+import { Plus, Monitor, Cpu, HardDrive, Wifi, ExternalLink, BookOpen, RefreshCw } from "lucide-react";
 import { useComputerStore, ComputerInstance } from "../hooks/useComputerStore";
 
 export default function ComputersPage() {
@@ -15,7 +15,8 @@ export default function ComputersPage() {
     instances, 
     selectedInstance, 
     setSelectedInstance, 
-    addInstance 
+    addInstance, 
+    updateInstanceScreenshot 
   } = useComputerStore();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
@@ -226,116 +227,95 @@ export default function ComputersPage() {
   );
 
   const InstanceDetails = ({ instance }: { instance: ComputerInstance }) => {
-    const specs = getTypeSpecs(instance.type);
+    const { updateInstanceScreenshot } = useComputerStore();
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
+    
+    const handleRefreshScreenshot = async () => {
+      setIsRefreshing(true);
+      try {
+        const response = await fetch('/api/screenshot', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            provider: instance.provider,
+            name: instance.name,
+            os: instance.os
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.screenshot) {
+            updateInstanceScreenshot(instance.id, data.screenshot);
+          }
+        } else {
+          console.error('Failed to take screenshot:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error taking screenshot:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
     
     return (
       <div className="p-8 space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">{instance.name}</h1>
             <div className="flex items-center gap-2 mt-2">
               <div className={`w-2 h-2 rounded-full ${getStatusColor(instance.status)}`} />
               <span className="text-sm text-muted-foreground capitalize">{instance.status}</span>
+              <span className="text-sm text-muted-foreground">•</span>
+              <span className="text-sm text-muted-foreground capitalize">{instance.provider}</span>
             </div>
           </div>
-          <Badge variant="outline" className="capitalize">
-            {instance.type}
-          </Badge>
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshScreenshot}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Taking Screenshot...' : 'Refresh Screenshot'}
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Cpu className="h-4 w-4" />
-                CPU & Memory
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <div className="text-lg font-semibold">{specs.cpu}</div>
-                <div className="text-sm text-muted-foreground">{specs.ram}</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {instance.ip && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Wifi className="h-4 w-4" />
-                  Network
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-semibold">{instance.ip}</div>
-                <div className="text-sm text-muted-foreground">Internal IP</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {instance.uptime && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <HardDrive className="h-4 w-4" />
-                  Uptime
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-semibold">{instance.uptime}</div>
-                <div className="text-sm text-muted-foreground">Running time</div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Instance Configuration</CardTitle>
-            <CardDescription>{specs.description}</CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Screenshot Display */}
+        <div className="w-full">
+          {instance.lastScreenshot ? (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Status</span>
-                <Badge 
-                  variant={instance.status === "running" ? "default" : "secondary"}
-                  className="capitalize"
-                >
-                  {instance.status}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Type</span>
-                <span className="text-sm capitalize">{instance.type}</span>
-              </div>
-              {instance.ip && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">IP Address</span>
-                  <span className="text-sm font-mono">{instance.ip}</span>
-                </div>
+              <img 
+                src={`data:image/png;base64,${instance.lastScreenshot}`}
+                alt={`Screenshot of ${instance.name}`}
+                className="w-full max-w-5xl mx-auto border rounded-lg shadow-lg"
+              />
+              {instance.lastScreenshotTime && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Last updated: {new Date(instance.lastScreenshotTime).toLocaleString()}
+                </p>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-2">
-          <Button 
-            type="button"
-            variant={instance.status === "running" ? "destructive" : "default"}
-            onClick={() => {
-              // Update instance status
-            }}
-          >
-            {instance.status === "running" ? "Stop" : "Start"} Instance
-          </Button>
-          <Button type="button" variant="outline">
-            Connect
-          </Button>
-          <Button type="button" variant="outline">
-            Settings
-          </Button>
+          ) : (
+            <div className="flex items-center justify-center h-96 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/25">
+              <div className="text-center">
+                <Monitor className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                <h3 className="text-lg font-medium mb-2">No Screenshot Available</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Take a screenshot to see the current state of {instance.name}
+                </p>
+                <Button 
+                  onClick={handleRefreshScreenshot}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Take Screenshot
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

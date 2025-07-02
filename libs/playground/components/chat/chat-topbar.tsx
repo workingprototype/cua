@@ -16,12 +16,14 @@ import {
 } from "@/components/ui/sheet";
 
 import { Button } from "../ui/button";
-import { CaretSortIcon, HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { CaretSortIcon, HamburgerMenuIcon, MixerHorizontalIcon, LaptopIcon, PersonIcon, DesktopIcon, LightningBoltIcon } from "@radix-ui/react-icons";
 import { Sidebar } from "../sidebar";
 import { Message } from "ai/react";
 import { getSelectedModel } from "@/lib/model-helper";
 import { useComputerStore } from "../../app/hooks/useComputerStore";
 import Image from "next/image";
+import { AgentLoopConfig } from "./model-properties-sidebar";
+import { Bot } from "lucide-react";
 
 interface ChatTopbarProps {
   setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
@@ -29,17 +31,32 @@ interface ChatTopbarProps {
   chatId?: string;
   messages: Message[];
   setMessages: (messages: Message[]) => void;
+  agentConfig?: AgentLoopConfig;
+  onAgentConfigChange?: (config: AgentLoopConfig) => void;
+  onToggleRightSidebar?: () => void;
 }
+
+// Agent loop options
+const AGENT_LOOPS = [
+  { value: "OPENAI", label: "OpenAI" },
+  { value: "ANTHROPIC", label: "Anthropic" },
+  { value: "OMNI", label: "Omni" },
+  { value: "UITARS", label: "UI-TARS" },
+];
 
 export default function ChatTopbar({
   setSelectedModel,
   isLoading,
   chatId,
   messages,
-  setMessages
+  setMessages,
+  agentConfig,
+  onAgentConfigChange,
+  onToggleRightSidebar
 }: ChatTopbarProps) {
   const [models, setModels] = React.useState<string[]>([]);
   const [open, setOpen] = React.useState(false);
+  const [agentLoopOpen, setAgentLoopOpen] = React.useState(false);
   const [computerOpen, setComputerOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [currentModel, setCurrentModel] = React.useState<string | null>(null);
@@ -105,6 +122,17 @@ export default function ChatTopbar({
     setOpen(false);
   };
 
+  const handleAgentLoopChange = (loop: string) => {
+    if (onAgentConfigChange && agentConfig) {
+      onAgentConfigChange({
+        ...agentConfig,
+        loop,
+        provider: loop.toLowerCase(),
+      });
+    }
+    setAgentLoopOpen(false);
+  };
+
   const handleComputerChange = (computerId: string) => {
     setSelectedComputer(computerId);
     if (typeof window !== 'undefined') {
@@ -152,9 +180,44 @@ export default function ChatTopbar({
         </SheetContent>
       </Sheet>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          <Popover open={agentLoopOpen} onOpenChange={setAgentLoopOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              disabled={isLoading}
+              variant="outline"
+              role="combobox"
+              aria-expanded={agentLoopOpen}
+              className="w-[200px] justify-between"
+            >
+              {agentConfig?.loop 
+                ? AGENT_LOOPS.find(l => l.value === agentConfig.loop)?.label || "Select agent"
+                : "Select agent"
+              }
+              <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-1">
+            {AGENT_LOOPS.map((loop) => (
+              <Button
+                key={loop.value}
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => {
+                  handleAgentLoopChange(loop.value);
+                }}
+              >
+                {loop.label}
+              </Button>
+            ))}
+          </PopoverContent>
+        </Popover>
+        </div>
+
         {/* Model Dropdown */}
-        <Popover open={open} onOpenChange={setOpen}>
+        {/* <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               disabled={isLoading}
@@ -188,9 +251,11 @@ export default function ChatTopbar({
             )}
           </PopoverContent>
         </Popover>
+        </div> */}
 
-        {/* Computer Dropdown */}
-        <Popover open={computerOpen} onOpenChange={setComputerOpen}>
+        <div className="flex items-center gap-2">
+          <DesktopIcon className="h-4 w-4 text-muted-foreground" />
+          <Popover open={computerOpen} onOpenChange={setComputerOpen}>
           <PopoverTrigger asChild>
             <Button
               disabled={isLoading}
@@ -199,10 +264,16 @@ export default function ChatTopbar({
               aria-expanded={computerOpen}
               className="w-[250px] justify-between"
             >
-              {selectedComputer 
-                ? availableInstances.find(c => c.id === selectedComputer)?.name || "Select computer"
-                : "Select computer"
-              }
+              <div className="flex items-center gap-2 overflow-hidden">
+                {selectedComputer ? (
+                  <>
+                    {getOSIcon(availableInstances.find(c => c.id === selectedComputer)?.os || '')}
+                    <span className="truncate">
+                      {availableInstances.find(c => c.id === selectedComputer)?.name || "Select computer"}
+                    </span>
+                  </>
+                ) : "Select computer"}
+              </div>
               <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -219,7 +290,7 @@ export default function ChatTopbar({
                 >
                   <div className="flex items-center gap-2">
                     {getOSIcon(computer.os)}
-                    <span>{computer.name}</span>
+                    <span className="truncate">{computer.name}</span>
                   </div>
                 </Button>
               ))
@@ -230,6 +301,17 @@ export default function ChatTopbar({
             )}
           </PopoverContent>
         </Popover>
+        </div>
+
+        {/* Settings Icon */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onToggleRightSidebar}
+          className="h-10 w-10"
+        >
+          <MixerHorizontalIcon className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

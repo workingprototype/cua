@@ -12,6 +12,8 @@ export interface ComputerInstance {
   os: string;
   ip?: string;
   uptime?: string;
+  lastScreenshot?: string; // Base64 encoded screenshot
+  lastScreenshotTime?: string; // ISO timestamp
 }
 
 interface ComputerStore {
@@ -22,6 +24,7 @@ interface ComputerStore {
   setSelectedInstance: (instanceId: string | null) => void;
   getRunningInstances: () => ComputerInstance[];
   getAvailableInstances: () => ComputerInstance[];
+  updateInstanceScreenshot: (instanceId: string, screenshot: string) => void;
   resetToDefault: () => void;
 }
 
@@ -59,6 +62,16 @@ export const useComputerStore = create<ComputerStore>()(
       getAvailableInstances: () => {
         const { instances } = get();
         return instances.filter(instance => instance.status === "running" || instance.provider != "cua-cloud");
+      },
+      updateInstanceScreenshot: (instanceId, screenshot) => {
+        const { instances } = get();
+        const updatedInstances = instances.map(instance => {
+          if (instance.id === instanceId) {
+            return { ...instance, lastScreenshot: screenshot, lastScreenshotTime: new Date().toISOString() };
+          }
+          return instance;
+        });
+        set({ instances: updatedInstances });
       },
       resetToDefault: () => set({
         instances: [

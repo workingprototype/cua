@@ -37,10 +37,15 @@ const osOptions = {
     { value: "ubuntu", label: "Ubuntu 22.04 LTS" }
   ],
   "lume": [
-    { value: "macos-sequoia", label: "macOS Sequoia" }
+    { value: "macos", label: "macOS Sequoia" }
   ],
   "windows-sandbox": [
     { value: "windows", label: "Windows 11" }
+  ],
+  "host-computer": [
+    { value: "linux", label: "Linux" },
+    { value: "windows", label: "Windows" },
+    { value: "macos", label: "macOS" }
   ]
 };
 
@@ -148,10 +153,63 @@ const WindowsSandboxOptions = ({
   </div>
 );
 
+const HostComputerOptions = ({ 
+  vmName, 
+  setVmName, 
+  os, 
+  setOs, 
+  host, 
+  setHost 
+}: {
+  vmName: string;
+  setVmName: (name: string) => void;
+  os: string;
+  setOs: (os: string) => void;
+  host: string;
+  setHost: (host: string) => void;
+}) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="host-name">Name</Label>
+      <Input
+        id="host-name"
+        placeholder="Enter name"
+        value={vmName}
+        onChange={(e) => setVmName(e.target.value)}
+      />
+    </div>
+    <div className="space-y-2">
+      <Label htmlFor="host-os">Operating System</Label>
+      <Select value={os} onValueChange={setOs}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select OS" />
+        </SelectTrigger>
+        <SelectContent>
+          {osOptions["host-computer"].map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+    <div className="space-y-2">
+      <Label htmlFor="host-host">Host</Label>
+      <Input
+        id="host-host"
+        value="localhost"
+        disabled
+        className="bg-muted"
+      />
+    </div>
+  </div>
+);
+
 export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInstanceDialogProps) {
   const [provider, setProvider] = useState<string>("");
   const [vmName, setVmName] = useState<string>("");
   const [os, setOs] = useState<string>("");
+  const [host, setHost] = useState<string>("localhost");
 
   const providers = [
     {
@@ -168,6 +226,11 @@ export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInst
       value: "windows-sandbox",
       label: "Windows Sandbox",
       description: "Isolated Windows environment for testing"
+    },
+    {
+      value: "host-computer",
+      label: "Host Computer",
+      description: "Use the host computer as a provider"
     }
   ];
 
@@ -188,6 +251,7 @@ export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInst
     setProvider("");
     setVmName("");
     setOs("");
+    setHost("localhost");
     onOpenChange(false);
   };
 
@@ -199,6 +263,8 @@ export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInst
         return <LumeOptions vmName={vmName} setVmName={setVmName} os={os} setOs={setOs} />;
       case "windows-sandbox":
         return <WindowsSandboxOptions vmName={vmName} setVmName={setVmName} />;
+      case "host-computer":
+        return <HostComputerOptions vmName={vmName} setVmName={setVmName} os={os} setOs={setOs} host={host} setHost={setHost} />;
       default:
         return null;
     }
@@ -207,6 +273,7 @@ export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInst
   const isFormValid = () => {
     if (!provider || !vmName) return false;
     if (provider === "windows-sandbox") return true;
+    if (provider === "host-computer") return !!os;
     return !!os;
   };
 
@@ -220,12 +287,12 @@ export function AddInstanceDialog({ open, onOpenChange, onAddInstance }: AddInst
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Provider Selection */}
           <div className="space-y-3">
             <Label>Provider</Label>
             <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger className="py-3">
+              <SelectTrigger className="py-6">
                 <SelectValue placeholder="Select a provider" />
               </SelectTrigger>
               <SelectContent align="start">
