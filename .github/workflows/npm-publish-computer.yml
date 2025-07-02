@@ -22,14 +22,15 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./libs/typescript/computer
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build package
         working-directory: ./libs/typescript/computer
-        run: npm run build --if-present
+        run: pnpm run build --if-present
 
       - name: Publish to npm
         working-directory: ./libs/typescript/computer
-        run: npm publish --provenance --access public
+        run: pnpm publish --access public --no-git-checks
         env:
+          NPM_CONFIG_PROVENANCE: true
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
