@@ -15,8 +15,8 @@ importers:
   computer:
     dependencies:
       '@trycua/core':
-        specifier: link:../core
-        version: link:../core
+        specifier: ^0.1.2
+        version: 0.1.2
       pino:
         specifier: ^9.7.0
         version: 9.7.0
@@ -515,6 +515,9 @@ packages:
     resolution: {integrity: sha512-J8o22LuF0kTe7m+8PvW9wk3/bRq5+mRo5Dqo6+vXb7otCm3TPhYOJqOaQtGU9YMWQSL3krMnoOxMr0+9E6F3Ug==}
     cpu: [x64]
     os: [win32]
+
+  '@trycua/core@0.1.2':
+    resolution: {integrity: sha512-pSQZaR46OG3MtUCBaneG6RpJD1xfX754VDZ101FM5tkUUiymIrxpQicQEUfhwEBxbI/EmBnmCnVY1AFKvykKzQ==}
 
   '@tybys/wasm-util@0.9.0':
     resolution: {integrity: sha512-6+7nlbMVX/PVDCwaIQ8nTOPveOcFLSt8GcXdx8hD0bt39uWxYT88uXzqTd4fTvqta7oeUJqudepapKNt2DYJFw==}
@@ -1338,6 +1341,13 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.44.1':
     optional: true
+
+  '@trycua/core@0.1.2':
+    dependencies:
+      '@types/uuid': 10.0.0
+      pino: 9.7.0
+      posthog-node: 5.1.1
+      uuid: 11.1.0
 
   '@tybys/wasm-util@0.9.0':
     dependencies:

@@ -51,21 +51,23 @@
 
 **Need to automate desktop tasks? Launch the Computer-Use Agent UI with a single command.**
 
-
-
 ### Option 1: Fully-managed install with Docker (recommended)
+
 *Docker-based guided install for quick use*
 
 **macOS/Linux/Windows (via WSL):**
+
 ```bash
 # Requires Docker
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground-docker.sh)"
 ```
+
 This script will guide you through setup using Docker containers and launch the Computer-Use Agent UI.
 
 ---
 
 ### Option 2: [Dev Container](./.devcontainer/README.md)
+
 *Best for contributors and development*
 
 This repository includes a [Dev Container](./.devcontainer/README.md) configuration that simplifies setup to a few steps:
@@ -84,6 +86,7 @@ This repository includes a [Dev Container](./.devcontainer/README.md) configurat
 ---
 
 ### Option 3: PyPI
+
 *Direct Python package installation*
 
 ```bash
@@ -98,6 +101,7 @@ Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK
 ---
 
 ## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops)
+
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/python/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
@@ -155,6 +159,7 @@ async def main():
     )
 
     # Example: Direct control of a macOS VM with Computer
+    computer.interface.delay = 0.1 # Wait 0.1 seconds between kb/m actions
     await computer.interface.left_click(100, 200)
     await computer.interface.type_text("Hello, world!")
     screenshot_bytes = await computer.interface.screenshot()
@@ -236,12 +241,14 @@ docker run -it --rm \
 |--------|-------------|---------------|
 | [**Lume**](./libs/lume/README.md) | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
 | [**Lumier**](./libs/lumier/README.md) | Docker interface for macOS and Linux VMs | `docker pull trycua/lumier:latest` |
-| [**Computer**](./libs/computer/README.md) | Interface for controlling virtual machines | `pip install "cua-computer[all]"` |
-| [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install "cua-agent[all]"` |
-| [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
-| [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
-| [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
-| [**Core**](./libs/core/README.md) | Core utilities | `pip install cua-core` |
+| [**Computer (Python)**](./libs/python/computer/README.md) | Python Interface for controlling virtual machines | `pip install "cua-computer[all]"` |
+| [**Computer (Typescript)**](./libs/typescript/computer/README.md) | Typescript Interface for controlling virtual machines | `npm install @trycua/computer` |
+| [**Agent**](./libs/python/agent/README.md) | AI agent framework for automating tasks | `pip install "cua-agent[all]"` |
+| [**MCP Server**](./libs/python/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
+| [**SOM**](./libs/python/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
+| [**Computer Server**](./libs/python/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
+| [**Core (Python)**](./libs/python/core/README.md) | Python Core utilities | `pip install cua-core` |
+| [**Core (Typescript)**](./libs/typescript/core/README.md) | Typescript Core utilities | `npm install @trycua/core` |
 
 ## Computer Interface Reference
 
@@ -297,6 +304,15 @@ await computer.interface.list_dir(path)         # List directory contents
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
 
+# Delay Configuration
+# Set default delay between all actions (in seconds)
+computer.interface.delay = 0.5  # 500ms delay between actions
+
+# Or specify delay for individual actions
+await computer.interface.left_click(x, y, delay=1.0)     # 1 second delay after click
+await computer.interface.type_text("Hello", delay=0.2)   # 200ms delay after typing
+await computer.interface.press_key("enter", delay=0.5)   # 500ms delay after key press
+
 # Python Virtual Environment Operations
 await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
 await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
@@ -349,7 +365,6 @@ ComputerAgent(
     api_key="your-openrouter-api-key"
 )
 ```
-
 
 ## Community
 
