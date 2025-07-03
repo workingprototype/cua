@@ -1,4 +1,9 @@
 # PowerShell Build Script for CUA
+# Parameters
+param(
+    [string]$EnvName = "cua"
+)
+
 # Exit on error
 $ErrorActionPreference = "Stop"
 
@@ -56,31 +61,31 @@ try {
 }
 
 # Create or update conda environment
-Print-Step "Creating/updating conda environment 'cua' with Python 3.12, Node.js, and yarn..."
+Print-Step "Creating/updating conda environment '$EnvName' with Python 3.12, Node.js, and yarn..."
 try {
     # Check if environment exists
-    $envExists = conda env list | Select-String "^cua\s"
+    $envExists = conda env list | Select-String "^$EnvName\s"
     if ($envExists) {
-        Print-Step "Environment 'cua' already exists. Installing additional packages..."
-        conda install -n cua nodejs yarn -c conda-forge -y
+        Print-Step "Environment '$EnvName' already exists. Installing additional packages..."
+        conda install -n $EnvName nodejs yarn -c conda-forge -y
     } else {
-        Print-Step "Creating new environment 'cua'..."
-        conda create -n cua python=3.12 nodejs yarn -c conda-forge -y
+        Print-Step "Creating new environment '$EnvName'..."
+        conda create -n $EnvName python=3.12 nodejs yarn -c conda-forge -y
     }
-    Print-Success "Conda environment 'cua' ready"
+    Print-Success "Conda environment '$EnvName' ready"
 } catch {
     Print-Error "Failed to create/update conda environment"
     exit 1
 }
 
 # Activate conda environment
-Print-Step "Activating conda environment 'cua'..."
+Print-Step "Activating conda environment '$EnvName'..."
 try {
-    conda activate cua
+    conda activate $EnvName
     Print-Success "Environment activated"
 } catch {
-    Print-Error "Failed to activate conda environment 'cua'"
-    Print-Step "Please run: conda activate cua"
+    Print-Error "Failed to activate conda environment '$EnvName'"
+    Print-Step "Please run: conda activate $EnvName"
     Print-Step "Then re-run this script"
     exit 1
 }
@@ -168,5 +173,5 @@ $pythonPath = "$PROJECT_ROOT/libs/python/core;$PROJECT_ROOT/libs/python/computer
 "PYTHONPATH=$pythonPath" | Out-File -FilePath ".env" -Encoding UTF8
 
 Print-Success "All packages installed successfully!"
-Print-Step "Your conda environment 'cua' is ready. To activate it:"
-Write-Host "  conda activate cua" -ForegroundColor Yellow
+Print-Step "Your conda environment '$EnvName' is ready. To activate it:"
+Write-Host "  conda activate $EnvName" -ForegroundColor Yellow
