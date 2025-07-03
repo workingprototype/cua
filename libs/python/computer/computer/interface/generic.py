@@ -42,9 +42,9 @@ class GenericComputerInterface(BaseComputerInterface):
             delay: Optional delay in seconds. If None, uses self.delay.
         """
         if delay is not None:
-            if isinstance(delay, float) and delay > 0:
+            if isinstance(delay, float) or isinstance(delay, int) and delay > 0:
                 await asyncio.sleep(delay)
-        elif isinstance(self.delay, float) and self.delay > 0:
+        elif isinstance(self.delay, float) or isinstance(self.delay, int) and self.delay > 0:
             await asyncio.sleep(self.delay)
 
     @property
