@@ -24,6 +24,9 @@ class BaseComputerInterface(ABC):
         self.api_key = api_key
         self.vm_name = vm_name
         self.logger = Logger("cua.interface", LogLevel.NORMAL)
+        
+        # Optional default delay time between commands (in seconds)
+        self.delay: float = 0.0
 
     @abstractmethod
     async def wait_for_ready(self, timeout: int = 60) -> None:
@@ -52,37 +55,75 @@ class BaseComputerInterface(ABC):
 
     # Mouse Actions
     @abstractmethod
-    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left") -> None:
-        """Press and hold a mouse button."""
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left", delay: Optional[float] = None) -> None:
+        """Press and hold a mouse button.
+        
+        Args:
+            x: X coordinate to press at. If None, uses current cursor position.
+            y: Y coordinate to press at. If None, uses current cursor position.
+            button: Mouse button to press ('left', 'middle', 'right').
+            delay: Optional delay in seconds after the action
+        """
         pass
     
     @abstractmethod
-    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left") -> None:
-        """Release a mouse button."""
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left", delay: Optional[float] = None) -> None:
+        """Release a mouse button.
+        
+        Args:
+            x: X coordinate to release at. If None, uses current cursor position.
+            y: Y coordinate to release at. If None, uses current cursor position.
+            button: Mouse button to release ('left', 'middle', 'right').
+            delay: Optional delay in seconds after the action
+        """
         pass
     
     @abstractmethod
-    async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
-        """Perform a left click."""
+    async def left_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
+        """Perform a left mouse button click.
+        
+        Args:
+            x: X coordinate to click at. If None, uses current cursor position.
+            y: Y coordinate to click at. If None, uses current cursor position.
+            delay: Optional delay in seconds after the action
+        """
         pass
 
     @abstractmethod
-    async def right_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
-        """Perform a right click."""
+    async def right_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
+        """Perform a right mouse button click.
+        
+        Args:
+            x: X coordinate to click at. If None, uses current cursor position.
+            y: Y coordinate to click at. If None, uses current cursor position.
+            delay: Optional delay in seconds after the action
+        """
         pass
 
     @abstractmethod
-    async def double_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
-        """Perform a double click."""
+    async def double_click(self, x: Optional[int] = None, y: Optional[int] = None, delay: Optional[float] = None) -> None:
+        """Perform a double left mouse button click.
+        
+        Args:
+            x: X coordinate to double-click at. If None, uses current cursor position.
+            y: Y coordinate to double-click at. If None, uses current cursor position.
+            delay: Optional delay in seconds after the action
+        """
         pass
 
     @abstractmethod
-    async def move_cursor(self, x: int, y: int) -> None:
-        """Move the cursor to specified position."""
+    async def move_cursor(self, x: int, y: int, delay: Optional[float] = None) -> None:
+        """Move the cursor to the specified screen coordinates.
+        
+        Args:
+            x: X coordinate to move cursor to.
+            y: Y coordinate to move cursor to.
+            delay: Optional delay in seconds after the action
+        """
         pass
 
     @abstractmethod
-    async def drag_to(self, x: int, y: int, button: str = "left", duration: float = 0.5) -> None:
+    async def drag_to(self, x: int, y: int, button: str = "left", duration: float = 0.5, delay: Optional[float] = None) -> None:
         """Drag from current position to specified coordinates.
 
         Args:
@@ -90,60 +131,103 @@ class BaseComputerInterface(ABC):
             y: The y coordinate to drag to
             button: The mouse button to use ('left', 'middle', 'right')
             duration: How long the drag should take in seconds
+            delay: Optional delay in seconds after the action
         """
         pass
 
     @abstractmethod
-    async def drag(self, path: List[Tuple[int, int]], button: str = "left", duration: float = 0.5) -> None:
+    async def drag(self, path: List[Tuple[int, int]], button: str = "left", duration: float = 0.5, delay: Optional[float] = None) -> None:
         """Drag the cursor along a path of coordinates.
 
         Args:
             path: List of (x, y) coordinate tuples defining the drag path
             button: The mouse button to use ('left', 'middle', 'right')
             duration: Total time in seconds that the drag operation should take
+            delay: Optional delay in seconds after the action
         """
         pass
 
     # Keyboard Actions
     @abstractmethod
-    async def key_down(self, key: str) -> None:
-        """Press and hold a key."""
+    async def key_down(self, key: str, delay: Optional[float] = None) -> None:
+        """Press and hold a key.
+        
+        Args:
+            key: The key to press and hold (e.g., 'a', 'shift', 'ctrl').
+            delay: Optional delay in seconds after the action.
+        """
         pass
     
     @abstractmethod
-    async def key_up(self, key: str) -> None:
-        """Release a key."""
+    async def key_up(self, key: str, delay: Optional[float] = None) -> None:
+        """Release a previously pressed key.
+        
+        Args:
+            key: The key to release (e.g., 'a', 'shift', 'ctrl').
+            delay: Optional delay in seconds after the action.
+        """
         pass
     
     @abstractmethod
-    async def type_text(self, text: str) -> None:
-        """Type the specified text."""
+    async def type_text(self, text: str, delay: Optional[float] = None) -> None:
+        """Type the specified text string.
+        
+        Args:
+            text: The text string to type.
+            delay: Optional delay in seconds after the action.
+        """
         pass
 
     @abstractmethod
-    async def press_key(self, key: str) -> None:
-        """Press a single key."""
+    async def press_key(self, key: str, delay: Optional[float] = None) -> None:
+        """Press and release a single key.
+        
+        Args:
+            key: The key to press (e.g., 'a', 'enter', 'escape').
+            delay: Optional delay in seconds after the action.
+        """
         pass
 
     @abstractmethod
-    async def hotkey(self, *keys: str) -> None:
-        """Press multiple keys simultaneously."""
+    async def hotkey(self, *keys: str, delay: Optional[float] = None) -> None:
+        """Press multiple keys simultaneously (keyboard shortcut).
+        
+        Args:
+            *keys: Variable number of keys to press together (e.g., 'ctrl', 'c').
+            delay: Optional delay in seconds after the action.
+        """
         pass
 
     # Scrolling Actions
     @abstractmethod
-    async def scroll(self, x: int, y: int) -> None:
-        """Scroll the mouse wheel."""
+    async def scroll(self, x: int, y: int, delay: Optional[float] = None) -> None:
+        """Scroll the mouse wheel by specified amounts.
+        
+        Args:
+            x: Horizontal scroll amount (positive = right, negative = left).
+            y: Vertical scroll amount (positive = up, negative = down).
+            delay: Optional delay in seconds after the action.
+        """
         pass
     
     @abstractmethod
-    async def scroll_down(self, clicks: int = 1) -> None:
-        """Scroll down."""
+    async def scroll_down(self, clicks: int = 1, delay: Optional[float] = None) -> None:
+        """Scroll down by the specified number of clicks.
+        
+        Args:
+            clicks: Number of scroll clicks to perform downward.
+            delay: Optional delay in seconds after the action.
+        """
         pass
 
     @abstractmethod
-    async def scroll_up(self, clicks: int = 1) -> None:
-        """Scroll up."""
+    async def scroll_up(self, clicks: int = 1, delay: Optional[float] = None) -> None:
+        """Scroll up by the specified number of clicks.
+        
+        Args:
+            clicks: Number of scroll clicks to perform upward.
+            delay: Optional delay in seconds after the action.
+        """
         pass
 
     # Screen Actions
@@ -167,44 +251,89 @@ class BaseComputerInterface(ABC):
 
     @abstractmethod
     async def get_cursor_position(self) -> Dict[str, int]:
-        """Get current cursor position."""
+        """Get the current cursor position on screen.
+        
+        Returns:
+            Dict with 'x' and 'y' keys containing cursor coordinates.
+        """
         pass
 
     # Clipboard Actions
     @abstractmethod
     async def copy_to_clipboard(self) -> str:
-        """Get clipboard content."""
+        """Get the current clipboard content.
+        
+        Returns:
+            The text content currently stored in the clipboard.
+        """
         pass
 
     @abstractmethod
     async def set_clipboard(self, text: str) -> None:
-        """Set clipboard content."""
+        """Set the clipboard content to the specified text.
+        
+        Args:
+            text: The text to store in the clipboard.
+        """
         pass
 
     # File System Actions
     @abstractmethod
     async def file_exists(self, path: str) -> bool:
-        """Check if file exists."""
+        """Check if a file exists at the specified path.
+        
+        Args:
+            path: The file path to check.
+            
+        Returns:
+            True if the file exists, False otherwise.
+        """
         pass
 
     @abstractmethod
     async def directory_exists(self, path: str) -> bool:
-        """Check if directory exists."""
+        """Check if a directory exists at the specified path.
+        
+        Args:
+            path: The directory path to check.
+            
+        Returns:
+            True if the directory exists, False otherwise.
+        """
         pass
     
     @abstractmethod
     async def list_dir(self, path: str) -> List[str]:
-        """List directory contents."""
+        """List the contents of a directory.
+        
+        Args:
+            path: The directory path to list.
+            
+        Returns:
+            List of file and directory names in the specified directory.
+        """
         pass
     
     @abstractmethod
     async def read_text(self, path: str) -> str:
-        """Read file text contents."""
+        """Read the text contents of a file.
+        
+        Args:
+            path: The file path to read from.
+            
+        Returns:
+            The text content of the file.
+        """
         pass
     
     @abstractmethod
     async def write_text(self, path: str, content: str) -> None:
-        """Write file text contents."""
+        """Write text content to a file.
+        
+        Args:
+            path: The file path to write to.
+            content: The text content to write.
+        """
         pass
     
     @abstractmethod
@@ -220,27 +349,51 @@ class BaseComputerInterface(ABC):
     
     @abstractmethod
     async def write_bytes(self, path: str, content: bytes) -> None:
-        """Write file binary contents."""
+        """Write binary content to a file.
+        
+        Args:
+            path: The file path to write to.
+            content: The binary content to write.
+        """
         pass
     
     @abstractmethod
     async def delete_file(self, path: str) -> None:
-        """Delete file."""
+        """Delete a file at the specified path.
+        
+        Args:
+            path: The file path to delete.
+        """
         pass
     
     @abstractmethod
     async def create_dir(self, path: str) -> None:
-        """Create directory."""
+        """Create a directory at the specified path.
+        
+        Args:
+            path: The directory path to create.
+        """
         pass
     
     @abstractmethod
     async def delete_dir(self, path: str) -> None:
-        """Delete directory."""
+        """Delete a directory at the specified path.
+        
+        Args:
+            path: The directory path to delete.
+        """
         pass
     
     @abstractmethod
     async def get_file_size(self, path: str) -> int:
-        """Get the size of a file in bytes."""
+        """Get the size of a file in bytes.
+        
+        Args:
+            path: The file path to get the size of.
+            
+        Returns:
+            The size of the file in bytes.
+        """
         pass
     
     @abstractmethod
@@ -274,7 +427,11 @@ class BaseComputerInterface(ABC):
     # Accessibility Actions
     @abstractmethod
     async def get_accessibility_tree(self) -> Dict:
-        """Get the accessibility tree of the current screen."""
+        """Get the accessibility tree of the current screen.
+        
+        Returns:
+            Dict containing the hierarchical accessibility information of screen elements.
+        """
         pass
     
     @abstractmethod
