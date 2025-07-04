@@ -1,0 +1,12 @@
+{
+	"title": "Home",
+	"description": "Documentation Home",
+	"root": true,
+	"defaultOpen": true,
+	"pages": [
+		"---[House]c/ua---",
+		"...cua",
+		"---[Library]Libraries---",
+		"...libraries"
+	]
+}

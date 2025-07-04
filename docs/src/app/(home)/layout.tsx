@@ -1,8 +1,8 @@
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import type { ReactNode } from 'react';
 import { baseOptions } from '@/app/layout.config';
 import { source } from '@/lib/source';
-import { CodeXml } from 'lucide-react';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { CodeXml, Home } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -11,19 +11,14 @@ export default function Layout({ children }: { children: ReactNode }) {
       sidebar={{
         tabs: [
           {
-            url: '/v1',
-            title: 'API v1',
-            icon: (
-              <div
-                className="rounded-lg bg-blue-500/10 border max-md:p-1.5 p-1"
-                style={
-                  {
-                    color: 'var(--color-blue-500)',
-                  } as object
-                }>
-                <CodeXml />
-              </div>
-            ),
+            url: '/home',
+            title: 'Home',
+            icon: <Home className="ml-1" />,
+          },
+          {
+            url: '/api',
+            title: 'API Reference',
+            icon: <CodeXml className="ml-1" />,
           },
         ],
       }}
