@@ -20,32 +20,7 @@ Run the following command to setup the Docker containers and launch the Computer
 
 _Best for contributors and active development._
 
-This repository includes a [Dev Container](./.devcontainer/README.md) configuration that simplifies setup to a few steps:
-
-1. **Install the Dev Containers extension ([VSCode](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) or [WindSurf](https://docs.windsurf.com/windsurf/advanced#dev-containers-beta))**
-2. **Open the repository in the Dev Container:**
-
-   - Press `Ctrl+Shift+P` (or `⌘+Shift+P` on macOS)
-   - **If you have _not_ cloned the repo:**
-
-     - Select `Dev Containers: Clone Repository in Container Volume...` and paste the repository URL:
-
-       ```
-       https://github.com/trycua/cua.git
-       ```
-
-   - **If you have already cloned the repo:**
-     - Select `Dev Containers: Open Folder in Container...` and choose your local folder.
-       > **Note**: On WindSurf, the post install hook might not run automatically. If it doesn't, run:
-       >
-       > ```
-       > /bin/bash .devcontainer/post-install.sh
-       > ```
-
-3. **Open the VS Code workspace:** Once the post-install.sh is done running, open the python workspace located at `.vscode/py.code-workspace`.
-4. **Run the Agent UI example:** Click <img src="https://github.com/user-attachments/assets/7a61ef34-4b22-4dab-9864-f86bf83e290b" className='inline-block mt-1 mb-1 rounded-md mx-1'/>
-   to start the Gradio UI. If prompted to install **debugpy (Python Debugger)** for remote debugging, select 'Yes' to proceed.
-5. **Access the Gradio UI:** The Gradio UI will now be accessible http://localhost:7860.
+Visit the [Dev Container](./dev-container-setup) guide to use the configuration that simplifies development setup to a few steps.
 
 ## PyPI
 
@@ -58,7 +33,7 @@ pip install -U "cua-computer[all]" "cua-agent[all]"
 python -m agent.ui # Start the agent UI
 ```
 
-Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK in your own code.
+Or check out the [Usage Guide](./cua-usage-guide) to learn how to use our Python SDK in your own code.
 
 ---
 
@@ -73,4 +48,4 @@ Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK
 
 # Compatibility
 
-For detailed compatibility information including host OS support, VM emulation capabilities, and model provider compatibility, see the [Compatibility Guide](./compatibility).
+For detailed compatibility information including host OS support, VM emulation capabilities, and model provider compatibility, see the [Compatibility Guide](../compatibility).

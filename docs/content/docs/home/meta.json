@@ -4,7 +4,11 @@
 	"root": true,
 	"defaultOpen": true,
 	"pages": [
-		"---[House]c/ua---",
+		"index",
+		"compatibility",
+		"faq",
+		"telemetry",
+		"---[BookCopy]Guides---",
 		"...cua",
 		"---[Library]Libraries---",
 		"...libraries"

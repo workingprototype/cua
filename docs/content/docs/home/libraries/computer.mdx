@@ -2,7 +2,7 @@
 title: Computer
 ---
 
-import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
     <div
       align="center"
@@ -39,8 +39,21 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
         />
       </a>
     </div>
+    <div
+      align="center"
+      style={{
+        display: 'flex',
+        margin: '0 0',
+        width: '100%',
+        justifyContent: 'center',
+      }}
+    >
+      <a href="/api/computer">
+        Reference
+      </a>
+    </div>
 
-**cua-computer** is a Computer-Use Interface (CUI) framework powering Cua for interacting with local macOS and Linux sandboxes. It's PyAutoGUI-compatible and pluggable with any AI agent systems (Cua, Langchain, CrewAI, AutoGen). Computer relies on [Lume](https://github.com/trycua/lume) for creating and managing sandbox environments.
+**cua-computer** is a Computer-Use Interface (CUI) framework powering Cua for interacting with local macOS and Linux sandboxes. It's PyAutoGUI-compatible and pluggable with any AI agent systems (Cua, Langchain, CrewAI, AutoGen). Computer relies on [Lume](./lume.mdx) for creating and managing sandbox environments.
 
 <div align="center">
   <img src="/img/computer.png" />
@@ -219,8 +232,7 @@ For examples, see [Computer UI Examples](https://github.com/trycua/cua/tree/main
   <video
     src="https://github.com/user-attachments/assets/de3c3477-62fe-413c-998d-4063e48de176"
     controls
-    width="600"
-  ></video>
+    width="600"></video>
 </details>
 
 Record yourself performing various computer tasks using the UI.
@@ -232,8 +244,7 @@ Record yourself performing various computer tasks using the UI.
   <video
     src="https://github.com/user-attachments/assets/5ad1df37-026a-457f-8b49-922ae805faef"
     controls
-    width="600"
-  ></video>
+    width="600"></video>
 </details>
 
 Save each task by picking a descriptive name and adding relevant tags (e.g., "office", "web-browsing", "coding").
@@ -249,8 +260,7 @@ Repeat steps 3 and 4 until you have a good amount of demonstrations covering dif
   <video
     src="https://github.com/user-attachments/assets/c586d460-3877-4b5f-a736-3248886d2134"
     controls
-    width="600"
-  ></video>
+    width="600"></video>
 </details>
 
 Upload your dataset to Huggingface by:
