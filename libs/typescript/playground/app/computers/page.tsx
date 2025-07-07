@@ -233,6 +233,9 @@ export default function ComputersPage() {
     const handleRefreshScreenshot = async () => {
       setIsRefreshing(true);
       try {
+        // Get CUA API key from localStorage
+        const cuaApiKey = localStorage.getItem('cua_api_key') || '';
+        
         const response = await fetch('/api/screenshot', {
           method: 'POST',
           headers: {
@@ -241,7 +244,8 @@ export default function ComputersPage() {
           body: JSON.stringify({
             provider: instance.provider,
             name: instance.name,
-            os: instance.os
+            os: instance.os,
+            api_key: cuaApiKey
           })
         });
         

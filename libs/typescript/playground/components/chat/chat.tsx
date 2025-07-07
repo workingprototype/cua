@@ -6,6 +6,8 @@ import { Message, useChat } from "ai/react";
 import { ChatRequestOptions } from "ai";
 import { v4 as uuidv4 } from "uuid";
 import { AgentLoopConfig } from "./model-properties-sidebar";
+import { ChatOptions } from "./chat-layout";
+import { ComputerInstance } from "../../app/hooks/useComputerStore";
 
 export interface ChatProps {
   chatId?: string;
@@ -28,6 +30,10 @@ export interface ChatProps {
   agentConfig?: AgentLoopConfig;
   onAgentConfigChange?: (config: AgentLoopConfig) => void;
   onToggleRightSidebar?: () => void;
+  chatOptions?: ChatOptions;
+  onChatOptionsChange?: (options: ChatOptions) => void;
+  availableInstances?: ComputerInstance[];
+  onComputerChange?: (computerId: string) => void;
 }
 
 export default function Chat({
@@ -47,7 +53,11 @@ export default function Chat({
   setMessages,
   agentConfig,
   onAgentConfigChange,
-  onToggleRightSidebar
+  onToggleRightSidebar,
+  chatOptions,
+  onChatOptionsChange,
+  availableInstances,
+  onComputerChange
 }: ChatProps) {
   return (
     <div className="flex flex-col justify-between w-full max-w-3xl h-full ">
@@ -57,9 +67,11 @@ export default function Chat({
         chatId={chatId}
         messages={messages}
         setMessages={setMessages}
-        agentConfig={agentConfig}
-        onAgentConfigChange={onAgentConfigChange}
         onToggleRightSidebar={onToggleRightSidebar}
+        chatOptions={chatOptions}
+        onChatOptionsChange={onChatOptionsChange}
+        availableInstances={availableInstances}
+        onComputerChange={onComputerChange}
       />
 
       <ChatList

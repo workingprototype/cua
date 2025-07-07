@@ -156,7 +156,7 @@ pip install -e ".[dev,test,docs]"
 
 # Install playground dependencies
 Print-Step "Installing playground dependencies..."
-Set-Location "libs/playground"
+Set-Location "libs/typescript/playground"
 try {
     yarn install
     Print-Success "Playground dependencies installed"

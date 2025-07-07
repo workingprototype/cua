@@ -11,6 +11,8 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Settings, Cpu, Zap, Brain, Bot, Images, SlidersHorizontal } from "lucide-react";
+import { ChatOptions } from "./chat-layout";
+import { AGENT_LOOPS, MODELS_BY_LOOP } from "@/lib/chat-client";
 
 export interface AgentLoopConfig {
   loop: string;
@@ -28,63 +30,62 @@ export interface AgentLoopConfig {
 
 interface ModelPropertiesSidebarProps {
   isCollapsed: boolean;
-  agentConfig: AgentLoopConfig;
-  onConfigChange: (config: AgentLoopConfig) => void;
   onToggle?: () => void;
+  chatOptions?: ChatOptions;
+  onChatOptionsChange?: (options: ChatOptions) => void;
 }
 
-// Agent loop options based on the Gradio app
-const AGENT_LOOPS = [
-  { value: "OPENAI", label: "OpenAI", description: "Uses OpenAI Operator CUA model" },
-  { value: "ANTHROPIC", label: "Anthropic", description: "Uses Anthropic Computer-Use models" },
-  { value: "OMNI", label: "Omni", description: "Uses OmniParser for element pixel-detection" },
-  { value: "UITARS", label: "UI-TARS", description: "UI-TARS implementation" },
-];
 
-// Model options for each agent loop
-const MODELS_BY_LOOP: Record<string, string[]> = {
-  OPENAI: ["computer-use-preview"],
-  ANTHROPIC: ["claude-3-5-sonnet-20240620", "claude-3-7-sonnet-20250219"],
-  OMNI: [
-    "claude-3-5-sonnet-20240620",
-    "claude-3-7-sonnet-20250219", 
-    "gpt-4.5-preview",
-    "gpt-4o",
-    "gpt-4"
-  ],
-  UITARS: ["ByteDance-Seed/UI-TARS-1.5-7B"],
-};
 
 export default function ModelPropertiesSidebar({
   isCollapsed,
-  agentConfig,
-  onConfigChange,
   onToggle,
+  chatOptions,
+  onChatOptionsChange
 }: ModelPropertiesSidebarProps) {
-  const [localConfig, setLocalConfig] = useState<AgentLoopConfig>(agentConfig);
-
-  useEffect(() => {
-    setLocalConfig(agentConfig);
-  }, [agentConfig]);
-
-  const handleConfigUpdate = (updates: Partial<AgentLoopConfig>) => {
-    const newConfig = { ...localConfig, ...updates };
-    setLocalConfig(newConfig);
-    onConfigChange(newConfig);
-  };
-
   const handleLoopChange = (loop: string) => {
+    if (!chatOptions || !onChatOptionsChange) return;
+    
     const availableModels = MODELS_BY_LOOP[loop] || [];
     const defaultModel = availableModels[0] || "";
     
-    handleConfigUpdate({
-      loop,
-      model: defaultModel,
-      provider: loop.toLowerCase(),
+    onChatOptionsChange({
+      ...chatOptions,
+      agent: {
+        ...chatOptions.agent,
+        loop,
+        model: defaultModel,
+      },
     });
   };
 
-  const availableModels = MODELS_BY_LOOP[localConfig.loop] || [];
+  const handleModelChange = (model: string) => {
+    if (!chatOptions || !onChatOptionsChange) return;
+    
+    onChatOptionsChange({
+      ...chatOptions,
+      agent: {
+        ...chatOptions.agent,
+        model,
+      },
+    });
+  };
+
+  const handleAgentConfigChange = (updates: Partial<ChatOptions['agent']>) => {
+    if (!chatOptions || !onChatOptionsChange) return;
+    
+    onChatOptionsChange({
+      ...chatOptions,
+      agent: {
+        ...chatOptions.agent,
+        ...updates,
+      },
+    });
+  };
+
+  const currentLoop = chatOptions?.agent.loop || "ANTHROPIC";
+  const currentModel = chatOptions?.agent.model || "claude-3-5-sonnet-20240620";
+  const availableModels = MODELS_BY_LOOP[currentLoop] || [];
 
   if (isCollapsed) {
     return (
@@ -117,7 +118,7 @@ export default function ModelPropertiesSidebar({
           </CardHeader>
           <CardContent className="space-y-3">
             <Select
-              value={localConfig.loop}
+              value={currentLoop}
               onValueChange={handleLoopChange}
             >
               <SelectTrigger className="text-left py-6">
@@ -152,9 +153,9 @@ export default function ModelPropertiesSidebar({
           </CardHeader>
           <CardContent className="space-y-3">
             <Select
-              value={localConfig.model}
-              onValueChange={(model) => handleConfigUpdate({ model })}
-              disabled={!localConfig.loop}
+              value={currentModel}
+              onValueChange={handleModelChange}
+              disabled={!currentLoop}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select model" />
@@ -168,7 +169,7 @@ export default function ModelPropertiesSidebar({
               </SelectContent>
             </Select>
             
-            {availableModels.length === 0 && localConfig.loop && (
+            {availableModels.length === 0 && currentLoop && (
               <p className="text-xs text-muted-foreground">
                 No models available for selected agent loop
               </p>
@@ -199,9 +200,9 @@ export default function ModelPropertiesSidebar({
                 min="0"
                 max="2"
                 step="0.1"
-                value={localConfig.temperature || 0.7}
+                value={chatOptions?.agent.temperature || 0.7}
                 onChange={(e) => 
-                  handleConfigUpdate({ temperature: parseFloat(e.target.value) })
+                  handleAgentConfigChange({ temperature: parseFloat(e.target.value) })
                 }
                 className="text-sm"
               />
@@ -220,9 +221,9 @@ export default function ModelPropertiesSidebar({
                 type="number"
                 min="1"
                 max="8192"
-                value={localConfig.maxTokens || 4096}
+                value={chatOptions?.agent.max_tokens || 4096}
                 onChange={(e) => 
-                  handleConfigUpdate({ maxTokens: parseInt(e.target.value) })
+                  handleAgentConfigChange({ max_tokens: parseInt(e.target.value) })
                 }
                 className="text-sm"
               />
@@ -289,8 +290,8 @@ export default function ModelPropertiesSidebar({
               </Select>
             </div> */}
 
-            {/* Image Retention */}
-            <div className="space-y-2">
+            {/* Image Retention - Not part of chat options, commented out */}
+            {/* <div className="space-y-2">
               <Label htmlFor="imageRetention" className="text-sm">
                 Image Retention
               </Label>
@@ -299,16 +300,13 @@ export default function ModelPropertiesSidebar({
                 type="number"
                 min="0"
                 max="100"
-                value={localConfig.imageRetention || 3}
-                onChange={(e) => 
-                  handleConfigUpdate({ imageRetention: parseInt(e.target.value) })
-                }
+                value={3}
                 className="text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Number of images to retain in memory
               </p>
-            </div>
+            </div> */}
 
             {/* OpenAI Compatible API */}
             {/* <div className="flex items-center justify-between">
@@ -327,7 +325,7 @@ export default function ModelPropertiesSidebar({
             </div> */}
 
             {/* Provider Base URL */}
-            {localConfig.useOaicompat && (
+            {chatOptions?.agent.use_oaicompat && (
               <div className="space-y-2">
                 <Label htmlFor="providerBaseUrl" className="text-sm">
                   Provider Base URL
@@ -336,9 +334,9 @@ export default function ModelPropertiesSidebar({
                   id="providerBaseUrl"
                   type="url"
                   placeholder="https://api.example.com/v1"
-                  value={localConfig.providerBaseUrl || ""}
+                  value={chatOptions?.agent.provider_base_url || ""}
                   onChange={(e) => 
-                    handleConfigUpdate({ providerBaseUrl: e.target.value })
+                    handleAgentConfigChange({ provider_base_url: e.target.value })
                   }
                   className="text-sm"
                 />

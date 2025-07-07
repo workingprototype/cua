@@ -61,7 +61,7 @@ export const useComputerStore = create<ComputerStore>()(
       },
       getAvailableInstances: () => {
         const { instances } = get();
-        return instances.filter(instance => instance.status === "running" || instance.provider != "cua-cloud");
+        return instances.filter(instance => instance.status === "running" || instance.provider == "cua-cloud");
       },
       updateInstanceScreenshot: (instanceId, screenshot) => {
         const { instances } = get();

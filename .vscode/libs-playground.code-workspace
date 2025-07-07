@@ -1,0 +1,12 @@
+{
+    "folders": [
+      {
+        "name": "playground",
+        "path": "../libs/typescript/playground"
+      },
+      {
+        "name": "playground-api",
+        "path": "../libs/python/playground-api"
+      }
+    ]
+  }

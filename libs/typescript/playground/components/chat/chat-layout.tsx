@@ -14,6 +14,28 @@ import Chat, { ChatProps } from "./chat";
 import ChatList from "./chat-list";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import ModelPropertiesSidebar, { AgentLoopConfig } from "./model-properties-sidebar";
+import { ComputerInstance } from "../../app/hooks/useComputerStore";
+
+// Chat options interface
+export interface ChatOptions {
+  computer: {
+    provider: string;
+    name: string;
+    os: string;
+    api_key?: string; // Optional - only required for cua-cloud provider
+  };
+  agent: {
+    loop: string;
+    model: string;
+    temperature: number;
+    max_tokens: number;
+    system_prompt: string;
+    save_trajectory: boolean;
+    verbosity: number;
+    use_oaicompat: boolean;
+    provider_base_url: string;
+  };
+}
 
 interface ChatLayoutProps {
   defaultLayout: number[] | undefined;
@@ -23,6 +45,10 @@ interface ChatLayoutProps {
   setMessages: (messages: Message[]) => void;
   sidebarVisible?: boolean;
   setSidebarVisible?: (visible: boolean) => void;
+  chatOptions?: ChatOptions;
+  onChatOptionsChange?: (options: ChatOptions) => void;
+  availableInstances?: ComputerInstance[];
+  onComputerChange?: (computerId: string) => void;
 }
 
 type MergedProps = ChatLayoutProps & ChatProps;
@@ -46,6 +72,10 @@ export function ChatLayout({
   setInput,
   sidebarVisible,
   setSidebarVisible,
+  chatOptions,
+  onChatOptionsChange,
+  availableInstances,
+  onComputerChange,
 }: MergedProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = React.useState(false);
@@ -177,6 +207,10 @@ export function ChatLayout({
           agentConfig={agentConfig}
           onAgentConfigChange={handleAgentConfigChange}
           onToggleRightSidebar={handleToggleRightSidebar}
+          chatOptions={chatOptions}
+          onChatOptionsChange={onChatOptionsChange}
+          availableInstances={availableInstances}
+          onComputerChange={onComputerChange}
         />
       </ResizablePanel>
       
@@ -205,9 +239,9 @@ export function ChatLayout({
       >
         <ModelPropertiesSidebar
           isCollapsed={isRightSidebarCollapsed || isMobile}
-          agentConfig={agentConfig}
-          onConfigChange={handleAgentConfigChange}
           onToggle={handleToggleRightSidebar}
+          chatOptions={chatOptions}
+          onChatOptionsChange={onChatOptionsChange}
         />
       </ResizablePanel>
     </ResizablePanelGroup>

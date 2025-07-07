@@ -20,10 +20,11 @@ import { CaretSortIcon, HamburgerMenuIcon, MixerHorizontalIcon, LaptopIcon, Pers
 import { Sidebar } from "../sidebar";
 import { Message } from "ai/react";
 import { getSelectedModel } from "@/lib/model-helper";
-import { useComputerStore } from "../../app/hooks/useComputerStore";
 import Image from "next/image";
-import { AgentLoopConfig } from "./model-properties-sidebar";
+import { ChatOptions } from "./chat-layout";
 import { Bot } from "lucide-react";
+import { AGENT_LOOPS, MODELS_BY_LOOP } from "@/lib/chat-client";
+import { ComputerInstance } from "../../app/hooks/useComputerStore";
 
 interface ChatTopbarProps {
   setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
@@ -31,18 +32,12 @@ interface ChatTopbarProps {
   chatId?: string;
   messages: Message[];
   setMessages: (messages: Message[]) => void;
-  agentConfig?: AgentLoopConfig;
-  onAgentConfigChange?: (config: AgentLoopConfig) => void;
   onToggleRightSidebar?: () => void;
+  chatOptions?: ChatOptions;
+  onChatOptionsChange?: (options: ChatOptions) => void;
+  availableInstances?: ComputerInstance[];
+  onComputerChange?: (computerId: string) => void;
 }
-
-// Agent loop options
-const AGENT_LOOPS = [
-  { value: "OPENAI", label: "OpenAI" },
-  { value: "ANTHROPIC", label: "Anthropic" },
-  { value: "OMNI", label: "Omni" },
-  { value: "UITARS", label: "UI-TARS" },
-];
 
 export default function ChatTopbar({
   setSelectedModel,
@@ -50,9 +45,11 @@ export default function ChatTopbar({
   chatId,
   messages,
   setMessages,
-  agentConfig,
-  onAgentConfigChange,
-  onToggleRightSidebar
+  onToggleRightSidebar,
+  chatOptions,
+  onChatOptionsChange,
+  availableInstances = [],
+  onComputerChange
 }: ChatTopbarProps) {
   const [models, setModels] = React.useState<string[]>([]);
   const [open, setOpen] = React.useState(false);
@@ -61,10 +58,10 @@ export default function ChatTopbar({
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [currentModel, setCurrentModel] = React.useState<string | null>(null);
   const [selectedComputer, setSelectedComputer] = React.useState<string | null>(null);
-  
-  const { getAvailableInstances } = useComputerStore();
-  const availableInstances = getAvailableInstances();
 
+
+
+  // Initialize component state (runs once)
   useEffect(() => {
     setCurrentModel(getSelectedModel());
     
@@ -111,7 +108,9 @@ export default function ChatTopbar({
       }
     };
     fetchModels();
-  }, []);
+  }, []); // Only run once on mount
+
+
 
   const handleModelChange = (model: string) => {
     setCurrentModel(model);
@@ -123,11 +122,17 @@ export default function ChatTopbar({
   };
 
   const handleAgentLoopChange = (loop: string) => {
-    if (onAgentConfigChange && agentConfig) {
-      onAgentConfigChange({
-        ...agentConfig,
-        loop,
-        provider: loop.toLowerCase(),
+    if (onChatOptionsChange && chatOptions) {
+      const availableModels = MODELS_BY_LOOP[loop] || [];
+      const firstModel = availableModels[0] || "";
+      
+      onChatOptionsChange({
+        ...chatOptions,
+        agent: {
+          ...chatOptions.agent,
+          loop: loop,
+          model: firstModel
+        }
       });
     }
     setAgentLoopOpen(false);
@@ -135,10 +140,12 @@ export default function ChatTopbar({
 
   const handleComputerChange = (computerId: string) => {
     setSelectedComputer(computerId);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("selectedComputer", computerId);
-    }
     setComputerOpen(false);
+
+    // Call the parent handler to update chat options
+    if (onComputerChange) {
+      onComputerChange(computerId);
+    }
   };
 
   const handleCloseSidebar = () => {
@@ -192,10 +199,7 @@ export default function ChatTopbar({
               aria-expanded={agentLoopOpen}
               className="w-[200px] justify-between"
             >
-              {agentConfig?.loop 
-                ? AGENT_LOOPS.find(l => l.value === agentConfig.loop)?.label || "Select agent"
-                : "Select agent"
-              }
+              {chatOptions?.agent?.loop ? AGENT_LOOPS.find((loop) => loop.value === chatOptions.agent.loop)?.label : "Select agent loop"}
               <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>

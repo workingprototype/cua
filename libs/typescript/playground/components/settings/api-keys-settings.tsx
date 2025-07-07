@@ -53,7 +53,7 @@ export function ApiKeysSettings() {
       anthropicKey,
       ollamaUrl,
     });
-  }, [form]);
+  }, []); // Empty dependency array - only run once on mount
 
   function onSubmit(values: z.infer<typeof apiKeySchema>) {
     // Save API keys to localStorage
@@ -76,8 +76,8 @@ export function ApiKeysSettings() {
   const clearApiKey = (keyType: "cua" | "openai" | "anthropic" | "ollama") => {
     switch (keyType) {
       case "cua":
-        localStorage.removeItem("openai_api_key");
-        form.setValue("openaiKey", "");
+        localStorage.removeItem("cua_api_key");
+        form.setValue("cuaKey", "");
         break;
       case "openai":
         localStorage.removeItem("openai_api_key");
@@ -128,7 +128,7 @@ export function ApiKeysSettings() {
             <CardContent>
               <FormField
                 control={form.control}
-                name="openaiKey"
+                name="cuaKey"
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
@@ -157,7 +157,7 @@ export function ApiKeysSettings() {
                           type="button"
                           variant="outline"
                           size="icon"
-                          onClick={() => clearApiKey("openai")}
+                          onClick={() => clearApiKey("cua")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

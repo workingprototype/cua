@@ -12,15 +12,13 @@ import {
 import { Input } from "@/components/ui/input";
 import UsernameForm from "@/components/username-form";
 import { getSelectedModel } from "@/lib/model-helper";
-import { ChatOllama } from "@langchain/community/chat_models/ollama";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { BytesOutputParser } from "@langchain/core/output_parsers";
-import { Attachment, ChatRequestOptions } from "ai";
+import { chatClient } from "@/lib/chat-client";
 import { Message, useChat } from "ai/react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import useChatStore from "./hooks/useChatStore";
+import { useComputerStore, ComputerInstance } from "./hooks/useComputerStore";
 
 export default function Home() {
   const {
@@ -50,12 +48,112 @@ export default function Home() {
     getSelectedModel()
   );
   const [open, setOpen] = React.useState(false);
-  const [ollama, setOllama] = useState<ChatOllama>();
-  const env = process.env.NODE_ENV;
   const [loadingSubmit, setLoadingSubmit] = React.useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const base64Images = useChatStore((state) => state.base64Images);
   const setBase64Images = useChatStore((state) => state.setBase64Images);
+
+  // Computer store
+  const { getAvailableInstances } = useComputerStore();
+  const availableInstances = getAvailableInstances();
+  
+  // Helper function to get API key based on provider
+  const getApiKeyForProvider = useCallback((provider: string): string => {
+    if (typeof window === 'undefined') return "";
+    
+    if (provider === "cua-cloud") {
+      return localStorage.getItem("cua_api_key") || "";
+    } else if (provider === "anthropic") {
+      return localStorage.getItem("anthropic_api_key") || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "";
+    }
+    return "";
+  }, []);
+  
+  // Get default computer configuration (stable function)
+  const getDefaultComputerConfig = useCallback(() => {
+    // Try to get saved computer selection
+    if (typeof window !== 'undefined') {
+      const savedComputer = localStorage.getItem("selectedComputer");
+      if (savedComputer) {
+        const selectedInstance = availableInstances.find(instance => instance.id === savedComputer);
+        if (selectedInstance) {
+          const config: any = {
+            provider: selectedInstance.provider,
+            name: selectedInstance.name,
+            os: selectedInstance.os
+          };
+          
+          // Only add api_key for cua-cloud provider
+          if (selectedInstance.provider === "cua-cloud") {
+            config.api_key = localStorage.getItem("cua_api_key") || "";
+          }
+          
+          return config;
+        }
+      }
+    }
+    
+    // Default fallback (no API key for local VMs)
+    return {
+      provider: "lume",
+      name: "macos-sequoia-cua:latest",
+      os: "macos"
+    };
+  }, [availableInstances]);
+  
+  // Chat options state with simple initialization
+  const [chatOptions, setChatOptions] = useState(() => ({
+    computer: {
+      provider: "lume",
+      name: "macos-sequoia-cua:latest",
+      os: "macos",
+      // No api_key for local VMs
+    },
+    agent: {
+      loop: "ANTHROPIC",
+      model: selectedModel,
+      temperature: 0.7,
+      max_tokens: 4096,
+      system_prompt: "",
+      save_trajectory: true,
+      verbosity: 20,
+      use_oaicompat: false,
+      provider_base_url: "",
+    },
+  }));
+  
+  // Initialize computer config once on mount
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Handle computer selection changes
+  const handleComputerChange = useCallback((computerId: string) => {
+    const selectedInstance = availableInstances.find(instance => instance.id === computerId);
+    if (selectedInstance) {
+      const computerConfig: any = {
+        provider: selectedInstance.provider,
+        name: selectedInstance.name,
+        os: selectedInstance.os
+      };
+      
+      // Only add api_key for cua-cloud provider
+      if (selectedInstance.provider === "cua-cloud") {
+        computerConfig.api_key = getApiKeyForProvider(selectedInstance.provider);
+      }
+      
+      setChatOptions(prev => ({
+        ...prev,
+        computer: computerConfig
+      }));
+      
+      // Save selection to localStorage
+      localStorage.setItem("selectedComputer", computerId);
+    }
+  }, [availableInstances, getApiKeyForProvider]);
+  
+  // Handle chat options changes
+  const handleChatOptionsChange = useCallback((options: typeof chatOptions) => {
+    setChatOptions(options);
+  }, []);
 
   useEffect(() => {
     if (messages.length < 1) {
@@ -76,18 +174,33 @@ export default function Home() {
   }, [chatId, isLoading, error]);
 
   useEffect(() => {
-    if (env === "production") {
-      const newOllama = new ChatOllama({
-        baseUrl: process.env.NEXT_PUBLIC_OLLAMA_URL || "http://localhost:11434",
-        model: selectedModel,
-      });
-      setOllama(newOllama);
-    }
-
     if (!localStorage.getItem("ollama_user")) {
       setOpen(true);
     }
+  }, []);
+
+  // Update chat options when selected model changes
+  useEffect(() => {
+    setChatOptions(prev => ({
+      ...prev,
+      agent: {
+        ...prev.agent,
+        model: selectedModel,
+      },
+    }));
   }, [selectedModel]);
+  
+  // Initialize computer config once on mount
+  useEffect(() => {
+    if (!isInitialized) {
+      const defaultConfig = getDefaultComputerConfig();
+      setChatOptions(prev => ({
+        ...prev,
+        computer: defaultConfig
+      }));
+      setIsInitialized(true);
+    }
+  }, [isInitialized, getDefaultComputerConfig]);
 
   const addMessage = (Message: Message) => {
     messages.push(Message);
@@ -95,7 +208,7 @@ export default function Home() {
     setMessages([...messages]);
   };
 
-  // Function to handle chatting with Ollama in production (client side)
+  // Function to handle chatting with chat client in production (client side)
   const handleSubmitProduction = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
@@ -104,42 +217,30 @@ export default function Home() {
     addMessage({ role: "user", content: input, id: chatId });
     setInput("");
 
-    if (ollama) {
-      try {
-        const parser = new BytesOutputParser();
+    try {
+      const stream = chatClient.stream(messages as Message[], {
+        computer: chatOptions.computer,
+        agent: chatOptions.agent,
+      });
 
-        const stream = await ollama
-          .pipe(parser)
-          .stream(
-            (messages as Message[]).map((m) =>
-              m.role == "user"
-                ? new HumanMessage(m.content)
-                : new AIMessage(m.content)
-            )
-          );
-
-        const decoder = new TextDecoder();
-
-        let responseMessage = "";
-        for await (const chunk of stream) {
-          const decodedChunk = decoder.decode(chunk);
-          responseMessage += decodedChunk;
-          setLoadingSubmit(false);
-          setMessages([
-            ...messages,
-            { role: "assistant", content: responseMessage, id: chatId },
-          ]);
-        }
-        addMessage({ role: "assistant", content: responseMessage, id: chatId });
-        setMessages([...messages]);
-
-        localStorage.setItem(`chat_${chatId}`, JSON.stringify(messages));
-        // Trigger the storage event to update the sidebar component
-        window.dispatchEvent(new Event("storage"));
-      } catch (error) {
-        toast.error("An error occurred. Please try again.");
+      let responseMessage = "";
+      for await (const chunk of stream) {
+        responseMessage += chunk;
         setLoadingSubmit(false);
+        setMessages([
+          ...messages,
+          { role: "assistant", content: responseMessage, id: chatId },
+        ]);
       }
+      addMessage({ role: "assistant", content: responseMessage, id: chatId });
+      setMessages([...messages]);
+
+      localStorage.setItem(`chat_${chatId}`, JSON.stringify(messages));
+      // Trigger the storage event to update the sidebar component
+      window.dispatchEvent(new Event("storage"));
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+      setLoadingSubmit(false);
     }
   };
 
@@ -149,39 +250,9 @@ export default function Home() {
 
     setMessages([...messages]);
 
-    const attachments: Attachment[] = base64Images
-    ? base64Images.map((image) => ({
-        contentType: 'image/base64', // Content type for base64 images
-        url: image, // The base64 image data
-      }))
-    : [];
-
-    // Prepare the options object with additional body data, to pass the model.
-    const requestOptions: ChatRequestOptions = {
-      options: {
-        body: {
-          selectedModel: selectedModel,
-        },
-      },
-      ...(base64Images && {
-        data: {
-          images: base64Images,
-        },
-        experimental_attachments: attachments
-      }),
-    };
-
-    messages.slice(0, -1)
-    
-
-    if (env === "production") {
-      handleSubmitProduction(e);
-      setBase64Images(null)
-    } else {
-      // Call the handleSubmit function with the options
-      handleSubmit(e, requestOptions);
-      setBase64Images(null)
-    }
+    // Always use production handler (chat client)
+    handleSubmitProduction(e);
+    setBase64Images(null);
   };
 
   const onOpenChange = (isOpen: boolean) => { 
@@ -212,6 +283,10 @@ export default function Home() {
           formRef={formRef}
           setMessages={setMessages}
           setInput={setInput}
+          chatOptions={chatOptions}
+          onChatOptionsChange={handleChatOptionsChange}
+          availableInstances={availableInstances}
+          onComputerChange={handleComputerChange}
         />
         <DialogContent className="flex flex-col space-y-4">
           <DialogHeader className="space-y-2">

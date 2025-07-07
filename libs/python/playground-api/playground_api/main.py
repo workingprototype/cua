@@ -2,23 +2,37 @@ import json
 import time
 import base64
 import asyncio
-from typing import Any, Dict, List
+import hashlib
+import os
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from playground_api.utils.prompt import ClientMessage
 from playground_api.utils.tools import get_current_weather
 
-# Import Computer class
-from computer.computer import Computer, OSType
-from computer.providers.base import VMProviderType
-from computer.logger import LogLevel
+# Import Computer and Agent classes
+from computer import Computer, VMProviderType
+from agent import ComputerAgent, AgentLoop, LLM, LLMProvider
 import logging
 
 app = FastAPI()
+
+# Add validation error handler
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    print(f"Validation error: {exc}")
+    print(f"Request URL: {request.url}")
+    print(f"Request method: {request.method}")
+    try:
+        body = await request.body()
+        print(f"Request body: {body.decode()}")
+    except:
+        print("Could not read request body")
+    return HTTPException(status_code=422, detail=str(exc))
 
 # Add CORS middleware
 app.add_middleware(
@@ -33,91 +47,340 @@ app.add_middleware(
 )
 
 
-class Request(BaseModel):
-    messages: List[ClientMessage]
+class AgentConfig(BaseModel):
+    loop: str  # "OPENAI", "ANTHROPIC", "OMNI", "UITARS"
+    model: str
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    system_prompt: Optional[str] = None
+    save_trajectory: Optional[bool] = True
+    verbosity: Optional[int] = logging.INFO
+    use_oaicompat: Optional[bool] = False
+    provider_base_url: Optional[str] = None
+    provider_api_key: Optional[str] = None
 
 
-class ScreenshotRequest(BaseModel):
+class ComputerConfig(BaseModel):
     provider: str
     name: str
     os: str
+    api_key: str
+
+
+class AgentRequest(BaseModel):
+    messages: List[ClientMessage]
+    agent: AgentConfig
+    computer: ComputerConfig
 
 
 available_tools = {
     "get_current_weather": get_current_weather,
 }
 
-
-def do_stream(messages: List[Dict[str, Any]]):
-    """Mock streaming function that returns a mock stream object"""
-    # This is a mock implementation - in real usage this would return an OpenAI stream
-    return []
+# Global instances cache
+computer_instances: Dict[str, Computer] = {}
+agent_instances: Dict[str, ComputerAgent] = {}
 
 
-def stream_text(messages: List[Dict[str, Any]], protocol: str = "data"):
-    """Mock streaming text function that yields mock responses in the expected format"""
+def get_computer_hash(config: ComputerConfig) -> str:
+    """Generate a hash for computer configuration to cache instances."""
+    config_str = f"{config.provider}_{config.name}_{config.os}_{config.api_key}"
+    return hashlib.md5(config_str.encode()).hexdigest()
 
-    # Check if the last message mentions weather to simulate tool calling
-    last_message = messages[-1] if messages else {}
-    message_content = last_message.get("content", "").lower()
 
-    should_call_weather_tool = "weather" in message_content
+def get_agent_hash(agent_config: AgentConfig, computer_hash: str) -> str:
+    """Generate a hash for agent configuration to cache instances."""
+    config_str = f"{agent_config.loop}_{agent_config.model}_{computer_hash}"
+    return hashlib.md5(config_str.encode()).hexdigest()
 
-    if should_call_weather_tool:
-        # Mock tool call scenario
-        tool_call_id = "call_mock_123"
-        tool_name = "get_current_weather"
-        tool_args = '{"latitude": 37.7749, "longitude": -122.4194}'
 
-        # Yield tool call
-        yield '9:{{"toolCallId":"{id}","toolName":"{name}","args":{args}}}\n'.format(
-            id=tool_call_id, name=tool_name, args=tool_args
+async def get_or_create_computer(config: ComputerConfig) -> Computer:
+    """Get or create a computer instance based on configuration."""
+    computer_hash = get_computer_hash(config)
+    
+    if computer_hash in computer_instances:
+        return computer_instances[computer_hash]
+    
+    # Create new computer instance
+    computer = None
+    os_type_map = {
+        "ubuntu": "linux",
+        "linux": "linux",
+        "windows": "windows", 
+        "macos": "macos",
+    }
+    os_type = os_type_map.get(config.os, "linux")
+    
+    if config.provider == "host-computer":
+        # Host computer configuration
+        computer = Computer(
+            use_host_computer_server=True,
+            os_type=os_type, # type: ignore[literal-mismatch]
+            verbosity=logging.INFO
         )
-
-        # Mock tool execution
-        tool_result = available_tools[tool_name](latitude=37.7749, longitude=-122.4194)
-
-        # Yield tool result
-        yield 'a:{{"toolCallId":"{id}","toolName":"{name}","args":{args},"result":{result}}}\n'.format(
-            id=tool_call_id,
-            name=tool_name,
-            args=tool_args,
-            result=json.dumps(tool_result),
+        
+    elif config.provider == "windows-sandbox":
+        computer = Computer(
+            provider_type=VMProviderType.WINSANDBOX,
+            os_type="windows",
+            verbosity=logging.INFO
         )
-
-        # Yield final response with tool usage
-        yield 'e:{{"finishReason":"tool_calls","usage":{{"promptTokens":50,"completionTokens":25}},"isContinued":false}}\n'
-
+        
+    elif config.provider == "lume":
+        computer = Computer(
+            provider_type=VMProviderType.LUME,
+            os_type=os_type, # type: ignore[literal-mismatch]
+            name=config.name,
+            verbosity=logging.INFO
+        )
+        
+    elif config.provider == "cua-cloud":
+        computer = Computer(
+            provider_type=VMProviderType.CLOUD,
+            os_type=os_type, # type: ignore[literal-mismatch]
+            name=config.name,
+            verbosity=logging.INFO,
+            api_key=config.api_key,
+        )
+        
     else:
-        # Mock regular text response
-        mock_response_parts = [
-            "This is a mock response from the API. ",
-            "I'm simulating the streaming behavior ",
-            "that would normally come from OpenAI. ",
-            "The original functionality has been preserved ",
-            "but now uses mock data instead.",
-        ]
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {config.provider}")
+    
+    if computer is None:
+        raise HTTPException(status_code=500, detail="Failed to create computer instance")
+    
+    # Initialize the computer
+    await computer.run()
+    
+    # Cache the instance
+    computer_instances[computer_hash] = computer
+    
+    return computer
 
-        # Stream the response in chunks
-        for part in mock_response_parts:
-            yield "0:{text}\n".format(text=json.dumps(part))
-            time.sleep(0.1)  # Small delay to simulate streaming
 
-        # Yield end marker
-        yield 'e:{{"finishReason":"stop","usage":{{"promptTokens":30,"completionTokens":20}},"isContinued":false}}\n'
+async def get_or_create_agent(agent_config: AgentConfig, computer_config: ComputerConfig) -> ComputerAgent:
+    """Get or create an agent instance based on configuration."""
+    computer_hash = get_computer_hash(computer_config)
+    agent_hash = get_agent_hash(agent_config, computer_hash)
+    
+    computer = await get_or_create_computer(computer_config)
 
+    if agent_hash in agent_instances:
+        return agent_instances[agent_hash]
+    
+    # Map agent loop string to enum
+    loop_map = {
+        "OPENAI": AgentLoop.OPENAI,
+        "ANTHROPIC": AgentLoop.ANTHROPIC,
+        "OMNI": AgentLoop.OMNI,
+        "UITARS": AgentLoop.UITARS
+    }
+    
+    agent_loop = loop_map.get(agent_config.loop)
+    if agent_loop is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported agent loop: {agent_config.loop}")
+    
+    # Determine provider based on agent loop and model
+    provider = None
+    if agent_config.loop == "OPENAI":
+        provider = LLMProvider.OPENAI
+    elif agent_config.loop == "ANTHROPIC":
+        provider = LLMProvider.ANTHROPIC
+    elif agent_config.loop == "OMNI":
+        # OMNI can use various providers, determine by model
+        if "claude" in agent_config.model.lower():
+            provider = LLMProvider.ANTHROPIC
+        elif "gpt" in agent_config.model.lower():
+            provider = LLMProvider.OPENAI
+        else:
+            provider = LLMProvider.OPENAI  # Default
+    elif agent_config.loop == "UITARS":
+        provider = LLMProvider.MLXVLM
+    
+    if provider is None:
+        raise HTTPException(status_code=400, detail=f"Could not determine provider for loop: {agent_config.loop}")
+    
+    # Get API key from agent config
+    api_key = agent_config.provider_api_key
+    
+    # Create LLM instance
+    llm_kwargs = {
+        "provider": provider,
+        "name": agent_config.model
+    }
+    
+    if agent_config.use_oaicompat and agent_config.provider_base_url:
+        llm_kwargs["provider"] = LLMProvider.OAICOMPAT
+        llm_kwargs["provider_base_url"] = agent_config.provider_base_url
+    
+    llm = LLM(**llm_kwargs)
+    
+    # Create agent instance
+    agent = ComputerAgent(
+        computer=computer,
+        loop=agent_loop,
+        model=llm,
+        api_key=api_key,
+        save_trajectory=agent_config.save_trajectory or True,
+        only_n_most_recent_images=3,  # Default value
+        verbosity=agent_config.verbosity or logging.INFO,
+    )
+    
+    # Cache the instance
+    agent_instances[agent_hash] = agent
+    
+    return agent
+
+
+async def stream_agent_response(agent: ComputerAgent, message: str):
+    """Stream responses from the ComputerAgent."""
+    try:
+        # Stream responses from the agent
+        async for result in agent.run(message):
+            print(f"DEBUG - Agent response ------- START")
+            from pprint import pprint
+            pprint(result)
+            print(f"DEBUG - Agent response ------- END")
+            
+            # Handle direct content (simple text response)
+            if result.get("content"):
+                content = result.get("content", "")
+                
+                # TODO: consider removing the "Task completed successfully." direct message
+                if content == "Task completed successfully.":
+                    continue
+                
+                # Yield text part in AI SDK format
+                yield f"0:{json.dumps(content)}\n"
+            
+            # Handle complex output structure
+            elif result.get("output"):
+                outputs = result.get("output", [])
+                for output in outputs:
+                    if output.get("type") == "message":
+                        # Handle message type outputs
+                        content = output.get("content", [])
+                        for content_part in content:
+                            if content_part.get("text"):
+                                text = content_part.get("text", "")
+                                
+                                # Yield text part
+                                yield f"0:{json.dumps(text)}\n"
+                    
+                    elif output.get("type") == "reasoning":
+                        # Handle reasoning outputs
+                        # Check if it's OpenAI reasoning with summary
+                        summary_content = output.get("summary", [])
+                        if summary_content:
+                            for summary_part in summary_content:
+                                if summary_part.get("type") == "summary_text":
+                                    reasoning_text = summary_part.get("text", "")
+                                    # Yield reasoning part (g: format)
+                                    yield f"g:{json.dumps(reasoning_text)}\n"
+                        else:
+                            # Handle direct reasoning text
+                            reasoning_text = output.get("text", "")
+                            if reasoning_text:
+                                # Yield reasoning part (g: format)
+                                yield f"g:{json.dumps(reasoning_text)}\n"
+                    
+                    elif output.get("type") == "computer_call":
+                        # Handle computer action calls
+                        action = output.get("action", {})
+                        action_type = action.get("type", "")
+                        if action_type:
+                            # Create a descriptive message about the action
+                            action_title = f"🛠️ Performing {action_type}"
+                            if action.get("x") and action.get("y"):
+                                action_title += f" at ({action['x']}, {action['y']})"
+                            
+                            # Yield the action description as text
+                            yield f"0:{json.dumps(action_title)}\n"
+                            
+                            # Yield the action details as data
+                            action_data = {
+                                "type": "computer_action",
+                                "action": action,
+                                "title": action_title
+                            }
+                            yield f"2:{json.dumps([action_data])}\n"
+            
+            # Check if this is the final response
+            if result.get("finish_reason") or result.get("done"):
+                # Yield finish step part
+                finish_reason = result.get("finish_reason", "stop")
+                usage = result.get("usage", {"promptTokens": 0, "completionTokens": 0})
+                yield f'e:{{"finishReason":"{finish_reason}","usage":{json.dumps(usage)},"isContinued":false}}\n'
+                break
+                
+    except Exception as e:
+        print(f"Error in agent streaming: {e}")
+        import traceback
+        traceback.print_exc()
+        # Yield error response
+        yield f"3:{json.dumps(f'Error: {str(e)}')}\n"
+        yield f'e:{{"finishReason":"error","usage":{{"promptTokens":0,"completionTokens":0}},"isContinued":false}}\n'
+
+
+# Add a debug endpoint to see raw request
+@app.post("/chat/debug")
+async def debug_chat_request(request: Request):
+    """Debug endpoint to see raw request data."""
+    try:
+        body = await request.body()
+        print(f"Raw request body: {body.decode()}")
+        
+        # Try to parse as JSON
+        import json
+        data = json.loads(body.decode())
+        print(f"Parsed JSON: {json.dumps(data, indent=2)}")
+        
+        return {"status": "ok", "data": data}
+    except Exception as e:
+        print(f"Error parsing request: {e}")
+        return {"status": "error", "error": str(e)}
 
 @app.post("/chat")
-async def handle_chat_data(request: Request, protocol: str = Query("data")):
-    messages = request.messages
-    # Convert to simple dict format for mock processing
-    mock_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
+async def handle_chat_data(request: AgentRequest, protocol: str = Query("data")):
+    """Handle chat requests with agent and computer configuration."""
 
-    print("Simple log")
+    print("Received chat request")
+    print(f"Request: {request}")
+    print(f"Protocol: {protocol}")
+    print(f"Messages count: {len(request.messages)}")
+    print(f"Agent config: {request.agent}")
+    print(f"Computer config: {request.computer}")
 
-    response = StreamingResponse(stream_text(mock_messages, protocol))
-    response.headers["x-vercel-ai-data-stream"] = "v1"
-    return response
+    try:
+        # Get or create computer instance
+        computer = await get_or_create_computer(request.computer)
+        
+        # Get or create agent instance
+        agent = await get_or_create_agent(request.agent, request.computer)
+        
+        # Get the last user message
+        if not request.messages:
+            raise HTTPException(status_code=400, detail="No messages provided")
+        
+        last_message = request.messages[-1]
+        if last_message.role != "user":
+            raise HTTPException(status_code=400, detail="Last message must be from user")
+        
+        print(f"Processing message: {last_message.content}")
+        
+        # Stream response from agent
+        response = StreamingResponse(
+            stream_agent_response(agent, last_message.content),
+            media_type="text/plain"
+        )
+        response.headers["x-vercel-ai-data-stream"] = "v1"
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Connection"] = "keep-alive"
+        return response
+        
+    except Exception as e:
+        print(f"Error in handle_chat_data: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
 
 
 @app.get("/model")
@@ -133,11 +396,13 @@ def get_tags():
 
 
 @app.post("/screenshot")
-async def take_screenshot(request: ScreenshotRequest):
+async def take_screenshot(request: ComputerConfig):
     """Take a screenshot of a computer instance."""
     if Computer is None:
         raise HTTPException(status_code=500, detail="Computer library not available")
     
+    print(f"Request: {request}")
+
     try:
         # Map provider to Computer constructor parameters
         computer = None
@@ -159,7 +424,7 @@ async def take_screenshot(request: ScreenshotRequest):
             
         elif request.provider == "windows-sandbox":
             computer = Computer(
-                provider_type=VMProviderType.WINSANDBOX if VMProviderType else "winsandbox",
+                provider_type=VMProviderType.WINSANDBOX,
                 os_type="windows",
                 verbosity=logging.INFO
             )
@@ -173,16 +438,19 @@ async def take_screenshot(request: ScreenshotRequest):
             os_type = os_type_map.get(request.os, "macos")
             
             computer = Computer(
-                provider_type=VMProviderType.LUME if VMProviderType else "lume",
+                provider_type=VMProviderType.LUME,
                 os_type=os_type, # type: ignore[literal-mismatch]
+                name=request.name,
                 verbosity=logging.INFO
             )
             
         elif request.provider == "cua-cloud":
             computer = Computer(
-                provider_type=VMProviderType.CLOUD if VMProviderType else "cloud",
+                provider_type=VMProviderType.CLOUD,
                 os_type="linux",  # CUA cloud typically uses Linux
-                verbosity=logging.INFO
+                name=request.name,
+                verbosity=logging.INFO,
+                api_key=request.api_key,
             )
             
         else:

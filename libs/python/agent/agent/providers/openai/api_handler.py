@@ -22,7 +22,7 @@ class OpenAIAPIHandler:
             loop: OpenAI loop instance
         """
         self.loop = loop
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = loop.api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")
 
