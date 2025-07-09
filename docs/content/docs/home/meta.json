@@ -9,7 +9,12 @@
 		"faq",
 		"telemetry",
 		"---[BookCopy]Guides---",
-		"...guides",
+		"guides/cua-usage-guide",
+		"guides/developer-guide",
+		"guides/dev-container-setup",
+		"guides/computer-use-agent-quickstart",
+		"guides/agent-gradio-ui",
+		"guides/computer-use-gradio-ui",
 		"---[Library]Libraries---",
 		"...libraries"
 	]
