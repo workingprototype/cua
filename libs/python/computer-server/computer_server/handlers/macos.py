@@ -45,6 +45,7 @@ import objc
 import re
 import json
 import copy
+import asyncio
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
 import logging
 
@@ -935,9 +936,20 @@ class MacOSAutomationHandler(BaseAutomationHandler):
     async def run_command(self, command: str) -> Dict[str, Any]:
         """Run a shell command and return its output."""
         try:
-            import subprocess
-
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
-            return {"success": True, "stdout": process.stdout, "stderr": process.stderr}
+            # Create subprocess
+            process = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            # Wait for the subprocess to finish
+            stdout, stderr = await process.communicate()
+            # Return decoded output
+            return {
+                "success": True, 
+                "stdout": stdout.decode() if stdout else "", 
+                "stderr": stderr.decode() if stderr else "",
+                "return_code": process.returncode
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}
