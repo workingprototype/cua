@@ -13,7 +13,9 @@ import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import { cn } from 'fumadocs-ui/utils/cn';
 import { ChevronRight } from 'lucide-react';
 
-Computer powers Cua systems and is PyAutoGUI-compatible and pluggable with any AI agent system (Cua, Langchain, CrewAI, AutoGen). It relies on [Lume](./lume.mdx) for creating and managing sandbox environments.
+Computer, when paired with [Computer Server](../computer-server.mdx) enables programatic interaction with cross-platform sandboxes. It powers C/ua systems and is PyAutoGUI-compatible and pluggable with any AI agent system (Cua, Langchain, CrewAI, AutoGen).
+
+The Python version relies on [Lume](./lume.mdx) for creating and managing sandbox environments.
 
 ## Installation
 
@@ -32,7 +34,7 @@ Computer powers Cua systems and is PyAutoGUI-compatible and pluggable with any A
   </Tab>
 </Tabs>
 
-## Key Features
+## Features
 
 - Create and manage virtual machine sandboxes
 - Take screenshots of the virtual machine
@@ -161,8 +163,11 @@ Computer powers Cua systems and is PyAutoGUI-compatible and pluggable with any A
 ---
 
 <Callout type="info">
-  **Need detailed API documentation?** Explore the complete API reference with
-  detailed class documentation, and method signatures.
+  **Need detailed API documentation?**{' '}
+  <p>
+    Explore the complete API reference with detailed class documentation, and
+    method signatures.
+  </p>
   <a
     href="/api/computer"
     className={cn(
@@ -172,6 +177,6 @@ Computer powers Cua systems and is PyAutoGUI-compatible and pluggable with any A
       'no-underline h-10'
     )}>
     View API Reference
-    <ChevronRight />
+    <ChevronRight size={18} />
   </a>
 </Callout>

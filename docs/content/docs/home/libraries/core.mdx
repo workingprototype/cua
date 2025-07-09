@@ -1,44 +1,18 @@
 ---
 title: Core
+description: Core infrastructure and shared utilities powering the Cua computer-use platform
+pypi: cua-core
+npm: '@trycua/core'
+macos: true
+windows: true
+linux: true
 ---
 
-<div
-  align="center"
-  style={{
-    display: "flex",
-    gap: "10px",
-    margin: "0 auto",
-    width: "100%",
-    justifyContent: "center",
-  }}
->
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/Python-333333?logo=python&logoColor=white&labelColor=blue"
-      alt="Python"
-    />
-  </a>
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
-      alt="macOS"
-    />
-  </a>
-  <a href="https://discord.com/invite/mVnXXpdE85">
-    <img
-      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
-      alt="Discord"
-    />
-  </a>
-  <a href="https://pypi.org/project/cua-computer-server/">
-    <img
-      src="https://img.shields.io/pypi/v/cua-computer-server?color=blue"
-      alt="PyPI"
-    />
-  </a>
-</div>
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { cn } from 'fumadocs-ui/utils/cn';
+import { ChevronRight } from 'lucide-react';
 
-**Cua Core** provides essential shared functionality and utilities used across the Cua ecosystem:
+# Features
 
 - Privacy-focused telemetry system for transparent usage analytics
 - Common helper functions and utilities used by other Cua packages
@@ -49,3 +23,24 @@ title: Core
 ```bash
 pip install cua-core
 ```
+
+---
+
+<Callout type="info">
+  **Need detailed API documentation?**{' '}
+  <p>
+    Explore the complete API reference with detailed class documentation, and
+    method signatures.
+  </p>
+  <a
+    href="/api/core"
+    className={cn(
+      buttonVariants({
+        color: 'secondary',
+      }),
+      'no-underline h-10'
+    )}>
+    View API Reference
+    <ChevronRight size={18} />
+  </a>
+</Callout>

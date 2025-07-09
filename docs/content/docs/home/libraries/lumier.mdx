@@ -1,85 +1,114 @@
 ---
 title: Lumier
+description: Run macOS and Linux virtual machines effortlessly in Docker containers with browser-based VNC access.
+macos: true
+linux: true
 ---
 
-<div
-  align="center"
-  style={{
-    display: 'flex',
-    gap: '10px',
-    margin: '0 auto',
-    width: '100%',
-    justifyContent: 'center',
-  }}
->
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/Swift_6-F54A2A?logo=swift&logoColor=white&labelColor=F54A2A"
-      alt="Swift 6"
-    />
-  </a>
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
-      alt="macOS"
-    />
-  </a>
-  <a href="https://discord.com/invite/mVnXXpdE85">
-    <img
-      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
-      alt="Discord"
-    />
-  </a>
-</div>
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { cn } from 'fumadocs-ui/utils/cn';
+import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
 
-macOS and Linux virtual machines in a Docker container.
+## What is Lumier?
+
+Lumier is a streamlined interface for running macOS and Linux virtual machines with minimal setup. It packages a pre-configured environment in Docker that connects to the `lume` virtualization service on your host machine.
 
 <div align="center">
   <video
     src="https://github.com/user-attachments/assets/2ecca01c-cb6f-4c35-a5a7-69bc58bd94e2"
     width="800"
-    controls
-  ></video>
+    controls></video>
 </div>
 
-## What is Lumier?
+### Features
 
-**Lumier** is an interface for running macOS virtual machines with minimal setup. It uses Docker as a packaging system to deliver a pre-configured environment that connects to the `lume` virtualization service running on your host machine. With Lumier, you get:
+- **Quick Setup** - Get a VM running in minutes
+- **Browser Access** - VNC interface accessible from any browser
+- **Easy File Sharing** - Seamless file transfer between host and VM
+- **Simple Configuration** - Environment variables for easy customization
+- **Hardware Acceleration** - Native virtualization using Apple's framework
 
-- A ready-to-use macOS or Linux virtual machine in minutes
-- Browser-based VNC access to your VM
-- Easy file sharing between your host and VM
-- Simple configuration through environment variables
+<Callout type="info">
+  Lumier uses Docker as a packaging system, not for isolation. It creates true
+  virtual machines using Apple's Virtualization Framework through the Lume CLI.
+</Callout>
 
-## Requirements
+## Installation
 
-Before using Lumier, make sure you have:
+### Prerequisites
 
-1. **Docker for Apple Silicon** - download it [here](https://desktop.docker.com/mac/main/arm64/Docker.dmg) and follow the installation instructions.
+<Steps>
+<Step>
+### Install Docker for Apple Silicon
 
-2. **Lume** - This is the virtualization CLI that powers Lumier. Install it with this command:
+Download and install [Docker Desktop](https://desktop.docker.com/mac/main/arm64/Docker.dmg) for Mac.
+
+Make sure Docker is running before proceeding to the next step.
+
+</Step>
+
+<Step>
+### Install Lume Virtualization Service
+
+Install [Lume](./lume/) with a single command:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
 ```
 
-After installation, Lume runs as a background service and listens on port 7777. This service allows Lumier to create and manage virtual machines. If port 7777 is already in use on your system, you can specify a different port with the `--port` option when running the `install.sh` script.
-
-## How It Works
-
-> **Note:** We're using Docker primarily as a convenient delivery mechanism, not as an isolation layer. Unlike traditional Docker containers, Lumier leverages the Apple Virtualization Framework (Apple Vz) through the `lume` CLI to create true virtual machines.
-
-Here's what's happening behind the scenes:
-
-1. The Docker container provides a consistent environment to run the Lumier interface
-2. Lumier connects to the Lume service running on your host Mac
-3. Lume uses Apple's Virtualization Framework to create a true macOS virtual machine
-4. The VM runs with hardware acceleration using your Mac's native virtualization capabilities
+<Callout type="info">
+  Lume runs as a background service on port 7777. If this port is already in
+  use, specify a different port with the `--port` option during installation.
+</Callout>
+</Step>
+</Steps>
 
 ## Getting Started
 
+### Quick Start
+
+Run your first macOS VM with a single Docker command:
+
 ```bash
-# Run the container with temporary storage (using pre-built image from Docker Hub)
+# Run a macOS VM with default settings
+docker run -it \
+  -e LUME_SERVER_URL="host.docker.internal:7777" \
+  -p 5900:5900 \
+  ghcr.io/trycua/lumier:latest
+```
+
+### Basic Configuration
+
+Customize your VM with environment variables:
+
+```bash
+docker run -it \
+  -e LUME_SERVER_URL="host.docker.internal:7777" \
+  -e VM_NAME="my-dev-vm" \
+  -e VM_CPUS="8" \
+  -e VM_MEMORY="16384" \
+  -e VM_STORAGE="100" \
+  -e VNC_PASSWORD="mysecretpassword" \
+  -p 5900:5900 \
+  ghcr.io/trycua/lumier:latest
+```
+
+### Access Your VM
+
+Once running, access your VM through:
+
+1. **VNC Client**: Connect to `vnc://localhost:5900`
+2. **Web Browser**: Navigate to `http://localhost:5900` (if using noVNC)
+
+## Examples
+
+### Ephemeral VM (Temporary)
+
+Run a VM that resets on restart - perfect for testing:
+
+```bash
 docker run -it --rm \
     --name macos-vm \
     -p 8006:8006 \
@@ -90,13 +119,14 @@ docker run -it --rm \
     trycua/lumier:latest
 ```
 
-After running the command above, you can access your macOS VM through a web browser (e.g., http://localhost:8006).
+<Callout type="info">
+  Access your VM at `http://localhost:8006` after startup. Changes will be lost
+  when the container stops.
+</Callout>
 
-> **Note:** With the basic setup above, your VM will be reset when you stop the container (ephemeral mode). This means any changes you make inside the macOS VM will be lost. See the section below for how to save your VM state.
+### Persistent VM
 
-## Saving Your VM State
-
-To save your VM state between sessions (so your changes persist when you stop and restart the container), you'll need to set up a storage location:
+Save your VM state between sessions with persistent storage:
 
 ```bash
 # First, create a storage directory if it doesn't exist
@@ -115,11 +145,9 @@ docker run -it --rm \
     trycua/lumier:latest
 ```
 
-This command creates a connection between a folder on your Mac (`$(pwd)/storage`) and a folder inside the Docker container (`/storage`). The `-v` flag (volume mount) and the `HOST_STORAGE_PATH` variable work together to ensure your VM data is saved on your host Mac.
+### File Sharing
 
-## Sharing Files with Your VM
-
-To share files between your Mac and the virtual machine, you can set up a shared folder:
+Share files between your host and VM:
 
 ```bash
 # Create both storage and shared folders
@@ -140,11 +168,11 @@ docker run -it --rm \
     trycua/lumier:latest
 ```
 
-With this setup, any files you place in the `shared` folder on your Mac will be accessible from within the macOS VM, and vice versa.
+Files in the `shared` folder are accessible from both your Mac and the VM.
 
-## Automating VM Startup with on-logon.sh
+### Automation with Startup Scripts
 
-You can automatically run scripts when the VM starts up by placing an `on-logon.sh` script in the shared folder's lifecycle directory. This is useful for setting up your VM environment each time it starts.
+Automate VM setup with startup scripts:
 
 ```bash
 # Create the lifecycle directory in your shared folder
@@ -169,21 +197,17 @@ EOF
 chmod +x shared/lifecycle/on-logon.sh
 ```
 
-The script will be automatically executed when the VM starts up. It runs in the VM context and has access to:
+The script runs automatically on VM startup with access to:
 
-- The `/Users/lume` user directory (home directory in the VM)
-- The shared folder at `/Volumes/My Shared Files` inside the VM
-- Any resources available to the VM
+- Home directory: `/Users/lume`
+- Shared folder: `/Volumes/My Shared Files`
+- All VM resources
 
-This feature enables automation of VM setup without modifying the base VM image.
+### Docker Compose
 
-## Using Docker Compose
-
-You can also use Docker Compose to run Lumier with a simple configuration file. Create a `docker-compose.yml` file with the following content:
+For easier management, use Docker Compose:
 
 ```yaml
-version: '3'
-
 services:
   lumier:
     image: trycua/lumier:latest
@@ -205,7 +229,7 @@ services:
     stop_grace_period: 2m
 ```
 
-Then run Lumier using:
+Run with Docker Compose:
 
 ```bash
 # First create the required directories
@@ -221,15 +245,18 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## Building and Customizing Lumier
+## Advanced Topics
 
-If you want to customize the Lumier container or build it from source, you can follow these steps:
+### Building from Source
+
+Customize Lumier by building from source:
 
 ```bash
-# 1. Navigate to the Lumier directory
-cd libs/lumier
+# Clone the repository
+git clone https://github.com/trycua/cua.git
+cd cua/libs/lumier
 
-# 2. Build the Docker image locally
+# Build the Docker image
 docker build -t lumier-custom:latest .
 
 # 3. Run your custom build
@@ -262,30 +289,60 @@ docker build -t yourusername/lumier:custom .
 docker push yourusername/lumier:custom
 ```
 
-## Configuration Options
+### Configuration Reference
 
-When running Lumier, you'll need to configure a few things:
+#### Environment Variables
 
-- **Port forwarding** (`-p 8006:8006`): Makes the VM's VNC interface accessible in your browser. If port 8006 is already in use, you can use a different port like `-p 8007:8006`.
+| Variable            | Description                 | Default                     | Example                                   |
+| ------------------- | --------------------------- | --------------------------- | ----------------------------------------- |
+| `LUME_SERVER_URL`   | Lume service URL            | `host.docker.internal:7777` | `host.docker.internal:8080`               |
+| `VM_NAME`           | Virtual machine name        | `lumier-vm`                 | `my-dev-vm`                               |
+| `VERSION`           | VM image to use             | -                           | `ghcr.io/trycua/macos-sequoia-cua:latest` |
+| `VM_CPUS`           | Number of CPU cores         | `4`                         | `8`                                       |
+| `VM_MEMORY`         | Memory in MB                | `8192`                      | `16384`                                   |
+| `VM_STORAGE`        | Storage size in GB          | `50`                        | `100`                                     |
+| `VNC_PASSWORD`      | VNC access password         | -                           | `mysecretpassword`                        |
+| `HOST_STORAGE_PATH` | Host path for VM storage    | -                           | `$(pwd)/storage`                          |
+| `HOST_SHARED_PATH`  | Host path for shared folder | -                           | `$(pwd)/shared`                           |
 
-- **Environment variables** (`-e`): Configure your VM settings:
+#### Port Configuration
 
-  - `VM_NAME`: A name for your virtual machine
-  - `VERSION`: The macOS image to use
-  - `CPU_CORES`: Number of CPU cores to allocate
-  - `RAM_SIZE`: Memory in MB to allocate
-  - `HOST_STORAGE_PATH`: Path to save VM state (when using persistent storage)
-  - `HOST_SHARED_PATH`: Path to the shared folder (optional)
+- **VNC Port**: `-p 5900:5900` for standard VNC access
+- **Web Port**: `-p 8006:8006` for browser-based access
+- Use different host ports if defaults are occupied: `-p 8007:8006`
 
-- **Background service**: The `lume serve` service should be running on your host (starts automatically when you install Lume using the `install.sh` script above).
+## Resources
 
-## Credits
+<Cards>
+  <Card
+    title="Lume Documentation"
+    description="Learn more about the virtualization service powering Lumier"
+    href="/home/libraries/lume"
+  />
+  <Card
+    title="Computer Library"
+    description="Automate your VMs with the Computer library"
+    href="/home/libraries/computer"
+  />
+</Cards>
 
-This project was inspired by [dockur/windows](https://github.com/dockur/windows) and [dockur/macos](https://github.com/dockur/macos), which pioneered the approach of running Windows and macOS VMs in Docker containers.
+---
 
-Main differences with dockur/macos:
-
-- Lumier is specifically designed for macOS virtualization
-- Lumier supports Apple Silicon (M1/M2/M3/M4) while dockur/macos only supports Intel
-- Lumier uses the Apple Virtualization Framework (Vz) through the `lume` CLI to create true virtual machines, while dockur relies on KVM.
-- Image specification is different, with Lumier and Lume relying on Apple Vz spec (disk.img and nvram.bin)
+<Callout type="info">
+  **Need detailed API documentation?**{' '}
+  <p>
+    Explore the complete API reference with detailed class documentation, and
+    method signatures.
+  </p>
+  <a
+    href="/api/lumier"
+    className={cn(
+      buttonVariants({
+        color: 'secondary',
+      }),
+      'no-underline h-10'
+    )}>
+    View API Reference
+    <ChevronRight size={18} />
+  </a>
+</Callout>

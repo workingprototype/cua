@@ -1,217 +1,294 @@
 ---
 title: Set-of-Mark
+macos: true
+pypi: cua-computer
 ---
 
-<div
-  align="center"
-  style={{
-    display: 'flex',
-    gap: '10px',
-    margin: '0 auto',
-    width: '100%',
-    justifyContent: 'center',
-  }}
->
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/Python-333333?logo=python&logoColor=white&labelColor=blue"
-      alt="Python"
-    />
-  </a>
-  <a href="#">
-    <img
-      src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=F0F0F0"
-      alt="macOS"
-    />
-  </a>
-  <a href="https://discord.com/invite/mVnXXpdE85">
-    <img
-      src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white"
-      alt="Discord"
-    />
-  </a>
-  <a href="https://pypi.org/project/cua-computer/">
-    <img
-      src="https://img.shields.io/pypi/v/cua-computer?color=blue"
-      alt="PyPI"
-    />
-  </a>
-</div>
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { cn } from 'fumadocs-ui/utils/cn';
+import { ChevronRight } from 'lucide-react';
 
-**Som** (Set-of-Mark) is a visual grounding component for the Computer-Use Agent (CUA) framework powering Cua, for detecting and analyzing UI elements in screenshots. Optimized for macOS Silicon with Metal Performance Shaders (MPS), it combines YOLO-based icon detection with EasyOCR text recognition to provide comprehensive UI element analysis.
+## Overview
 
-## Features
+**Set-of-Mark (Som)** is a high-performance visual grounding library for detecting and analyzing UI elements in screenshots. Built for the Computer-Use Agent (CUA) framework, it combines state-of-the-art computer vision models to identify icons, buttons, and text in user interfaces.
 
-- Optimized for Apple Silicon with MPS acceleration
-- Icon detection using YOLO with multi-scale processing
-- Text recognition using EasyOCR (GPU-accelerated)
-- Automatic hardware detection (MPS → CUDA → CPU)
-- Smart detection parameters tuned for UI elements
-- Detailed visualization with numbered annotations
-- Performance benchmarking tools
+<Callout type="info">
+  Som is optimized for **Apple Silicon** with Metal Performance Shaders (MPS)
+  acceleration, achieving sub-second detection times while maintaining high
+  accuracy.
+</Callout>
 
-## System Requirements
+### Key Features
 
-- **Recommended**: macOS with Apple Silicon
-  - Uses Metal Performance Shaders (MPS)
-  - Multi-scale detection enabled
-  - ~0.4s average detection time
-- **Supported**: Any Python 3.11+ environment
-  - Falls back to CPU if no GPU available
-  - Single-scale detection on CPU
-  - ~1.3s average detection time
+- **Hardware Acceleration** - Automatic detection of MPS, CUDA, or CPU
+- **Multi-Model Architecture** - YOLO for icons + EasyOCR for text
+- **Optimized Performance** - Sub-second detection on Apple Silicon
+- **Flexible Configuration** - Tunable thresholds for different use cases
+- **Rich Output Format** - Structured data with confidence scores
+- **Visual Debugging** - Annotated screenshots with numbered elements
 
 ## Installation
 
+<Callout type="warning">
+  Som requires Python 3.11 or higher. For best performance, use macOS with Apple
+  Silicon.
+</Callout>
+
+### Install from PyPI
+
 ```bash
+pip install cua-som
+```
+
+### Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/cua/som.git
+cd som
+
 # Using PDM (recommended)
 pdm install
 
-# Using pip
+# Or using pip
 pip install -e .
 ```
 
-## Quick Start
+### System Requirements
+
+| Platform      | Hardware                 | Detection Time |
+| ------------- | ------------------------ | -------------- |
+| macOS         | Apple Silicon (M1/M2/M3) | ~0.4s          |
+| Linux/Windows | NVIDIA GPU               | ~0.6s          |
+| Any           | CPU only                 | ~1.3s          |
+
+## Getting Started
+
+### Basic Usage
+
+Here's a simple example to detect UI elements in a screenshot:
 
 ```python
 from som import OmniParser
 from PIL import Image
 
-# Initialize parser
+# Initialize the parser
 parser = OmniParser()
 
-# Process an image
+# Load and process an image
 image = Image.open("screenshot.png")
-result = parser.parse(
-    image,
-    box_threshold=0.3,    # Confidence threshold
-    iou_threshold=0.1,    # Overlap threshold
-    use_ocr=True         # Enable text detection
-)
+result = parser.parse(image)
 
-# Access results
+# Print detected elements
 for elem in result.elements:
-    if elem.type == "icon":
-        print(f"Icon: confidence={elem.confidence:.3f}, bbox={elem.bbox.coordinates}")
-    else:  # text
-        print(f"Text: '{elem.content}', confidence={elem.confidence:.3f}")
+    print(f"{elem.type}: {elem.content or 'icon'} at {elem.bbox.coordinates}")
 ```
 
-## Configuration
+### Advanced Configuration
+
+Customize detection parameters for your specific use case:
+
+```python
+result = parser.parse(
+    image,
+    box_threshold=0.3,    # Confidence threshold (0.0-1.0)
+    iou_threshold=0.1,    # Overlap threshold (0.0-1.0)
+    use_ocr=True,         # Enable text detection
+    ocr_engine="easyocr" # OCR engine choice
+)
+```
+
+### Working with Results
+
+```python
+# Filter by element type
+icons = [e for e in result.elements if e.type == "icon"]
+texts = [e for e in result.elements if e.type == "text"]
+
+# Get high-confidence detections
+high_conf = [e for e in result.elements if e.confidence > 0.8]
+
+# Access bounding boxes
+for elem in result.elements:
+    x, y, w, h = elem.bbox.coordinates
+    print(f"Element at ({x}, {y}) with size {w}x{h}")
+```
+
+<Callout>
+  💡 **Tip**: Check out our [interactive examples](#examples) below to see Som
+  in action with real UI screenshots.
+</Callout>
+
+## Configuration Guide
 
 ### Detection Parameters
 
-#### Box Threshold (0.3)
+<Cards>
+  <Card
+    title="Box Threshold"
+    description="Controls detection confidence (default: 0.3)">
+    - **Higher values (0.4-0.5)**: More precise, fewer false positives - **Lower
+    values (0.1-0.2)**: More detections, may include noise - **Recommended**:
+    0.3 for balanced performance
+  </Card>
 
-Controls the confidence threshold for accepting detections:
+  <Card
+    title="IOU Threshold"
+    description="Controls overlap handling (default: 0.1)">
+    - **Lower values (0.05-0.1)**: Aggressive merging of overlaps - **Higher
+    values (0.3-0.5)**: Keeps more overlapping boxes - **Recommended**: 0.1 for
+    dense UIs
+  </Card>
+</Cards>
 
-```
-High Threshold (0.3):     Low Threshold (0.01):
-+----------------+        +----------------+
-|                |        |  +--------+    |
-|   Confident    |        |  |Unsure?|    |
-|   Detection    |        |  +--------+    |
-|   (✓ Accept)   |        |  (? Reject)   |
-|                |        |                |
-+----------------+        +----------------+
-conf = 0.85             conf = 0.02
-```
+### OCR Settings
 
-- Higher values (0.3) yield more precise but fewer detections
-- Lower values (0.01) catch more potential icons but increase false positives
-- Default is 0.3 for optimal precision/recall balance
+| Setting        | Default   | Description              |
+| -------------- | --------- | ------------------------ |
+| Engine         | `easyocr` | OCR engine to use        |
+| Languages      | `['en']`  | Supported languages      |
+| GPU            | `auto`    | Enable GPU acceleration  |
+| Timeout        | `5s`      | Maximum processing time  |
+| Min Confidence | `0.5`     | Text detection threshold |
 
-#### IOU Threshold (0.1)
-
-Controls how overlapping detections are merged:
-
-```
-IOU = Intersection Area / Union Area
-
-Low Overlap (Keep Both):   High Overlap (Merge):
-+----------+              +----------+
-|     Box1 |              |  Box1   |
-|          |     vs.      |+-----+  |
-+----------+              ||Box2 |  |
-    +----------+          |+-----+  |
-    |   Box2   |          +----------+
-    |          |
-    +----------+
-IOU ≈ 0.05 (Keep Both)    IOU ≈ 0.7 (Merge)
-```
-
-- Lower values (0.1) more aggressively remove overlapping boxes
-- Higher values (0.5) allow more overlapping detections
-- Default is 0.1 to handle densely packed UI elements
-
-### OCR Configuration
-
-- **Engine**: EasyOCR
-
-  - Primary choice for all platforms
-  - Fast initialization and processing
-  - Built-in English language support
-  - GPU acceleration when available
-
-- **Settings**:
-  - Timeout: 5 seconds
-  - Confidence threshold: 0.5
-  - Paragraph mode: Disabled
-  - Language: English only
-
-## Performance
+## Performance Benchmarks
 
 ### Hardware Acceleration
 
-#### MPS (Metal Performance Shaders)
+<Mermaid
+  chart="
+graph LR
+    A[Input Image] --> B{Hardware Detection}
+    B -->|Apple Silicon| C[MPS Backend]
+    B -->|NVIDIA GPU| D[CUDA Backend]
+    B -->|No GPU| E[CPU Backend]
+    C --> F[Multi-scale\n~0.4s]
+    D --> G[Multi-scale\n~0.6s]
+    E --> H[Single-scale\n~1.3s]
+"
+/>
 
-- Multi-scale detection (640px, 1280px, 1920px)
-- Test-time augmentation enabled
-- Half-precision (FP16)
-- Average detection time: ~0.4s
-- Best for production use when available
+### Optimization Details
 
-#### CPU
+<Cards>
+  <Card title="MPS (Apple Silicon)" description="Best performance on macOS">
+    - Multi-scale detection (640px, 1280px, 1920px) - Test-time augmentation -
+    Half-precision (FP16) - ~0.4s average time
+  </Card>
 
-- Single-scale detection (1280px)
-- Full-precision (FP32)
-- Average detection time: ~1.3s
-- Reliable fallback option
+{' '}
 
-### Example Output Structure
+<Card title="CUDA (NVIDIA)" description="High performance on Linux/Windows">
+  - Multi-scale detection - Mixed precision - ~0.6s average time
+</Card>
 
+  <Card title="CPU Fallback" description="Universal compatibility">
+    - Single-scale detection (1280px) - Full precision (FP32) - ~1.3s average
+    time
+  </Card>
+</Cards>
+
+## Examples
+
+### Example 1: Screenshot Analysis
+
+Analyze a full application screenshot with visualization:
+
+```python
+from som import OmniParser
+from PIL import Image
+import json
+
+# Initialize parser
+parser = OmniParser()
+
+# Load screenshot
+image = Image.open("app_screenshot.png")
+
+# Parse with visualization
+result = parser.parse(image, use_ocr=True)
+
+# Save annotated image
+result.visualized_image.save("annotated_screenshot.png")
+
+# Export results as JSON
+with open("ui_elements.json", "w") as f:
+    json.dump(result.to_dict(), f, indent=2)
 ```
-examples/output/
-├── {timestamp}_no_ocr/
-│   ├── annotated_images/
-│   │   └── screenshot_analyzed.png
-│   ├── screen_details.txt
-│   └── summary.json
-└── {timestamp}_ocr/
-    ├── annotated_images/
-    │   └── screenshot_analyzed.png
-    ├── screen_details.txt
-    └── summary.json
+
+### Example 2: UI Automation Helper
+
+Find and interact with specific UI elements:
+
+```python
+def find_button(parser, image, button_text):
+    """Find a button by its text content"""
+    result = parser.parse(image, use_ocr=True)
+
+    for elem in result.elements:
+        if elem.type == "text" and button_text.lower() in elem.content.lower():
+            return elem.bbox.coordinates
+
+    return None
+
+# Usage
+button_coords = find_button(parser, screenshot, "Submit")
+if button_coords:
+    x, y, w, h = button_coords
+    click_x = x + w // 2
+    click_y = y + h // 2
+    print(f"Click at ({click_x}, {click_y})")
 ```
 
-## Development
+### Example 3: Batch Processing
 
-### Test Data
+Process multiple screenshots with performance tracking:
 
-- Place test screenshots in `examples/test_data/`
-- Not tracked in git to keep repository size manageable
-- Default test image: `test_screen.png` (1920x1080)
+```python
+import time
+from pathlib import Path
 
-### Running Tests
+def batch_process(image_dir, output_dir):
+    parser = OmniParser()
+    image_files = Path(image_dir).glob("*.png")
 
-```bash
-# Run benchmark with no OCR
-python examples/omniparser_examples.py examples/test_data/test_screen.png --runs 5 --ocr none
+    results = []
+    for img_path in image_files:
+        start = time.time()
 
-# Run benchmark with OCR
-python examples/omniparser_examples.py examples/test_data/test_screen.png --runs 5 --ocr easyocr
+        image = Image.open(img_path)
+        result = parser.parse(image)
+
+        # Save annotated version
+        out_path = Path(output_dir) / f"{img_path.stem}_annotated.png"
+        result.visualized_image.save(out_path)
+
+        elapsed = time.time() - start
+        results.append({
+            "file": img_path.name,
+            "elements_found": len(result.elements),
+            "processing_time": elapsed
+        })
+
+        print(f"Processed {img_path.name}: {len(result.elements)} elements in {elapsed:.2f}s")
+
+    return results
 ```
 
-## License
+---
 
-MIT License - See LICENSE file for details.
+<Callout type="info">
+  **Need the full API documentation?** Explore detailed class references, method
+  signatures, and advanced configuration options.
+  <a
+    href="/api/som"
+    className={cn(
+      buttonVariants({
+        color: 'secondary',
+      }),
+      'no-underline h-10'
+    )}>
+    View API Reference
+    <ChevronRight size={18} />
+  </a>
+</Callout>
