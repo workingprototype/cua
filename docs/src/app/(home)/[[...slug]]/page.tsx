@@ -15,6 +15,7 @@ import {
 } from 'fumadocs-ui/page';
 import { cn } from 'fumadocs-ui/utils/cn';
 import { ChevronDown, CodeXml, ExternalLink } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
@@ -94,7 +95,10 @@ export default async function Page(props: {
 
         <div className="flex flex-row gap-2 items-left">
           {pypi && (
-            <a target="_blank" href={`https://pypi.org/project/${pypi}/`}>
+            <a
+              target="_blank"
+              href={`https://pypi.org/project/${pypi}/`}
+              rel="noreferrer">
               <img
                 src={`https://img.shields.io/pypi/v/${pypi}?color=blue`}
                 className="h-5"
@@ -103,7 +107,10 @@ export default async function Page(props: {
             </a>
           )}
           {npm && (
-            <a target="_blank" href={`https://www.npmjs.com/package/${npm}`}>
+            <a
+              target="_blank"
+              href={`https://www.npmjs.com/package/${npm}`}
+              rel="noreferrer">
               <img
                 src={`https://img.shields.io/npm/v/${npm}?color=bf4c4b`}
                 className="h-5"
@@ -158,8 +165,8 @@ export default async function Page(props: {
                         {link.includes('python')
                           ? 'Python'
                           : link.includes('typescript')
-                          ? 'TypeScript'
-                          : `Source ${index + 1}`}
+                            ? 'TypeScript'
+                            : `Source ${index + 1}`}
                         <ExternalLink className="w-4 h-4 ml-auto" />
                       </a>
                     ))}
@@ -274,7 +281,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata(props: {
   params: Promise<{ slug?: string[] }>;
-}) {
+}): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
@@ -287,5 +294,12 @@ export async function generateMetadata(props: {
   return {
     title,
     description: page.data.description,
+    openGraph: {
+      title,
+      description: page.data.description,
+      type: 'article',
+      siteName: 'C/ua Docs',
+      url: 'https://trycua.com/docs',
+    },
   };
 }
