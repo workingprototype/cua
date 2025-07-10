@@ -33,13 +33,24 @@ Before installing the MCP server, ensure you have:
 2. **macOS CUA image** pulled and ready
 3. **Python 3.10+** installed on your system
 
+<Callout type="info">
+  Follow our [C/ua Usage Guide](../guides/cua-usage-guide.mdx) for help setting
+  everything up.
+</Callout>
+
 ### Install via pip
 
 ```bash
 pip install cua-mcp-server
 ```
 
-### Quick Setup Script
+This will install:
+
+- The MCP server
+- CUA agent and computer dependencies
+- An executable `cua-mcp-server` script in your PATH
+
+### Install Script
 
 For automated installation, use our setup script:
 
@@ -56,11 +67,7 @@ This script:
 
 ## Getting Started
 
-<Steps>
-<Step>
-### Configure Claude Desktop
-
-Add the MCP server to your Claude Desktop configuration:
+You can then use the script in your MCP configuration like this:
 
 ```json
 {
@@ -71,36 +78,47 @@ Add the MCP server to your Claude Desktop configuration:
       "env": {
         "CUA_AGENT_LOOP": "OMNI",
         "CUA_MODEL_PROVIDER": "ANTHROPIC",
-        "CUA_PROVIDER_API_KEY": "your-anthropic-api-key"
+        "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
+        "CUA_PROVIDER_API_KEY": "your-api-key"
       }
     }
   }
 }
 ```
 
-<Callout type="tip">
-  The configuration file is typically located at
-  `~/.config/claude-desktop/claude_desktop_config.json`
-</Callout>
-</Step>
+### Development Config
 
-<Step>
-### Start Using CUA
+If you want to develop with the cua-mcp-server directly without installation, you can use this configuration:
 
-Once configured, you can ask Claude to perform computer tasks:
-
-```text
-"Take a screenshot of the current screen"
-"Open Safari and navigate to google.com"
-"Click on the search bar and type 'weather'"
+```json
+{
+  "mcpServers": {
+    "cua-agent": {
+      "command": "/bin/bash",
+      "args": ["~/cua/libs/python/mcp-server/scripts/start_mcp_server.sh"],
+      "env": {
+        "CUA_AGENT_LOOP": "UITARS",
+        "CUA_MODEL_PROVIDER": "OAICOMPAT",
+        "CUA_MODEL_NAME": "ByteDance-Seed/UI-TARS-1.5-7B",
+        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1",
+        "CUA_PROVIDER_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
 ```
 
-</Step>
+This configuration:
 
-<Step>
-### Configure Environment Variables
+- Uses the start_mcp_server.sh script which automatically sets up the Python path and runs the server module
+- Works with Claude Desktop, Cursor, or any other MCP client
+- Automatically uses your development code without requiring installation
 
-Customize the MCP server behavior with these environment variables:
+Just add this to your MCP client's configuration and it will use your local development version of the server.
+
+### Environment Variables
+
+The MCP server is configured using the following environment variables.
 
 | Variable                | Description                                           | Default                 |
 | ----------------------- | ----------------------------------------------------- | ----------------------- |
@@ -110,74 +128,51 @@ Customize the MCP server behavior with these environment variables:
 | `CUA_PROVIDER_BASE_URL` | Base URL for provider API                             | None                    |
 | `CUA_MAX_IMAGES`        | Maximum number of images to keep in context           | 3                       |
 
-</Step>
-</Steps>
+### Usage
 
-## Examples
+Once configured, you can simply ask the model to perform computer tasks:
 
-### Basic Computer Control
+- "Open Chrome and go to github.com"
+- "Create a folder called 'Projects' on my desktop"
+- "Find all PDFs in my Downloads folder"
+- "Take a screenshot and highlight the error message"
 
-```python
-# Example prompt to Claude
-"Take a screenshot and save it to the desktop"
+The model will automatically use your CUA agent to perform these tasks.
 
-# Claude will use the run_cua_task tool:
-# {
-#   "instruction": "Take a screenshot and save it to the desktop",
-#   "display": "1920x1080"
-# }
-```
+## Available Tools
 
-### Multi-Step Automation
+The MCP server exposes the following tools to Claude:
 
-```python
-# Example prompt to Claude
-"Open a new browser window, navigate to github.com, and search for 'cua'"
+1. `run_cua_task` - Run a single Computer-Use Agent task with the given instruction
+2. `run_multi_cua_tasks` - Run multiple tasks in sequence
 
-# Claude will use the run_multi_cua_tasks tool with multiple instructions
-```
+## Integrations
 
-### Integrating with Cursor
+### Claude Desktop
 
-Create a configuration file at `~/.cursor/mcp.json` or `.cursor/mcp.json` in your project:
+To use with Claude Desktop, add an entry to your Claude Desktop configuration (`claude_desktop_config.json`, typically found in `~/.config/claude-desktop/`):
 
-```json
-{
-  "mcpServers": {
-    "cua-agent": {
-      "command": "/bin/bash",
-      "args": ["~/.cua/start_mcp_server.sh"],
-      "env": {
-        "CUA_AGENT_LOOP": "OMNI",
-        "CUA_MODEL_PROVIDER": "ANTHROPIC",
-        "CUA_PROVIDER_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+For more information on MCP with Claude Desktop, see the [official MCP User Guide](https://modelcontextprotocol.io/quickstart/user).
 
-### Development Mode
+### Cursor
 
-For local development without installation:
+To use with Cursor, add an MCP configuration file in one of these locations:
 
-```json
-{
-  "mcpServers": {
-    "cua-agent": {
-      "command": "/bin/bash",
-      "args": ["~/cua/libs/mcp-server/scripts/start_mcp_server.sh"],
-      "env": {
-        "CUA_AGENT_LOOP": "OMNI",
-        "CUA_MODEL_PROVIDER": "ANTHROPIC",
-        "CUA_PROVIDER_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+- **Project-specific**: Create `.cursor/mcp.json` in your project directory
+- **Global**: Create `~/.cursor/mcp.json` in your home directory
 
-### Troubleshooting
+After configuration, you can simply tell Cursor's Agent to perform computer tasks by explicitly mentioning the CUA agent, such as "Use the computer control tools to open Safari."
+
+For more information on MCP with Cursor, see the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol).
+
+## Troubleshooting
+
+Ensure you have valid API keys:
+
+- Add your Anthropic API key, or other model provider API key in the Claude Desktop config (as shown above)
+- Or set it as an environment variable in your shell profile
+
+If you get a `/bin/bash: ~/cua/libs/python/mcp-server/scripts/start_mcp_server.sh: No such file or directory` error, try changing the path to the script to be absolute instead of relative.
 
 View MCP server logs:
 
