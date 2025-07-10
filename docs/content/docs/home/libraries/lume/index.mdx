@@ -3,6 +3,8 @@ title: Lume
 description: A lightweight Command Line Interface and local API server for creating, running and managing macOS and Linux virtual machines.
 macos: true
 linux: true
+github:
+  - https://github.com/trycua/cua/tree/main/libs/lume
 ---
 
 import Link from 'next/link';
@@ -13,7 +15,7 @@ import { ChevronRight } from 'lucide-react';
 
 # Lume
 
-Lume is a lightweight Command Line Interface and local API server for creating, running and managing **macOS and Linux virtual machines** with near-native performance on Apple Silicon, using Apple's `Virtualization.Framework`.
+Lume is a lightweight Command Line Interface and local API server for creating, running and managing **macOS and Linux virtual machines** with near-native performance on Apple Silicon, using Apple's [`Virtualization.Framework`](https://developer.apple.com/documentation/virtualization).
 
 ## Quick Start
 
@@ -58,9 +60,9 @@ By default, Lume is installed as a background service that starts automatically 
   libraries that rely on the Lume API (such as the Computer-Use Agent).
 </Callout>
 
-You can also download the `lume.pkg.tar.gz` archive from the [latest release](https://github.com/trycua/lume/releases), extract it, and install the package manually.
+You can also download the `lume.pkg.tar.gz` archive from the [latest release](https://github.com/trycua/cua/releases?q=lume&expanded=true), extract it, and install the package manually.
 
-## Getting Started
+## Using Lume
 
 Once installed, you can start using Lume with these common workflows:
 
@@ -75,6 +77,11 @@ lume run macos-sequoia-vanilla:latest
 # Run an Ubuntu VM
 lume run ubuntu-noble-vanilla:latest
 ```
+
+<Callout type="info">
+  We provide [prebuilt VM images](#prebuilt-images) in our [ghcr
+  registry](https://github.com/orgs/trycua/packages).
+</Callout>
 
 </Step>
 
@@ -111,7 +118,18 @@ lume stop my-vm
 </Step>
 </Steps>
 
-## Usage
+## Prebuilt Images
+
+Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages).
+
+| Image                   | Tag                 | Description                                                                                     | Logical Size |
+| ----------------------- | ------------------- | ----------------------------------------------------------------------------------------------- | ------------ |
+| `macos-sequoia-vanilla` | `latest`, `15.2`    | macOS Sequoia 15.2 image                                                                        | 20GB         |
+| `macos-sequoia-xcode`   | `latest`, `15.2`    | macOS Sequoia 15.2 image with Xcode command line tools                                          | 22GB         |
+| `macos-sequoia-cua`     | `latest`, `15.3`    | macOS Sequoia 15.3 image compatible with the Computer interface                                 | 24GB         |
+| `ubuntu-noble-vanilla`  | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB         |
+
+## Lume CLI
 
 ```bash
 lume <command>
@@ -212,22 +230,9 @@ Command Options:
     --port <port>        Port to listen on (default: 7777)
 ```
 
-## Examples
+## Common Workflows
 
-### Prebuilt Images
-
-Pre-built images are available in the registry [ghcr.io/trycua](https://github.com/orgs/trycua/packages).
-
-| Image                   | Tag                 | Description                                                                                     | Logical Size |
-| ----------------------- | ------------------- | ----------------------------------------------------------------------------------------------- | ------------ |
-| `macos-sequoia-vanilla` | `latest`, `15.2`    | macOS Sequoia 15.2 image                                                                        | 20GB         |
-| `macos-sequoia-xcode`   | `latest`, `15.2`    | macOS Sequoia 15.2 image with Xcode command line tools                                          | 22GB         |
-| `macos-sequoia-cua`     | `latest`, `15.3`    | macOS Sequoia 15.3 image compatible with the Computer interface                                 | 24GB         |
-| `ubuntu-noble-vanilla`  | `latest`, `24.04.1` | [Ubuntu Server for ARM 24.04.1 LTS](https://ubuntu.com/download/server/arm) with Ubuntu Desktop | 20GB         |
-
-### Common Workflows
-
-#### Development Environment Setup
+### Development Environment Setup
 
 ```bash
 # Create a development VM with more resources
@@ -237,7 +242,7 @@ lume create dev-vm --cpu 6 --memory 12GB --disk-size 100GB
 lume run dev-vm --shared-dir ~/Projects:rw
 ```
 
-#### Testing Different macOS Versions
+### Testing Different macOS Versions
 
 ```bash
 # Pull and run different macOS versions
@@ -248,7 +253,7 @@ lume run macos-sequoia-vanilla:latest
 lume clone my-vm my-vm-test
 ```
 
-#### File Sharing Examples
+### File Sharing Examples
 
 ```bash
 # Share a read-only directory
@@ -271,7 +276,7 @@ lume serve
 ```
 
 <Callout type="info">
-  <p>Read the doucmentation on the API server endpoints.</p>
+  <p>Read the doucmentation on the local API server.</p>
   <Link
     href="/home/libraries/lume/http-api"
     className={cn(
@@ -280,7 +285,7 @@ lume serve
       }),
       'no-underline h-10'
     )}>
-    Lume API Documentation
+    Lume API Server Documentation
     <ChevronRight size={18} />
   </Link>
 </Callout>

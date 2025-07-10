@@ -13,6 +13,7 @@ export const docs = defineDocs({
     schema: frontmatterSchema.extend({
       pypi: z.string().optional(),
       npm: z.string().optional(),
+      github: z.array(z.string()).optional(),
       macos: z.boolean().default(false),
       windows: z.boolean().default(false),
       linux: z.boolean().default(false),

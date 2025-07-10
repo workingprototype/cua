@@ -5,6 +5,8 @@ pypi: cua-mcp-server
 macos: true
 linux: true
 windows: true
+github:
+  - https://github.com/trycua/cua/tree/main/libs/python/computer-server
 ---
 
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
@@ -92,6 +94,7 @@ Once configured, you can ask Claude to perform computer tasks:
 "Open Safari and navigate to google.com"
 "Click on the search bar and type 'weather'"
 ```
+
 </Step>
 
 <Step>
@@ -106,6 +109,7 @@ Customize the MCP server behavior with these environment variables:
 | `CUA_MODEL_NAME`        | Model name to use                                     | None (provider default) |
 | `CUA_PROVIDER_BASE_URL` | Base URL for provider API                             | None                    |
 | `CUA_MAX_IMAGES`        | Maximum number of images to keep in context           | 3                       |
+
 </Step>
 </Steps>
 

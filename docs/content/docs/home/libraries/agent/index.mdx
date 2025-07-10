@@ -5,6 +5,8 @@ pypi: cua-computer
 macos: true
 windows: true
 linux: true
+github:
+  - https://github.com/trycua/cua/tree/main/libs/python/agent
 ---
 
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
@@ -61,7 +63,7 @@ pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-posit
 
 ### Basic Usage
 
-Here's a simple example to get you started with CUA Agent:
+Here's a simple example to get you started with CUA Agent. It instructs the agent to open a text editor and write "Hello World."
 
 ```python
 from cua_agent import ComputerAgent, AgentLoop, LLM, LLMProvider
@@ -85,6 +87,8 @@ async with Computer() as computer:
 ```
 
 ### Multi-Step Workflow
+
+This example defines multiple tasks for the agent to complete:
 
 ```python
 async with Computer() as computer:
@@ -113,6 +117,8 @@ async with Computer() as computer:
 ```
 
 ### Alternative Model Providers
+
+You may use different models with the agent library -- below are a couple of alternatives that we already support.
 
 ```python
 # Anthropic Claude

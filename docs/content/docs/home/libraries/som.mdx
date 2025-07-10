@@ -5,6 +5,8 @@ macos: true
 windows: true
 linux: true
 pypi: cua-computer
+github:
+  - https://github.com/trycua/cua/tree/main/libs/python/som
 ---
 
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
@@ -32,16 +34,16 @@ import { ChevronRight } from 'lucide-react';
 
 ## Installation
 
-<Callout type="warning">
-  Som requires Python 3.11 or higher. For best performance, use macOS with Apple
-  Silicon.
-</Callout>
-
 ### Install from PyPI
 
 ```bash
 pip install cua-som
 ```
+
+<Callout type="warning">
+  Som requires Python 3.11 or higher. For best performance, use macOS with Apple
+  Silicon.
+</Callout>
 
 ### Install from Source
 
@@ -59,11 +61,10 @@ pip install -e .
 
 ### System Requirements
 
-| Platform      | Hardware                 | Detection Time |
-| ------------- | ------------------------ | -------------- |
-| macOS         | Apple Silicon (M1/M2/M3) | ~0.4s          |
-| Linux/Windows | NVIDIA GPU               | ~0.6s          |
-| Any           | CPU only                 | ~1.3s          |
+| Platform | Hardware                 | Detection Time |
+| -------- | ------------------------ | -------------- |
+| macOS    | Apple Silicon (M1/M2/M3) | ~0.4s          |
+| Any      | CPU only                 | ~1.3s          |
 
 ## Getting Started
 
@@ -80,11 +81,19 @@ parser = OmniParser()
 
 # Load and process an image
 image = Image.open("screenshot.png")
-result = parser.parse(image)
+result = parser.parse(
+    image,
+    box_threshold=0.3,    # Confidence threshold
+    iou_threshold=0.1,    # Overlap threshold
+    use_ocr=True         # Enable text detection
+)
 
 # Print detected elements
 for elem in result.elements:
-    print(f"{elem.type}: {elem.content or 'icon'} at {elem.bbox.coordinates}")
+    if elem.type == "icon":
+        print(f"Icon: confidence={elem.confidence:.3f}, bbox={elem.bbox.coordinates}")
+    else:  # text
+        print(f"Text: '{elem.content}', confidence={elem.confidence:.3f}")
 ```
 
 ### Advanced Configuration
@@ -97,186 +106,86 @@ result = parser.parse(
     box_threshold=0.3,    # Confidence threshold (0.0-1.0)
     iou_threshold=0.1,    # Overlap threshold (0.0-1.0)
     use_ocr=True,         # Enable text detection
-    ocr_engine="easyocr" # OCR engine choice
 )
 ```
 
-### Working with Results
-
-```python
-# Filter by element type
-icons = [e for e in result.elements if e.type == "icon"]
-texts = [e for e in result.elements if e.type == "text"]
-
-# Get high-confidence detections
-high_conf = [e for e in result.elements if e.confidence > 0.8]
-
-# Access bounding boxes
-for elem in result.elements:
-    x, y, w, h = elem.bbox.coordinates
-    print(f"Element at ({x}, {y}) with size {w}x{h}")
-```
-
-<Callout>
-  💡 **Tip**: Check out our [interactive examples](#examples) below to see Som
-  in action with real UI screenshots.
-</Callout>
-
 ## Configuration Guide
 
-### Detection Parameters
+### Box Thresholds
 
-<Cards>
-  <Card
-    title="Box Threshold"
-    description="Controls detection confidence (default: 0.3)">
-    - **Higher values (0.4-0.5)**: More precise, fewer false positives - **Lower
-    values (0.1-0.2)**: More detections, may include noise - **Recommended**:
-    0.3 for balanced performance
-  </Card>
+Controls detection confidence (default: 0.3)
 
-  <Card
-    title="IOU Threshold"
-    description="Controls overlap handling (default: 0.1)">
-    - **Lower values (0.05-0.1)**: Aggressive merging of overlaps - **Higher
-    values (0.3-0.5)**: Keeps more overlapping boxes - **Recommended**: 0.1 for
-    dense UIs
-  </Card>
-</Cards>
+- **Higher values (0.4-0.5)**: More precise, fewer false positives
+- **Lower values (0.1 - 0.2)**: More detections, may include noise
+- **Recommended**: 0.3 for balanced performance
 
-### OCR Settings
+### Intersection Over Union (IOU) Thresholds
 
-| Setting        | Default   | Description              |
-| -------------- | --------- | ------------------------ |
-| Engine         | `easyocr` | OCR engine to use        |
-| Languages      | `['en']`  | Supported languages      |
-| GPU            | `auto`    | Enable GPU acceleration  |
-| Timeout        | `5s`      | Maximum processing time  |
-| Min Confidence | `0.5`     | Text detection threshold |
+Set the `iou_threshold` parameter to control when overlapping element boxes should be merged into a single detection. A value of 0.1-0.2 is recommended for most use cases. Higher values will require more overlap before merging occurs.
 
-## Performance Benchmarks
+<div class="flex gap-x-6">
 
-### Hardware Acceleration
-
-<Mermaid
-  chart="
-graph LR
-    A[Input Image] --> B{Hardware Detection}
-    B -->|Apple Silicon| C[MPS Backend]
-    B -->|NVIDIA GPU| D[CUDA Backend]
-    B -->|No GPU| E[CPU Backend]
-    C --> F[Multi-scale\n~0.4s]
-    D --> G[Multi-scale\n~0.6s]
-    E --> H[Single-scale\n~1.3s]
-"
+<IOU
+  title="Low Overlap (Keep Both)"
+  description="When boxes have minimal overlap (IOU ~ 0.05), both detections are kept as separate elements."
+  rect1={{
+    left: 30,
+    top: 30,
+    width: 60,
+    height: 50,
+    fill: 'rgba(0, 0, 255, 0.6)',
+    name: 'box1',
+  }}
+  rect2={{
+    left: 80,
+    top: 70,
+    width: 60,
+    height: 50,
+    fill: 'rgba(255, 165, 0, 0.6)',
+    name: 'box2',
+  }}
 />
 
-### Optimization Details
+<IOU
+  title="High Overlap (Merge)"
+  description="When boxes significant overlap (IOU ~ 0.4), they are merged into a single detection to avoid duplicates."
+  rect1={{
+      left: 30,
+      top: 30,
+      width: 80,
+      height: 60,
+      fill: 'rgba(0, 0, 255, 0.6)',
+      name: 'box1',
+    }}
+  rect2={{
+      left: 50,
+      top: 40,
+      width: 80,
+      height: 60,
+      fill: 'rgba(255, 165, 0, 0.6)',
+      name: 'box2',
+    }}
+/>
+</div>
+
+## Performance
 
 <Cards>
-  <Card title="MPS (Apple Silicon)" description="Best performance on macOS">
-    - Multi-scale detection (640px, 1280px, 1920px) - Test-time augmentation -
-    Half-precision (FP16) - ~0.4s average time
+  <Card title="Metal Performance Shaders (Apple Silicon)" description="Best performance on macOS">
+    - Multi-scale detection (640px, 1280px, 1920px) 
+    - Test-time augmentation enabled
+    - Half-precision (FP16) 
+    - ~0.4s average detection time
+    - Best for production use
   </Card>
-
-{' '}
-
-<Card title="CUDA (NVIDIA)" description="High performance on Linux/Windows">
-  - Multi-scale detection - Mixed precision - ~0.6s average time
-</Card>
 
   <Card title="CPU Fallback" description="Universal compatibility">
-    - Single-scale detection (1280px) - Full precision (FP32) - ~1.3s average
-    time
+    - Single-scale detection (1280px) 
+    - Full precision (FP32) 
+    - ~1.3s average time
+    - Reliable fallback option
   </Card>
 </Cards>
-
-## Examples
-
-### Example 1: Screenshot Analysis
-
-Analyze a full application screenshot with visualization:
-
-```python
-from som import OmniParser
-from PIL import Image
-import json
-
-# Initialize parser
-parser = OmniParser()
-
-# Load screenshot
-image = Image.open("app_screenshot.png")
-
-# Parse with visualization
-result = parser.parse(image, use_ocr=True)
-
-# Save annotated image
-result.visualized_image.save("annotated_screenshot.png")
-
-# Export results as JSON
-with open("ui_elements.json", "w") as f:
-    json.dump(result.to_dict(), f, indent=2)
-```
-
-### Example 2: UI Automation Helper
-
-Find and interact with specific UI elements:
-
-```python
-def find_button(parser, image, button_text):
-    """Find a button by its text content"""
-    result = parser.parse(image, use_ocr=True)
-
-    for elem in result.elements:
-        if elem.type == "text" and button_text.lower() in elem.content.lower():
-            return elem.bbox.coordinates
-
-    return None
-
-# Usage
-button_coords = find_button(parser, screenshot, "Submit")
-if button_coords:
-    x, y, w, h = button_coords
-    click_x = x + w // 2
-    click_y = y + h // 2
-    print(f"Click at ({click_x}, {click_y})")
-```
-
-### Example 3: Batch Processing
-
-Process multiple screenshots with performance tracking:
-
-```python
-import time
-from pathlib import Path
-
-def batch_process(image_dir, output_dir):
-    parser = OmniParser()
-    image_files = Path(image_dir).glob("*.png")
-
-    results = []
-    for img_path in image_files:
-        start = time.time()
-
-        image = Image.open(img_path)
-        result = parser.parse(image)
-
-        # Save annotated version
-        out_path = Path(output_dir) / f"{img_path.stem}_annotated.png"
-        result.visualized_image.save(out_path)
-
-        elapsed = time.time() - start
-        results.append({
-            "file": img_path.name,
-            "elements_found": len(result.elements),
-            "processing_time": elapsed
-        })
-
-        print(f"Processed {img_path.name}: {len(result.elements)} elements in {elapsed:.2f}s")
-
-    return results
-```
 
 ---
 

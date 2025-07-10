@@ -14,7 +14,7 @@ import {
   DocsTitle,
 } from 'fumadocs-ui/page';
 import { cn } from 'fumadocs-ui/utils/cn';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, CodeXml, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
@@ -46,6 +46,7 @@ export default async function Page(props: {
   const linux = page.data.linux;
   const pypi = page.data.pypi;
   const npm = page.data.npm;
+  const github = page.data.github;
 
   const MDXContent = page.data.body;
 
@@ -55,9 +56,9 @@ export default async function Page(props: {
     if (!hasAnyPlatform && !pypi) return null;
 
     return (
-      <div className="flex flex-col gap-2 mx-4">
+      <div className="flex flex-col gap-2">
         {hasAnyPlatform && (
-          <div className="flex flex-row gap-2 items-center mx-auto dark:text-neutral-400">
+          <div className="flex flex-row gap-2 items-left dark:text-neutral-400">
             {windows && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -90,49 +91,106 @@ export default async function Page(props: {
             )}
           </div>
         )}
-        {pypi && (
-          <a target="_blank" href={`https://pypi.org/project/${pypi}/`}>
-            <img
-              src={`https://img.shields.io/pypi/v/${pypi}?color=blue`}
-              className="h-5"
-              alt="PyPI"
-            />
-          </a>
-        )}
-        {npm && (
-          <a target="_blank" href={`https://www.npmjs.com/package/${npm}`}>
-            <img
-              src={`https://img.shields.io/npm/v/${npm}?color=bf4c4b`}
-              className="h-5"
-              alt="NPM"
-            />
-          </a>
-        )}
-        {slug.includes('libraries') && (
-          <a
-            className={cn(
-              buttonVariants({
-                color: 'secondary',
-                size: 'sm',
-                className:
-                  'gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground',
-              }),
-              ''
-            )}
-            href={`/api/${page.data.title.toLowerCase()}`}>
-            Reference
-          </a>
-        )}
+
+        <div className="flex flex-row gap-2 items-left">
+          {pypi && (
+            <a target="_blank" href={`https://pypi.org/project/${pypi}/`}>
+              <img
+                src={`https://img.shields.io/pypi/v/${pypi}?color=blue`}
+                className="h-5"
+                alt="PyPI"
+              />
+            </a>
+          )}
+          {npm && (
+            <a target="_blank" href={`https://www.npmjs.com/package/${npm}`}>
+              <img
+                src={`https://img.shields.io/npm/v/${npm}?color=bf4c4b`}
+                className="h-5"
+                alt="NPM"
+              />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const tocHeader = () => {
+    return (
+      <div className="w-fit">
+        <PlatformIcons />
+        <div className="flex gap-2 mt-2">
+          {github &&
+            github.length > 0 &&
+            (github.length === 1 ? (
+              <a
+                href={github[0]}
+                rel="noreferrer noopener"
+                target="_blank"
+                className="inline-flex gap-2 w-fit items-center justify-center rounded-md text-sm font-medium transition-colors duration-100 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none hover:bg-fd-accent hover:text-fd-accent-foreground p-1.5 [&amp;_svg]:size-5 text-fd-muted-foreground md:[&amp;_svg]:size-4.5"
+                aria-label="Source"
+                data-active="false">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path>
+                </svg>
+                Source
+                <ExternalLink className="w-4 h-4 ml-auto" />
+              </a>
+            ) : (
+              <Popover>
+                <PopoverTrigger className="inline-flex gap-2 w-fit items-center justify-center rounded-md text-sm font-medium transition-colors duration-100 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none hover:bg-fd-accent hover:text-fd-accent-foreground p-1.5 [&_svg]:size-5 text-fd-muted-foreground md:[&_svg]:size-4.5">
+                  <svg role="img" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path>
+                  </svg>
+                  Source
+                  <ChevronDown className="h-4 w-4" />
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1">
+                  <div className="flex flex-col gap-1">
+                    {github.map((link, index) => (
+                      <a
+                        key={index}
+                        href={link}
+                        rel="noreferrer noopener"
+                        target="_blank"
+                        className="inline-flex gap-2 w-full items-center rounded-md p-2 text-sm hover:bg-fd-accent hover:text-fd-accent-foreground">
+                        {link.includes('python')
+                          ? 'Python'
+                          : link.includes('typescript')
+                          ? 'TypeScript'
+                          : `Source ${index + 1}`}
+                        <ExternalLink className="w-4 h-4 ml-auto" />
+                      </a>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ))}
+          {slug.includes('libraries') && (
+            <a
+              className="inline-flex gap-2 w-fit items-center justify-center rounded-md text-sm font-medium transition-colors duration-100 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none hover:bg-fd-accent hover:text-fd-accent-foreground p-1.5 [&amp;_svg]:size-5 text-fd-muted-foreground md:[&amp;_svg]:size-4.5"
+              href={`/api/${page.data.title.toLowerCase()}`}>
+              <CodeXml size={12} />
+              Reference
+            </a>
+          )}
+        </div>
+        <hr className="my-2 border-t border-fd-border" />
       </div>
     );
   };
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage
+      toc={page.data.toc}
+      tableOfContent={{ header: tocHeader() }}
+      full={page.data.full}>
       <div className="flex flex-row w-full items-start">
         <div className="flex-1">
           <div className="flex flex-row w-full">
             <DocsTitle>{page.data.title}</DocsTitle>
+
             <div className="ml-auto">
               {apiSection && versionItems.length > 1 && (
                 <Popover>
@@ -193,11 +251,10 @@ export default async function Page(props: {
               )}
             </div>
           </div>
-          <DocsDescription className=" text-md mt-1">
+          <DocsDescription className="text-md mt-1">
             {page.data.description}
           </DocsDescription>
         </div>
-        <PlatformIcons />
       </div>
       <DocsBody>
         <MDXContent
