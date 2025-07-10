@@ -334,9 +334,9 @@ async def cmd_endpoint(
                         logger.warning(f"API key validation failed. Status: {resp.status}")
                         raise HTTPException(status_code=401, detail="Invalid API key")
                     
-                    auth_response = await resp.json()
-                    if not auth_response.get("success"):
-                        logger.warning(f"API key validation failed. Response: {auth_response}")
+                    auth_failed = not (await resp.text()).strip()
+                    if auth_failed:
+                        logger.warning(f"API key validation failed.")
                         raise HTTPException(status_code=401, detail="Invalid API key")
                     
                     logger.info("Authentication successful")
