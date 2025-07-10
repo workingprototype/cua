@@ -233,7 +233,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     sig = inspect.signature(handler_func)
                     filtered_params = {k: v for k, v in params.items() if k in sig.parameters}
                     
-                    result = await handler_func(**filtered_params)
+                    # Handle both sync and async functions
+                    if asyncio.iscoroutinefunction(handler_func):
+                        result = await handler_func(**filtered_params)
+                    else:
+                        result = handler_func(**filtered_params)
                     await websocket.send_json({"success": True, **result})
                 except Exception as cmd_error:
                     logger.error(f"Error executing command {command}: {str(cmd_error)}")
@@ -356,8 +360,11 @@ async def cmd_endpoint(
             sig = inspect.signature(handler_func)
             filtered_params = {k: v for k, v in params.items() if k in sig.parameters}
             
-            # Execute the command
-            result = await handler_func(**filtered_params)
+            # Handle both sync and async functions
+            if asyncio.iscoroutinefunction(handler_func):
+                result = await handler_func(**filtered_params)
+            else:
+                result = handler_func(**filtered_params)
             
             # Stream the successful result
             response_data = {"success": True, **result}
