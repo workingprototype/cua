@@ -238,8 +238,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         result = await handler_func(**filtered_params)
                     else:
                         # Run sync functions in thread pool to avoid blocking event loop
-                        loop = asyncio.get_event_loop()
-                        result = await loop.run_in_executor(None, lambda: handler_func(**filtered_params))
+                        result = await asyncio.to_thread(handler_func, **filtered_params)
                     await websocket.send_json({"success": True, **result})
                 except Exception as cmd_error:
                     logger.error(f"Error executing command {command}: {str(cmd_error)}")
@@ -367,8 +366,7 @@ async def cmd_endpoint(
                 result = await handler_func(**filtered_params)
             else:
                 # Run sync functions in thread pool to avoid blocking event loop
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, lambda: handler_func(**filtered_params))
+                result = await asyncio.to_thread(handler_func, **filtered_params)
             
             # Stream the successful result
             response_data = {"success": True, **result}
