@@ -10,6 +10,7 @@ import inspect
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 from .handlers.factory import HandlerFactory
+from .tracing import get_tracing_manager
 import os
 import aiohttp
 import hashlib
@@ -85,6 +86,10 @@ handlers = {
     # Clipboard actions
     "copy_to_clipboard": automation_handler.copy_to_clipboard,
     "set_clipboard": automation_handler.set_clipboard,
+    # Tracing commands
+    "start_tracing": lambda: get_tracing_manager().start_tracing(),
+    "stop_tracing": lambda: get_tracing_manager().stop_tracing(),
+    "tracing_status": lambda: get_tracing_manager().get_status(),
 }
 
 

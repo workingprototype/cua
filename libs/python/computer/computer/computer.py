@@ -12,6 +12,7 @@ import logging
 from .telemetry import record_computer_initialization
 import os
 from . import helpers
+from .tracing import TracingManager
 
 # Import provider related modules
 from .providers.base import VMProviderType
@@ -181,6 +182,9 @@ class Computer:
         # Initialize with proper typing - None at first, will be set in run()
         self._interface = None
         self.use_host_computer_server = use_host_computer_server
+        
+        # Initialize tracing manager
+        self.tracing = TracingManager(self)
 
         # Record initialization in telemetry (if enabled)
         if telemetry_enabled:
@@ -237,6 +241,8 @@ class Computer:
                         os=self.os_type, ip_address=ip_address  # type: ignore[arg-type]
                     ),
                 )
+
+                self._interface._tracing = self.tracing
 
                 self.logger.info("Waiting for host computer server to be ready...")
                 await self._interface.wait_for_ready()

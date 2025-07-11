@@ -36,6 +36,14 @@ class GenericComputerInterface(BaseComputerInterface):
         # Optional default delay time between commands (in seconds)
         self.delay = 0.0
 
+        # Optional tracing manager
+        self._tracing = None
+    
+    def _log_event(self, key: str, data: Dict[str, Any]):
+        """Log an event to the tracing manager."""
+        if self._tracing:
+            self._tracing.log(key, data)
+
     async def _handle_delay(self, delay: Optional[float] = None):
         """Handle delay between commands using async sleep.
         
@@ -784,6 +792,9 @@ class GenericComputerInterface(BaseComputerInterface):
 
     async def _send_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send command using REST API with WebSocket fallback."""
+
+        self._log_event("command", {"command": command, "params": params})
+
         # Try REST API first
         result = await self._send_command_rest(command, params)
         
@@ -791,12 +802,10 @@ class GenericComputerInterface(BaseComputerInterface):
         if not result.get("success", True) and (result.get("error") == "Request failed" or result.get("error") == "Server returned malformed response"):
             self.logger.debug(f"REST API failed for command '{command}', trying WebSocket fallback")
             try:
-                return await self._send_command_ws(command, params)
+                result = await self._send_command_ws(command, params)
             except Exception as e:
                 self.logger.debug(f"WebSocket fallback also failed: {e}")
-                # Return the original REST error
-                return result
-        
+        self._log_event("command.result", {"command": command, "params": params, "result": result})
         return result
 
     async def wait_for_ready(self, timeout: int = 60, interval: float = 1.0):
@@ -969,4 +978,17 @@ class GenericComputerInterface(BaseComputerInterface):
         if self._ws:
             asyncio.create_task(self._ws.close())
             self._ws = None
+    
+    # Tracing methods
+    async def start_tracing(self) -> Dict[str, Any]:
+        """Start server-side tracing."""
+        return await self._send_command("start_tracing")
+    
+    async def stop_tracing(self) -> Dict[str, Any]:
+        """Stop server-side tracing and return file paths."""
+        return await self._send_command("stop_tracing")
+    
+    async def tracing_status(self) -> Dict[str, Any]:
+        """Get server-side tracing status."""
+        return await self._send_command("tracing_status")
 
