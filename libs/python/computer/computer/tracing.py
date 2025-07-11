@@ -1,11 +1,12 @@
-import os
+import tempfile
 import json
 import time
-import tempfile
-import shutil
 import zipfile
-from typing import Dict, Any, Optional, List, TYPE_CHECKING
+import shutil
 from pathlib import Path
+from typing import Dict, Any, Optional, List, Union, TYPE_CHECKING
+from threading import Lock
+from .interface.tracing_interface import ITracingManager
 import asyncio
 import threading
 
@@ -13,17 +14,22 @@ if TYPE_CHECKING:
     from .computer import Computer
 
 
-class TracingManager:
+class TracingManager(ITracingManager):
     """Client-side tracing manager for recording events and attachments."""
     
     def __init__(self, computer: "Computer"):
         self.computer = computer
-        self.is_tracing = False
+        self._is_tracing = False
         self.trace_dir: Optional[Path] = None
         self.events_file: Optional[Path] = None
         self.attachments_dir: Optional[Path] = None
-        self._lock = threading.Lock()
         self._server_tracing_active = False
+        self._lock = threading.Lock()
+    
+    @property
+    def is_tracing(self) -> bool:
+        """Check if tracing is currently active."""
+        return self._is_tracing
         
     async def start(self, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Start a new tracing session.
@@ -57,7 +63,7 @@ class TracingManager:
                 # Initialize events file
                 self.events_file.touch()
                 
-                self.is_tracing = True
+                self._is_tracing = True
                 
                 # Log the start event
                 self.log("tracing.start", {
@@ -129,7 +135,7 @@ class TracingManager:
                 client_trace_dir = str(self.trace_dir) if self.trace_dir else None
                 
                 # Reset state
-                self.is_tracing = False
+                self._is_tracing = False
                 self.trace_dir = None
                 self.events_file = None
                 self.attachments_dir = None

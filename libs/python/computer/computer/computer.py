@@ -238,11 +238,9 @@ class Computer:
                 self._interface = cast(
                     BaseComputerInterface,
                     InterfaceFactory.create_interface_for_os(
-                        os=self.os_type, ip_address=ip_address  # type: ignore[arg-type]
+                        os=self.os_type, ip_address=ip_address, tracing=self.tracing  # type: ignore[arg-type]
                     ),
                 )
-
-                self._interface._tracing = self.tracing
 
                 self.logger.info("Waiting for host computer server to be ready...")
                 await self._interface.wait_for_ready()
@@ -446,7 +444,8 @@ class Computer:
                         os=self.os_type, 
                         ip_address=ip_address,
                         api_key=self.api_key,
-                        vm_name=self.config.name
+                        vm_name=self.config.name,
+                        tracing=self.tracing
                     ),
                 )
             else:
@@ -454,7 +453,8 @@ class Computer:
                     BaseComputerInterface,
                     InterfaceFactory.create_interface_for_os(
                         os=self.os_type, 
-                        ip_address=ip_address
+                        ip_address=ip_address,
+                        tracing=self.tracing
                     ),
                 )
 

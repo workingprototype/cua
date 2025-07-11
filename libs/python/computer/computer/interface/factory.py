@@ -2,6 +2,7 @@
 
 from typing import Literal, Optional
 from .base import BaseComputerInterface
+from .tracing_interface import ITracingManager
 
 class InterfaceFactory:
     """Factory for creating OS-specific computer interfaces."""
@@ -11,7 +12,8 @@ class InterfaceFactory:
         os: Literal['macos', 'linux', 'windows'],
         ip_address: str,
         api_key: Optional[str] = None,
-        vm_name: Optional[str] = None
+        vm_name: Optional[str] = None,
+        tracing: Optional[ITracingManager] = None
     ) -> BaseComputerInterface:
         """Create an interface for the specified OS.
         
@@ -20,6 +22,7 @@ class InterfaceFactory:
             ip_address: IP address of the computer to control
             api_key: Optional API key for cloud authentication
             vm_name: Optional VM name for cloud authentication
+            tracing: Optional tracing manager for logging events
             
         Returns:
             BaseComputerInterface: The appropriate interface for the OS
@@ -33,10 +36,10 @@ class InterfaceFactory:
         from .windows import WindowsComputerInterface
         
         if os == 'macos':
-            return MacOSComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
+            return MacOSComputerInterface(ip_address, api_key=api_key, vm_name=vm_name, tracing=tracing)
         elif os == 'linux':
-            return LinuxComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
+            return LinuxComputerInterface(ip_address, api_key=api_key, vm_name=vm_name, tracing=tracing)
         elif os == 'windows':
-            return WindowsComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
+            return WindowsComputerInterface(ip_address, api_key=api_key, vm_name=vm_name, tracing=tracing)
         else:
             raise ValueError(f"Unsupported OS type: {os}")

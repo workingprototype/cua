@@ -11,13 +11,13 @@ from ..logger import Logger, LogLevel
 from .base import BaseComputerInterface
 from ..utils import decode_base64_image, encode_base64_image, bytes_to_image, draw_box, resize_image
 from .models import Key, KeyType, MouseButton, CommandResult
-
+from .tracing_interface import ITracingManager
 
 class GenericComputerInterface(BaseComputerInterface):
     """Generic interface with common functionality for all supported platforms (Windows, Linux, macOS)."""
 
-    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None, logger_name: str = "computer.interface.generic"):
-        super().__init__(ip_address, username, password, api_key, vm_name)
+    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None, tracing: Optional[ITracingManager] = None, logger_name: str = "computer.interface.generic"):
+        super().__init__(ip_address, username, password, api_key, vm_name, tracing)
         self._ws = None
         self._reconnect_task = None
         self._closed = False
@@ -35,15 +35,7 @@ class GenericComputerInterface(BaseComputerInterface):
 
         # Optional default delay time between commands (in seconds)
         self.delay = 0.0
-
-        # Optional tracing manager
-        self._tracing = None
     
-    def _log_event(self, key: str, data: Dict[str, Any]):
-        """Log an event to the tracing manager."""
-        if self._tracing:
-            self._tracing.log(key, data)
-
     async def _handle_delay(self, delay: Optional[float] = None):
         """Handle delay between commands using async sleep.
         
@@ -792,7 +784,7 @@ class GenericComputerInterface(BaseComputerInterface):
 
     async def _send_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send command using REST API with WebSocket fallback."""
-
+        
         self._log_event("command", {"command": command, "params": params})
 
         # Try REST API first

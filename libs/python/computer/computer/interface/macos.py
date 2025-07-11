@@ -1,11 +1,12 @@
 from .generic import GenericComputerInterface
 from typing import Optional
+from .tracing_interface import ITracingManager
 
 class MacOSComputerInterface(GenericComputerInterface):
     """Interface for macOS."""
 
-    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None):
-        super().__init__(ip_address, username, password, api_key, vm_name, "computer.interface.macos")
+    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None, tracing: Optional[ITracingManager] = None):
+        super().__init__(ip_address, username, password, api_key, vm_name, tracing, "computer.interface.macos")
 
     async def diorama_cmd(self, action: str, arguments: Optional[dict] = None) -> dict:
         """Send a diorama command to the server (macOS only)."""

@@ -4,11 +4,12 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Tuple, List
 from ..logger import Logger, LogLevel
 from .models import MouseButton, CommandResult
+from .tracing_interface import ITracingManager
 
 class BaseComputerInterface(ABC):
     """Base class for computer control interfaces."""
 
-    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None):
+    def __init__(self, ip_address: str, username: str = "lume", password: str = "lume", api_key: Optional[str] = None, vm_name: Optional[str] = None, tracing: Optional[ITracingManager] = None):
         """Initialize interface.
 
         Args:
@@ -17,6 +18,7 @@ class BaseComputerInterface(ABC):
             password: Password for authentication
             api_key: Optional API key for cloud authentication
             vm_name: Optional VM name for cloud authentication
+            tracing: Optional tracing manager for logging events
         """
         self.ip_address = ip_address
         self.username = username
@@ -27,6 +29,19 @@ class BaseComputerInterface(ABC):
         
         # Optional default delay time between commands (in seconds)
         self.delay: float = 0.0
+        
+        # Optional tracing manager
+        self._tracing = tracing
+    
+    def _log_event(self, key: str, data: Dict[str, Any]) -> None:
+        """Log an event to the tracing manager if available.
+        
+        Args:
+            key: Event key/type identifier
+            data: Event data dictionary
+        """
+        if self._tracing:
+            self._tracing.log(key, data)
 
     @abstractmethod
     async def wait_for_ready(self, timeout: int = 60) -> None:
