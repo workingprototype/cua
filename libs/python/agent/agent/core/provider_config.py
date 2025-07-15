@@ -9,6 +9,7 @@ DEFAULT_MODELS = {
     LLMProvider.OLLAMA: "gemma3:4b-it-q4_K_M",
     LLMProvider.OAICOMPAT: "Qwen2.5-VL-7B-Instruct",
     LLMProvider.MLXVLM: "mlx-community/UI-TARS-1.5-7B-4bit",
+    LLMProvider.HUGGINGFACE: "ui-tars-1.5-7b",
 }
 
 # Map providers to their environment variable names
@@ -18,4 +19,5 @@ ENV_VARS = {
     LLMProvider.OLLAMA: "none",
     LLMProvider.OAICOMPAT: "none",  # OpenAI-compatible API typically doesn't require an API key
     LLMProvider.MLXVLM: "none",  # MLX VLM typically doesn't require an API key
+    LLMProvider.HUGGINGFACE: "none",  # Hugging Face Transformers typically doesn't require an API key for local models
 }

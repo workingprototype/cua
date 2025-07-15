@@ -19,7 +19,10 @@ export const MODELS_BY_LOOP: Record<string, string[]> = {
     "gpt-4o",
     "gpt-4"
   ],
-  UITARS: ["ByteDance-Seed/UI-TARS-1.5-7B"],
+  UITARS: [
+    "ByteDance-Seed/UI-TARS-1.5-7B",
+    "huggingface/ByteDance-Seed/UI-TARS-1.5-7B"
+  ],
 };
 
 export interface ChatClientOptions {
@@ -162,17 +165,11 @@ export class ChatClient {
               // Text part - yield content directly
               yield data;
             } else if (type === 'g') {
-              // Reasoning part - yield as reasoning content
-              yield `[Reasoning] ${data}`;
+              // Reasoning part - yield as dictionary
+              yield { type: 'reasoning', content: data };
             } else if (type === '2') {
-              // Data part - handle computer actions
-              if (Array.isArray(data)) {
-                for (const item of data) {
-                  if (item.type === 'computer_action') {
-                    yield `\n${item.title}\n\`\`\`json\n${JSON.stringify(item.action, null, 2)}\n\`\`\`\n`;
-                  }
-                }
-              }
+              // Data part - yield as dictionary
+              yield { type: 'data', content: data };
             } else if (type === '3') {
               // Error part
               yield `Error: ${data}`;

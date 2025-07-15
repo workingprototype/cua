@@ -10,6 +10,130 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { INITIAL_QUESTIONS } from "@/utils/initial-questions";
 import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Brain, ChevronDown, ChevronRight, Clock, Loader, Camera } from "lucide-react";
+
+// Component to render tool invocations
+function ToolInvocation({ invocation }: { invocation: any }) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  
+  if (invocation.toolName === 'computer_action') {
+    return (
+      <Card className="my-1 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+        <CardHeader 
+          className="pb-1 pt-2 px-3 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-200 flex items-center gap-1">
+            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {invocation.result?.title || '🛠️ Computer Action'}
+          </CardTitle>
+        </CardHeader>
+        {isExpanded && (
+          <CardContent className="pt-0 px-3 pb-2">
+            <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+              <code>{JSON.stringify(invocation.args, null, 2)}</code>
+            </pre>
+          </CardContent>
+        )}
+      </Card>
+    );
+  }
+  
+  // Default rendering for other tool types
+  return (
+    <Card className="my-1 border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+      <CardHeader 
+        className="pb-1 pt-2 px-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <CardTitle className="text-xs font-medium flex items-center gap-1">
+          {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          Tool: {invocation.toolName}
+        </CardTitle>
+      </CardHeader>
+      {isExpanded && (
+        <CardContent className="pt-0 px-3 pb-2">
+          <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+            <code>{JSON.stringify(invocation.args, null, 2)}</code>
+          </pre>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// Component to render reasoning annotations
+function ReasoningAnnotation({ annotations }: { annotations: any[] }) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  
+  const reasoningAnnotations = annotations.filter(ann => ann.type === 'reasoning');
+  if (reasoningAnnotations.length === 0) return null;
+  
+  const totalReasoningTime = reasoningAnnotations.length * 2; // Approximate 2 seconds per reasoning step
+  
+  return (
+    <div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Brain size={16} />
+        <span>Thought for {totalReasoningTime}s</span>
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+      </button>
+      {isExpanded && (
+        <div className="mt-2 space-y-1">
+          {reasoningAnnotations.map((annotation, index) => (
+            <div key={index} className="text-xs text-muted-foreground p-2 rounded border">
+              <div className="whitespace-pre-wrap">{annotation.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Component to render screenshot annotations
+function ScreenshotAnnotation({ annotations }: { annotations: any[] }) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  
+  const screenshotAnnotations = annotations.filter(ann => ann.type === 'screenshot');
+  if (screenshotAnnotations.length === 0) return null;
+  
+  return (
+    <div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Camera size={16} />
+        <span>Screenshot{screenshotAnnotations.length > 1 ? 's' : ''}</span>
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+      </button>
+      {isExpanded && (
+        <div className="mt-2 space-y-2">
+          {screenshotAnnotations.map((annotation, index) => (
+            <div key={index} className="border rounded p-2">
+              {annotation.action_type && (
+                <div className="text-xs text-muted-foreground mb-2">
+                  Action: {annotation.action_type}
+                </div>
+              )}
+              <img 
+                src={`data:image/png;base64,${annotation.screenshot_base64}`}
+                alt={`Screenshot ${annotation.action_type ? `after ${annotation.action_type}` : ''}`}
+                className="max-w-full h-auto rounded border"
+                style={{ maxHeight: '300px' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ChatList({
   messages,
@@ -205,30 +329,55 @@ export default function ChatList({
                       className="object-contain dark:invert"
                     />
                   </Avatar>
-                  <span className="bg-accent p-3 rounded-md max-w-xs sm:max-w-2xl overflow-x-auto">
-                    {/* Check if the message content contains a code block */}
-                    {message.content.split("```").map((part, index) => {
-                      if (index % 2 === 0) {
-                        return (
-                          <Markdown key={index} remarkPlugins={[remarkGfm]}>
-                            {part}
-                          </Markdown>
-                        );
-                      } else {
-                        return (
-                          <pre className="whitespace-pre-wrap" key={index}>
-                            <CodeDisplayBlock code={part} />
-                          </pre>
-                        );
-                      }
-                    })}
-                    {isLoading &&
-                      messages.indexOf(message) === messages.length - 1 && (
-                        <span className="animate-pulse" aria-label="Typing">
-                          ...
-                        </span>
+                  <div className="flex flex-col gap-2">
+                    {/* Render reasoning annotations outside the bubble */}
+                    {message.annotations && (
+                      <div className="space-y-1">
+                        <ReasoningAnnotation annotations={message.annotations} />
+                        <ScreenshotAnnotation annotations={message.annotations} />
+                      </div>
+                    )}
+                    
+                    <div className="bg-accent p-3 rounded-md max-w-xs sm:max-w-2xl overflow-x-auto">
+                      {/* Render tool invocations first */}
+                      {message.toolInvocations && message.toolInvocations.length > 0 && (
+                        <div className="mb-2">
+                          {message.toolInvocations.map((invocation, index) => (
+                            <ToolInvocation key={`${message.id}-tool-${index}`} invocation={invocation} />
+                          ))}
+                        </div>
                       )}
-                  </span>
+                      
+                      {/* Render text content if present */}
+                      {message.content && message.content.trim() && (
+                        <div>
+                          {/* Check if the message content contains a code block */}
+                          {message.content.split("```").map((part, index) => {
+                            if (index % 2 === 0) {
+                              return (
+                                <Markdown key={index} remarkPlugins={[remarkGfm]}>
+                                  {part}
+                                </Markdown>
+                              );
+                            } else {
+                              return (
+                                <pre className="whitespace-pre-wrap" key={index}>
+                                  <CodeDisplayBlock code={part} />
+                                </pre>
+                              );
+                            }
+                          })}
+                        </div>
+                      )}
+                      
+                      {isLoading &&
+                        messages.indexOf(message) === messages.length - 1 && (
+                          <span className="animate-pulse" aria-label="Typing">
+                            ...
+                          </span>
+                        )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

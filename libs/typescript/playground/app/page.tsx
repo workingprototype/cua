@@ -224,15 +224,71 @@ export default function Home() {
       });
 
       let responseMessage = "";
+      let toolInvocations: any[] = [];
+      let annotations: any[] = [];
+      
       for await (const chunk of stream) {
-        responseMessage += chunk;
+        if (typeof chunk === 'string') {
+          // Regular text content
+          responseMessage += chunk;
+        } else if (typeof chunk === 'object' && chunk.type) {
+          // Handle dictionary responses
+          if (chunk.type === 'reasoning') {
+            // Add reasoning content as annotation
+            annotations.push({
+              type: 'reasoning',
+              content: chunk.content,
+              timestamp: Date.now()
+            });
+          } else if (chunk.type === 'data') {
+            // Handle computer actions as tool invocations and screenshots as annotations
+            if (Array.isArray(chunk.content)) {
+              for (const item of chunk.content) {
+                if (item.type === 'computer_action') {
+                  toolInvocations.push({
+                    toolCallId: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    toolName: 'computer_action',
+                    args: item.action,
+                    state: 'result',
+                    result: {
+                      title: item.title,
+                      action: item.action
+                    }
+                  });
+                } else if (item.type === 'screenshot') {
+                  // Add screenshot as annotation
+                  annotations.push({
+                    type: 'screenshot',
+                    screenshot_base64: item.screenshot_base64,
+                    action_type: item.action_type,
+                    timestamp: item.timestamp
+                  });
+                }
+              }
+            }
+          }
+        }
+        
         setLoadingSubmit(false);
         setMessages([
           ...messages,
-          { role: "assistant", content: responseMessage, id: chatId },
+          { 
+            role: "assistant", 
+            content: responseMessage, 
+            id: chatId,
+            toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
+            annotations: annotations.length > 0 ? annotations : undefined
+          },
         ]);
       }
-      addMessage({ role: "assistant", content: responseMessage, id: chatId });
+      addMessage({ 
+        role: "assistant", 
+        content: responseMessage, 
+        id: chatId,
+        toolInvocations: toolInvocations.length > 0 ? toolInvocations : undefined,
+        annotations: annotations.length > 0 ? annotations : undefined
+      });
+      // Update messages with final state
       setMessages([...messages]);
 
       localStorage.setItem(`chat_${chatId}`, JSON.stringify(messages));

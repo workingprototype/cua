@@ -17,7 +17,10 @@ from playground_api.utils.tools import get_current_weather
 # Import Computer and Agent classes
 from computer import Computer, VMProviderType
 from agent import ComputerAgent, AgentLoop, LLM, LLMProvider
+from agent.core.callbacks import DefaultCallbackHandler
 import logging
+import queue
+import threading
 
 app = FastAPI()
 
@@ -71,6 +74,57 @@ class AgentRequest(BaseModel):
     messages: List[ClientMessage]
     agent: AgentConfig
     computer: ComputerConfig
+
+
+# Global screenshot queue for each agent session
+screenshot_queues: Dict[str, queue.Queue] = {}
+
+
+class PlaygroundScreenshotHandler(DefaultCallbackHandler):
+    """Custom handler that adds screenshots to a queue for streaming."""
+
+    def __init__(self, agent_hash: str):
+        """Initialize with agent hash to identify the queue.
+
+        Args:
+            agent_hash: Hash identifying the agent session
+        """
+        self.agent_hash = agent_hash
+        # Create queue for this agent session if it doesn't exist
+        if agent_hash not in screenshot_queues:
+            screenshot_queues[agent_hash] = queue.Queue()
+        print(f"PlaygroundScreenshotHandler initialized for agent {agent_hash}")
+
+    async def on_screenshot(
+        self,
+        screenshot_base64: str,
+        action_type: str = "",
+        parsed_screen: Optional[dict] = None,
+    ) -> None:
+        """Add screenshot to queue when a screenshot is taken.
+
+        Args:
+            screenshot_base64: Base64 encoded screenshot
+            action_type: Type of action that triggered the screenshot
+            parsed_screen: Optional parsed screen data
+        """
+        try:
+            screenshot_data = {
+                "type": "screenshot",
+                "screenshot_base64": screenshot_base64,
+                "action_type": action_type,
+                "timestamp": time.time()
+            }
+            
+            # Add to queue for this agent session
+            if self.agent_hash in screenshot_queues:
+                screenshot_queues[self.agent_hash].put(screenshot_data)
+                print(f"Screenshot added to queue for agent {self.agent_hash}, action: {action_type}")
+            else:
+                print(f"Warning: No queue found for agent {self.agent_hash}")
+                
+        except Exception as e:
+            print(f"Error in screenshot handler: {e}")
 
 
 available_tools = {
@@ -180,22 +234,40 @@ async def get_or_create_agent(agent_config: AgentConfig, computer_config: Comput
     if agent_loop is None:
         raise HTTPException(status_code=400, detail=f"Unsupported agent loop: {agent_config.loop}")
     
-    # Determine provider based on agent loop and model
+    provider_prefixes = {
+        "huggingface/": LLMProvider.HUGGINGFACE,
+    }
+
+    # Determine provider based on model prefix
     provider = None
-    if agent_config.loop == "OPENAI":
-        provider = LLMProvider.OPENAI
-    elif agent_config.loop == "ANTHROPIC":
-        provider = LLMProvider.ANTHROPIC
-    elif agent_config.loop == "OMNI":
-        # OMNI can use various providers, determine by model
-        if "claude" in agent_config.model.lower():
-            provider = LLMProvider.ANTHROPIC
-        elif "gpt" in agent_config.model.lower():
+    model_name = agent_config.model
+    for prefix, provider in provider_prefixes.items():
+        if model_name.startswith(prefix):
+            provider = provider
+            model_name = model_name[len(prefix):]
+            break
+
+    # Determine provider based on agent loop and model
+    if provider is None:
+        if agent_config.loop == "OPENAI":
             provider = LLMProvider.OPENAI
-        else:
-            provider = LLMProvider.OPENAI  # Default
-    elif agent_config.loop == "UITARS":
-        provider = LLMProvider.MLXVLM
+        elif agent_config.loop == "ANTHROPIC":
+            provider = LLMProvider.ANTHROPIC
+        elif agent_config.loop == "OMNI":
+            # OMNI can use various providers, determine by model
+            if "claude" in model_name.lower():
+                provider = LLMProvider.ANTHROPIC
+            elif "gpt" in model_name.lower():
+                provider = LLMProvider.OPENAI
+            else:
+                provider = LLMProvider.OPENAI  # Default
+        elif agent_config.loop == "UITARS":
+            import platform
+            is_mac = platform.system() == "Darwin"
+            if is_mac:
+                provider = LLMProvider.MLXVLM
+            else:
+                provider = LLMProvider.HUGGINGFACE
     
     if provider is None:
         raise HTTPException(status_code=400, detail=f"Could not determine provider for loop: {agent_config.loop}")
@@ -206,7 +278,7 @@ async def get_or_create_agent(agent_config: AgentConfig, computer_config: Comput
     # Create LLM instance
     llm_kwargs = {
         "provider": provider,
-        "name": agent_config.model
+        "name": model_name
     }
     
     if agent_config.use_oaicompat and agent_config.provider_base_url:
@@ -226,17 +298,44 @@ async def get_or_create_agent(agent_config: AgentConfig, computer_config: Comput
         verbosity=agent_config.verbosity or logging.INFO,
     )
     
+    # Add screenshot handler to the agent's loop if available
+    if hasattr(agent, "_loop") and agent._loop is not None:
+        print(f"DEBUG - Adding screenshot handler to agent loop for {agent_hash}")
+        
+        # Create the screenshot handler
+        screenshot_handler = PlaygroundScreenshotHandler(agent_hash)
+        
+        # Add the handler to the callback manager if it exists
+        if (
+            hasattr(agent._loop, "callback_manager")
+            and agent._loop.callback_manager is not None
+        ):
+            agent._loop.callback_manager.add_handler(screenshot_handler)
+            print(f"DEBUG - Screenshot handler added to callback manager for {agent_hash}")
+        else:
+            print(f"WARNING - Callback manager not found or is None for loop type: {type(agent._loop)}")
+    
     # Cache the instance
     agent_instances[agent_hash] = agent
     
     return agent
 
 
-async def stream_agent_response(agent: ComputerAgent, message: str):
+async def stream_agent_response(agent: ComputerAgent, message: str, agent_hash: str):
     """Stream responses from the ComputerAgent."""
     try:
         # Stream responses from the agent
         async for result in agent.run(message):
+            # Check for screenshots in the queue and yield them
+            if agent_hash in screenshot_queues:
+                try:
+                    while True:
+                        screenshot_data = screenshot_queues[agent_hash].get_nowait()
+                        # Yield screenshot as annotation data
+                        yield f"2:{json.dumps([screenshot_data])}\n"
+                except queue.Empty:
+                    pass  # No screenshots in queue, continue
+            
             print(f"DEBUG - Agent response ------- START")
             from pprint import pprint
             pprint(result)
@@ -293,9 +392,6 @@ async def stream_agent_response(agent: ComputerAgent, message: str):
                             action_title = f"🛠️ Performing {action_type}"
                             if action.get("x") and action.get("y"):
                                 action_title += f" at ({action['x']}, {action['y']})"
-                            
-                            # Yield the action description as text
-                            yield f"0:{json.dumps(action_title)}\n"
                             
                             # Yield the action details as data
                             action_data = {
@@ -358,6 +454,10 @@ async def handle_chat_data(request: AgentRequest, protocol: str = Query("data"))
         # Get or create agent instance
         agent = await get_or_create_agent(request.agent, request.computer)
         
+        # Calculate agent hash for screenshot queue
+        computer_hash = get_computer_hash(request.computer)
+        agent_hash = get_agent_hash(request.agent, computer_hash)
+        
         # Get the last user message
         if not request.messages:
             raise HTTPException(status_code=400, detail="No messages provided")
@@ -370,7 +470,7 @@ async def handle_chat_data(request: AgentRequest, protocol: str = Query("data"))
         
         # Stream response from agent
         response = StreamingResponse(
-            stream_agent_response(agent, last_message.content),
+            stream_agent_response(agent, last_message.content, agent_hash),
             media_type="text/plain"
         )
         response.headers["x-vercel-ai-data-stream"] = "v1"

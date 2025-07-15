@@ -45,7 +45,7 @@ def log_api_interaction(
     request: httpx.Request | None,
     response: httpx.Response | object | None,
     error: Exception | None,
-    log_dir: Path = Path("/tmp/claude_logs")
+    log_dir: Path
 ) -> None:
     """Log API request, response, and any errors in a structured way.
     
@@ -109,13 +109,14 @@ def log_api_interaction(
         } if error else None
     }
     
-    # Log to file with timestamp in filename
-    log_dir.mkdir(exist_ok=True)
-    log_file = log_dir / f"claude_api_{timestamp.replace(' ', '_').replace(':', '-')}.json"
-    
-    with open(log_file, 'w') as f:
-        json.dump(log_entry, f, indent=2)
-    
+    if log_dir:
+        # Log to file with timestamp in filename
+        log_dir.mkdir(exist_ok=True)
+        log_file = log_dir / f"claude_api_{timestamp.replace(' ', '_').replace(':', '-')}.json"
+        
+        with open(log_file, 'w') as f:
+            json.dump(log_entry, f, indent=2)
+        
     # Also log a summary to the console
     if error:
         logger.error(f"API Error at {timestamp}: {error}")

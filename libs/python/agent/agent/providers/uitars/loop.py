@@ -23,7 +23,6 @@ from .tools.computer import ToolResult
 from .prompts import COMPUTER_USE, SYSTEM_PROMPT, MAC_SPECIFIC_NOTES
 
 from .clients.oaicompat import OAICompatClient
-from .clients.mlxvlm import MLXVLMUITarsClient
 
 logger = logging.getLogger(__name__)
 
@@ -135,12 +134,23 @@ class UITARSLoop(BaseLoop):
         try:
             if self.provider == LLMProvider.MLXVLM:
                 logger.info(f"Initializing MLX VLM client for UI-TARS with model {self.model}...")
+                from .clients.mlxvlm import MLXVLMUITarsClient
                 
                 self.client = MLXVLMUITarsClient(
                     model=self.model,
                 )
                 
                 logger.info(f"Initialized MLX VLM client with model {self.model}")
+            elif self.provider == LLMProvider.HUGGINGFACE:
+                logger.info(f"Initializing Hugging Face client for UI-TARS with model {self.model}...")
+                from .clients.huggingface import HuggingFaceUITarsClient
+                
+                self.client = HuggingFaceUITarsClient(
+                    model=self.model,
+                    api_key=self.api_key,
+                )
+                
+                logger.info(f"Initialized Hugging Face client with model {self.model}")
             else:
                 # Default to OAICompat client for other providers
                 logger.info(f"Initializing OAICompat client for UI-TARS with model {self.model}...")
