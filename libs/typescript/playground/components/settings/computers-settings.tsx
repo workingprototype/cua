@@ -20,6 +20,7 @@ export function ComputersSettings() {
       provider: instance.provider,
       name: instance.name,
       os: instance.os,
+      password: instance.password
     }));
     
     return yaml.dump({ computers: yamlData }, { 
@@ -45,6 +46,7 @@ export function ComputersSettings() {
         type: "medium",
         provider: comp.provider || "lume",
         os: comp.os || "ubuntu",
+        password: comp.password
       }));
     } catch (error) {
       throw new Error(`YAML parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -163,6 +165,7 @@ export function ComputersSettings() {
               <li><code className="bg-muted px-1 rounded">provider</code> - lume, windows-sandbox, cua-cloud</li>
               <li><code className="bg-muted px-1 rounded">name</code> - Display name for the computer</li>
               <li><code className="bg-muted px-1 rounded">os</code> - ubuntu, macos-sequoia, windows, etc.</li>
+              <li><code className="bg-muted px-1 rounded">password</code> - Password for the noVNC</li>
             </ul>
           </div>
         </CardContent>

@@ -30,6 +30,7 @@ export interface ChatProps {
   agentConfig?: AgentLoopConfig;
   onAgentConfigChange?: (config: AgentLoopConfig) => void;
   onToggleRightSidebar?: () => void;
+  onToggleNoVNCSidebar?: () => void;
   chatOptions?: ChatOptions;
   onChatOptionsChange?: (options: ChatOptions) => void;
   availableInstances?: ComputerInstance[];
@@ -54,6 +55,7 @@ export default function Chat({
   agentConfig,
   onAgentConfigChange,
   onToggleRightSidebar,
+  onToggleNoVNCSidebar,
   chatOptions,
   onChatOptionsChange,
   availableInstances,
@@ -68,6 +70,7 @@ export default function Chat({
         messages={messages}
         setMessages={setMessages}
         onToggleRightSidebar={onToggleRightSidebar}
+        onToggleNoVNCSidebar={onToggleNoVNCSidebar}
         chatOptions={chatOptions}
         onChatOptionsChange={onChatOptionsChange}
         availableInstances={availableInstances}

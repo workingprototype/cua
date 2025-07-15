@@ -14,6 +14,7 @@ import Chat, { ChatProps } from "./chat";
 import ChatList from "./chat-list";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import ModelPropertiesSidebar, { AgentLoopConfig } from "./model-properties-sidebar";
+import NoVNCSidebar from "./novnc-sidebar";
 import { ComputerInstance } from "../../app/hooks/useComputerStore";
 
 // Chat options interface
@@ -23,6 +24,7 @@ export interface ChatOptions {
     name: string;
     os: string;
     api_key?: string; // Optional - only required for cua-cloud provider
+    password?: string; // Optional - password for NoVNC access
   };
   agent: {
     loop: string;
@@ -54,7 +56,7 @@ interface ChatLayoutProps {
 type MergedProps = ChatLayoutProps & ChatProps;
 
 export function ChatLayout({
-  defaultLayout = [20, 160, 20],
+  defaultLayout = [15, 120, 20, 20],
   defaultCollapsed = false,
   navCollapsedSize,
   messages,
@@ -79,8 +81,10 @@ export function ChatLayout({
 }: MergedProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = React.useState(false);
+  const [isNoVNCSidebarCollapsed, setIsNoVNCSidebarCollapsed] = React.useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
+  const noVNCPanelRef = useRef<ImperativePanelHandle>(null);
 
   // Agent configuration state
   const [agentConfig, setAgentConfig] = useState<AgentLoopConfig>({
@@ -116,6 +120,11 @@ export function ChatLayout({
     if (collapsed) {
       setIsRightSidebarCollapsed(JSON.parse(collapsed));
     }
+    
+    const noVNCCollapsed = localStorage.getItem("react-resizable-panels:novnc-collapsed");
+    if (noVNCCollapsed) {
+      setIsNoVNCSidebarCollapsed(JSON.parse(noVNCCollapsed));
+    }
   }, []);
 
   const handleAgentConfigChange = (config: AgentLoopConfig) => {
@@ -128,6 +137,17 @@ export function ChatLayout({
     const panel = rightPanelRef.current;
     if (panel) {
       if (isRightSidebarCollapsed) {
+        panel.expand(25);
+      } else {
+        panel.collapse();
+      }
+    }
+  };
+
+  const handleToggleNoVNCSidebar = () => {
+    const panel = noVNCPanelRef.current;
+    if (panel) {
+      if (isNoVNCSidebarCollapsed) {
         panel.expand(25);
       } else {
         panel.collapse();
@@ -150,7 +170,7 @@ export function ChatLayout({
         defaultSize={defaultLayout[0]}
         collapsedSize={navCollapsedSize}
         collapsible={true}
-        minSize={isMobile ? 0 : 12}
+        // minSize={isMobile ? 0 : 12}
         maxSize={isMobile ? 0 : 16}
         onCollapse={() => {
           setIsCollapsed(true);
@@ -187,7 +207,7 @@ export function ChatLayout({
       <ResizablePanel
         className="h-full w-full flex justify-center"
         defaultSize={defaultLayout[1]}
-        minSize={30}
+        // minSize={30}
       >
         <Chat
           chatId={chatId}
@@ -207,6 +227,7 @@ export function ChatLayout({
           agentConfig={agentConfig}
           onAgentConfigChange={handleAgentConfigChange}
           onToggleRightSidebar={handleToggleRightSidebar}
+          onToggleNoVNCSidebar={handleToggleNoVNCSidebar}
           chatOptions={chatOptions}
           onChatOptionsChange={onChatOptionsChange}
           availableInstances={availableInstances}
@@ -216,14 +237,44 @@ export function ChatLayout({
       
       <ResizableHandle className={cn("hidden md:flex")} withHandle />
       
-      {/* Right Sidebar - Model Properties */}
+      {/* NoVNC Sidebar */}
       <ResizablePanel
-        ref={rightPanelRef}
+        ref={noVNCPanelRef}
         defaultSize={defaultLayout[2]}
         collapsedSize={0}
         collapsible={true}
-        minSize={isMobile ? 0 : 15}
-        maxSize={isMobile ? 0 : 25}
+        // minSize={isMobile ? 0 : 15}
+        onCollapse={() => {
+          setIsNoVNCSidebarCollapsed(true);
+          document.cookie = `react-resizable-panels:novnc-collapsed=${JSON.stringify(
+            true
+          )}`;
+        }}
+        onExpand={() => {
+          setIsNoVNCSidebarCollapsed(false);
+          document.cookie = `react-resizable-panels:novnc-collapsed=${JSON.stringify(
+            false
+          )}`;
+        }}
+      >
+        <NoVNCSidebar
+          isCollapsed={isNoVNCSidebarCollapsed || isMobile}
+          onToggle={handleToggleNoVNCSidebar}
+          containerName={chatOptions?.computer?.name}
+          containerPassword={chatOptions?.computer?.password}
+        />
+      </ResizablePanel>
+      
+      <ResizableHandle className={cn("hidden md:flex")} withHandle />
+      
+      {/* Right Sidebar - Model Properties */}
+      <ResizablePanel
+        ref={rightPanelRef}
+        defaultSize={defaultLayout[3]}
+        collapsedSize={0}
+        collapsible={true}
+        // minSize={isMobile ? 0 : 15}
+        // maxSize={isMobile ? 0 : 25}
         onCollapse={() => {
           setIsRightSidebarCollapsed(true);
           document.cookie = `react-resizable-panels:right-collapsed=${JSON.stringify(

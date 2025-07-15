@@ -9,6 +9,7 @@ export interface ComputerInstance {
   status: "running" | "stopped" | "starting";
   type: "small" | "medium" | "large";
   provider: string;
+  password?: string; // Password for the noVNC
   os: string;
   ip?: string;
   uptime?: string;

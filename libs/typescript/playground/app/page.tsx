@@ -132,7 +132,8 @@ export default function Home() {
       const computerConfig: any = {
         provider: selectedInstance.provider,
         name: selectedInstance.name,
-        os: selectedInstance.os
+        os: selectedInstance.os,
+        password: selectedInstance.password,
       };
       
       // Only add api_key for cua-cloud provider
@@ -193,6 +194,21 @@ export default function Home() {
   // Initialize computer config once on mount
   useEffect(() => {
     if (!isInitialized) {
+      // Try to get saved computer selection first
+      if (typeof window !== 'undefined') {
+        const savedComputer = localStorage.getItem("selectedComputer");
+        if (savedComputer && availableInstances.length > 0) {
+          const selectedInstance = availableInstances.find(instance => instance.id === savedComputer);
+          if (selectedInstance) {
+            // Use handleComputerChange to properly initialize the selected computer
+            handleComputerChange(savedComputer);
+            setIsInitialized(true);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to default config if no saved computer or not found
       const defaultConfig = getDefaultComputerConfig();
       setChatOptions(prev => ({
         ...prev,
@@ -200,7 +216,7 @@ export default function Home() {
       }));
       setIsInitialized(true);
     }
-  }, [isInitialized, getDefaultComputerConfig]);
+  }, [isInitialized, getDefaultComputerConfig, availableInstances, handleComputerChange]);
 
   const addMessage = (Message: Message) => {
     messages.push(Message);
@@ -335,7 +351,7 @@ export default function Home() {
           error={error}
           stop={stop}
           navCollapsedSize={10}
-          defaultLayout={[30, 160]}
+          defaultLayout={[20, 120, 20, 20]}
           formRef={formRef}
           setMessages={setMessages}
           setInput={setInput}

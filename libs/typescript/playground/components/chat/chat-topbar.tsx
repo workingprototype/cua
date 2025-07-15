@@ -17,6 +17,7 @@ import {
 
 import { Button } from "../ui/button";
 import { CaretSortIcon, HamburgerMenuIcon, MixerHorizontalIcon, LaptopIcon, PersonIcon, DesktopIcon, LightningBoltIcon } from "@radix-ui/react-icons";
+import { Monitor } from "lucide-react";
 import { Sidebar } from "../sidebar";
 import { Message } from "ai/react";
 import { getSelectedModel } from "@/lib/model-helper";
@@ -33,6 +34,7 @@ interface ChatTopbarProps {
   messages: Message[];
   setMessages: (messages: Message[]) => void;
   onToggleRightSidebar?: () => void;
+  onToggleNoVNCSidebar?: () => void;
   chatOptions?: ChatOptions;
   onChatOptionsChange?: (options: ChatOptions) => void;
   availableInstances?: ComputerInstance[];
@@ -46,6 +48,7 @@ export default function ChatTopbar({
   messages,
   setMessages,
   onToggleRightSidebar,
+  onToggleNoVNCSidebar,
   chatOptions,
   onChatOptionsChange,
   availableInstances = [],
@@ -170,26 +173,26 @@ export default function ChatTopbar({
   };
 
   return (
-    <div className="w-full flex px-4 py-6 items-center justify-between lg:justify-center gap-4">
+    <div className="w-full flex flex-col lg:flex-row px-4 py-6 items-center justify-between lg:justify-center gap-4">
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetTrigger>
           <HamburgerMenuIcon className="lg:hidden w-5 h-5" />
         </SheetTrigger>
         <SheetContent side="left">
           <Sidebar
-            chatId={chatId || ""}
             isCollapsed={false}
-            isMobile={false}
             messages={messages}
+            isMobile={true}
+            chatId={chatId || ""}
             setMessages={setMessages}
             closeSidebar={handleCloseSidebar} 
           />
         </SheetContent>
       </Sheet>
 
-      <div className="flex gap-4 items-center">
-        <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start">
+        <div className="flex items-center gap-2 min-w-0">
+          <Bot className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <Popover open={agentLoopOpen} onOpenChange={setAgentLoopOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -197,9 +200,11 @@ export default function ChatTopbar({
               variant="outline"
               role="combobox"
               aria-expanded={agentLoopOpen}
-              className="w-[200px] justify-between"
+              className="w-[200px] sm:w-[160px] md:w-[200px] justify-between"
             >
-              {chatOptions?.agent?.loop ? AGENT_LOOPS.find((loop) => loop.value === chatOptions.agent.loop)?.label : "Select agent loop"}
+              <span className="truncate">
+                {AGENT_LOOPS.find(loop => loop.value === (chatOptions?.agent.loop || "ANTHROPIC"))?.label || "Select agent loop"}
+              </span>
               <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -257,8 +262,8 @@ export default function ChatTopbar({
         </Popover>
         </div> */}
 
-        <div className="flex items-center gap-2">
-          <DesktopIcon className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 min-w-0">
+          <DesktopIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <Popover open={computerOpen} onOpenChange={setComputerOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -266,9 +271,9 @@ export default function ChatTopbar({
               variant="outline"
               role="combobox"
               aria-expanded={computerOpen}
-              className="w-[250px] justify-between"
+              className="w-[250px] sm:w-[200px] md:w-[250px] justify-between"
             >
-              <div className="flex items-center gap-2 overflow-hidden">
+              <div className="flex items-center gap-2 overflow-hidden min-w-0">
                 {selectedComputer ? (
                   <>
                     {getOSIcon(availableInstances.find(c => c.id === selectedComputer)?.os || '')}
@@ -307,15 +312,27 @@ export default function ChatTopbar({
         </Popover>
         </div>
 
-        {/* Settings Icon */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onToggleRightSidebar}
-          className="h-10 w-10"
-        >
-          <MixerHorizontalIcon className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center justify-center lg:justify-start gap-2">
+          {/* NoVNC Icon */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onToggleNoVNCSidebar}
+            className="h-10 w-10"
+          >
+            <Monitor className="h-4 w-4" />
+          </Button>
+
+          {/* Settings Icon */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onToggleRightSidebar}
+            className="h-10 w-10"
+          >
+            <MixerHorizontalIcon className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
