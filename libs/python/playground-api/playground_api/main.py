@@ -19,7 +19,7 @@ from computer import Computer, VMProviderType
 from agent import ComputerAgent, AgentLoop, LLM, LLMProvider
 import logging
 
-app = FastAPI()
+app = FastAPI(debug=True)
 
 # Add validation error handler
 @app.exception_handler(ValidationError)
