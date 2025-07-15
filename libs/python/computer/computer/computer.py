@@ -753,7 +753,7 @@ class Computer:
 
 
     # Add virtual environment management functions to computer interface
-    async def venv_install(self, venv_name: str, requirements: list[str]) -> tuple[str, str]:
+    async def venv_install(self, venv_name: str, requirements: list[str]):
         """Install packages in a virtual environment.
         
         Args:
@@ -771,14 +771,14 @@ class Computer:
         
         # Check if venv exists, if not create it
         check_cmd = f"test -d {venv_path} || ({create_cmd})"
-        _, _ = await self.interface.run_command(check_cmd)
+        _ = await self.interface.run_command(check_cmd)
         
         # Install packages
         requirements_str = " ".join(requirements)
         install_cmd = f". {venv_path}/bin/activate && pip install {requirements_str}"
         return await self.interface.run_command(install_cmd)
     
-    async def venv_cmd(self, venv_name: str, command: str) -> tuple[str, str]:
+    async def venv_cmd(self, venv_name: str, command: str):
         """Execute a shell command in a virtual environment.
         
         Args:
@@ -792,9 +792,9 @@ class Computer:
         
         # Check if virtual environment exists
         check_cmd = f"test -d {venv_path}"
-        stdout, stderr = await self.interface.run_command(check_cmd)
+        result = await self.interface.run_command(check_cmd)
         
-        if stderr or "test:" in stdout:  # venv doesn't exist
+        if result.stderr or "test:" in result.stdout:  # venv doesn't exist
             return "", f"Virtual environment '{venv_name}' does not exist. Create it first using venv_install."
         
         # Activate virtual environment and run command
@@ -890,21 +890,21 @@ print(f"<<<VENV_EXEC_START>>>{{output_json}}<<<VENV_EXEC_END>>>")
         
         # Execute the Python code in the virtual environment
         python_command = f"python -c \"import base64; exec(base64.b64decode('{encoded_code}').decode('utf-8'))\""
-        stdout, stderr = await self.venv_cmd(venv_name, python_command)
+        result = await self.venv_cmd(venv_name, python_command)
         
         # Parse the output to extract the payload
         start_marker = "<<<VENV_EXEC_START>>>"
         end_marker = "<<<VENV_EXEC_END>>>"
 
         # Print original stdout
-        print(stdout[:stdout.find(start_marker)])
+        print(result.stdout[:result.stdout.find(start_marker)])
         
-        if start_marker in stdout and end_marker in stdout:
-            start_idx = stdout.find(start_marker) + len(start_marker)
-            end_idx = stdout.find(end_marker)
+        if start_marker in result.stdout and end_marker in result.stdout:
+            start_idx = result.stdout.find(start_marker) + len(start_marker)
+            end_idx = result.stdout.find(end_marker)
             
             if start_idx < end_idx:
-                output_json = stdout[start_idx:end_idx]
+                output_json = result.stdout[start_idx:end_idx]
 
                 try:
                     # Decode and deserialize the output payload from JSON
@@ -923,4 +923,4 @@ print(f"<<<VENV_EXEC_START>>>{{output_json}}<<<VENV_EXEC_END>>>")
                 raise Exception("Invalid output format: markers found but no content between them")
         else:
             # Fallback: return stdout/stderr if no payload markers found
-            raise Exception(f"No output payload found. stdout: {stdout}, stderr: {stderr}")
+            raise Exception(f"No output payload found. stdout: {result.stdout}, stderr: {result.stderr}")

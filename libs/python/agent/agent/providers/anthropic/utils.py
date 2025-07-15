@@ -350,6 +350,20 @@ async def to_agent_response_format(
         },
     }
 
+    if response.usage:
+        standard_response["usage"] = {
+            "input_tokens": response.usage.input_tokens,
+            "input_tokens_details": {
+                "cached_tokens": response.usage.cache_creation_input_tokens,
+            },
+            "output_tokens": response.usage.output_tokens,
+            "output_tokens_details": {
+                "reasoning_tokens": 0
+            },
+            "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
+            **dict(response.usage),
+        }
+    
     # Add tool calls if present
     tool_calls = []
     for block in response.content:

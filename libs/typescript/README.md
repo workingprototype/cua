@@ -4,6 +4,7 @@ This repository contains TypeScript implementations of the C/UA libraries:
 
 - `@trycua/core`: Core functionality including telemetry and logging
 - `@trycua/computer`: Computer interaction SDK for VM management and control
+- `@trycua/playground`: Playground application for C/UA
 
 ## Project Structure
 
@@ -11,6 +12,7 @@ This repository contains TypeScript implementations of the C/UA libraries:
 libs/typescript/
 ├── computer/       # Computer SDK package
 ├── core/           # Core functionality package
+├── playground/     # Playground application
 ├── package.json    # Root package configuration
 └── pnpm-workspace.yaml  # Workspace configuration
 ```

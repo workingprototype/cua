@@ -22,7 +22,7 @@ import logging
 import queue
 import threading
 
-app = FastAPI()
+app = FastAPI(debug=True)
 
 # Add validation error handler
 @app.exception_handler(ValidationError)
