@@ -11,7 +11,6 @@ import threading
 from typing import List, Optional
 
 from .server import Server
-from .watchdog import Watchdog
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +98,7 @@ def main() -> None:
                 }
                 
                 # Create watchdog with restart settings
+                from .watchdog import Watchdog
                 watchdog = Watchdog(
                     cli_args=cli_args,
                     ping_interval=args.watchdog_interval

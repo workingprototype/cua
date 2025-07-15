@@ -10,6 +10,7 @@ To use GUI automation in a headless environment:
 from typing import Dict, Any, List, Tuple, Optional
 import logging
 import subprocess
+import asyncio
 import base64
 import os
 import json
@@ -278,7 +279,20 @@ class LinuxAutomationHandler(BaseAutomationHandler):
     # Command Execution
     async def run_command(self, command: str) -> Dict[str, Any]:
         try:
-            process = subprocess.run(command, shell=True, capture_output=True, text=True)
-            return {"success": True, "stdout": process.stdout, "stderr": process.stderr, "return_code": process.returncode}
+            # Create subprocess
+            process = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            # Wait for the subprocess to finish
+            stdout, stderr = await process.communicate()
+            # Return decoded output
+            return {
+                "success": True, 
+                "stdout": stdout.decode() if stdout else "", 
+                "stderr": stderr.decode() if stderr else "", 
+                "return_code": process.returncode
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}

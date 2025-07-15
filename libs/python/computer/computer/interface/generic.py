@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PIL import Image
 
 import websockets
+import aiohttp
 
 from ..logger import Logger, LogLevel
 from .base import BaseComputerInterface
@@ -57,6 +58,17 @@ class GenericComputerInterface(BaseComputerInterface):
         protocol = "wss" if self.api_key else "ws"
         port = "8443" if self.api_key else "8000"
         return f"{protocol}://{self.ip_address}:{port}/ws"
+    
+    @property
+    def rest_uri(self) -> str:
+        """Get the REST URI using the current IP address.
+        
+        Returns:
+            REST URI for the Computer API Server
+        """
+        protocol = "https" if self.api_key else "http"
+        port = "8443" if self.api_key else "8000"
+        return f"{protocol}://{self.ip_address}:{port}/cmd"
 
     # Mouse actions
     async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left", delay: Optional[float] = None) -> None:
@@ -677,7 +689,7 @@ class GenericComputerInterface(BaseComputerInterface):
 
         raise ConnectionError("Failed to establish WebSocket connection after multiple retries")
 
-    async def _send_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    async def _send_command_ws(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send command through WebSocket."""
         max_retries = 3
         retry_count = 0
@@ -717,7 +729,151 @@ class GenericComputerInterface(BaseComputerInterface):
 
             raise last_error if last_error else RuntimeError("Failed to send command")
 
+    async def _send_command_rest(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+        """Send command through REST API without retries or connection management."""
+        try:
+            # Prepare the request payload
+            payload = {"command": command, "params": params or {}}
+            
+            # Prepare headers
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
+            if self.vm_name:
+                headers["X-Container-Name"] = self.vm_name
+            
+            # Send the request
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.rest_uri,
+                    json=payload,
+                    headers=headers
+                ) as response:
+                    # Get the response text
+                    response_text = await response.text()
+                    
+                    # Trim whitespace
+                    response_text = response_text.strip()
+                    
+                    # Check if it starts with "data: "
+                    if response_text.startswith("data: "):
+                        # Extract everything after "data: "
+                        json_str = response_text[6:]  # Remove "data: " prefix
+                        try:
+                            return json.loads(json_str)
+                        except json.JSONDecodeError:
+                            return {
+                                "success": False,
+                                "error": "Server returned malformed response",
+                                "message": response_text
+                            }
+                    else:
+                        # Return error response
+                        return {
+                            "success": False,
+                            "error": "Server returned malformed response",
+                            "message": response_text
+                        }
+                        
+        except Exception as e:
+            return {
+                "success": False,
+                "error": "Request failed",
+                "message": str(e)
+            }
+
+    async def _send_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+        """Send command using REST API with WebSocket fallback."""
+        # Try REST API first
+        result = await self._send_command_rest(command, params)
+        
+        # If REST failed with "Request failed", try WebSocket as fallback
+        if not result.get("success", True) and (result.get("error") == "Request failed" or result.get("error") == "Server returned malformed response"):
+            self.logger.debug(f"REST API failed for command '{command}', trying WebSocket fallback")
+            try:
+                return await self._send_command_ws(command, params)
+            except Exception as e:
+                self.logger.debug(f"WebSocket fallback also failed: {e}")
+                # Return the original REST error
+                return result
+        
+        return result
+
     async def wait_for_ready(self, timeout: int = 60, interval: float = 1.0):
+        """Wait for Computer API Server to be ready by testing version command."""
+
+        # Check if REST API is available
+        try:
+            result = await self._send_command_rest("version", {})
+            assert result.get("success", True)
+        except Exception as e:
+            self.logger.debug(f"REST API failed for command 'version', trying WebSocket fallback: {e}")
+            try:
+                await self._wait_for_ready_ws(timeout, interval)
+                return
+            except Exception as e:
+                self.logger.debug(f"WebSocket fallback also failed: {e}")
+                raise e
+
+        start_time = time.time()
+        last_error = None
+        attempt_count = 0
+        progress_interval = 10  # Log progress every 10 seconds
+        last_progress_time = start_time
+
+        try:
+            self.logger.info(
+                f"Waiting for Computer API Server to be ready (timeout: {timeout}s)..."
+            )
+
+            # Wait for the server to respond to get_screen_size command
+            while time.time() - start_time < timeout:
+                try:
+                    attempt_count += 1
+                    current_time = time.time()
+
+                    # Log progress periodically without flooding logs
+                    if current_time - last_progress_time >= progress_interval:
+                        elapsed = current_time - start_time
+                        self.logger.info(
+                            f"Still waiting for Computer API Server... (elapsed: {elapsed:.1f}s, attempts: {attempt_count})"
+                        )
+                        last_progress_time = current_time
+
+                    # Test the server with a simple get_screen_size command
+                    result = await self._send_command("get_screen_size")
+                    if result.get("success", False):
+                        elapsed = time.time() - start_time
+                        self.logger.info(
+                            f"Computer API Server is ready (after {elapsed:.1f}s, {attempt_count} attempts)"
+                        )
+                        return  # Server is ready
+                    else:
+                        last_error = result.get("error", "Unknown error")
+                        self.logger.debug(f"Initial connection command failed: {last_error}")
+
+                except Exception as e:
+                    last_error = e
+                    self.logger.debug(f"Connection attempt {attempt_count} failed: {e}")
+
+                # Wait before trying again
+                await asyncio.sleep(interval)
+
+            # If we get here, we've timed out
+            error_msg = f"Could not connect to {self.ip_address} after {timeout} seconds"
+            if last_error:
+                error_msg += f": {str(last_error)}"
+            self.logger.error(error_msg)
+            raise TimeoutError(error_msg)
+
+        except Exception as e:
+            if isinstance(e, TimeoutError):
+                raise
+            error_msg = f"Error while waiting for server: {str(e)}"
+            self.logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+    async def _wait_for_ready_ws(self, timeout: int = 60, interval: float = 1.0):
         """Wait for WebSocket connection to become available."""
         start_time = time.time()
         last_error = None
@@ -755,7 +911,7 @@ class GenericComputerInterface(BaseComputerInterface):
                     if self._ws and self._ws.state == websockets.protocol.State.OPEN:
                         # Test the connection with a simple command
                         try:
-                            await self._send_command("get_screen_size")
+                            await self._send_command_ws("get_screen_size")
                             elapsed = time.time() - start_time
                             self.logger.info(
                                 f"Computer API Server is ready (after {elapsed:.1f}s, {attempt_count} attempts)"
