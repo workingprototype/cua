@@ -164,6 +164,9 @@ class ComputerAgent:
             # Always initialize the computer if available
             if self.computer and not self.computer._initialized:
                 await self.computer.run()
+            # Initialize the loop if available
+            if self._loop:
+                await self._loop.initialize()
             self._initialized = True
 
     async def run(self, task: str) -> AsyncGenerator[AgentResponse, None]:

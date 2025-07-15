@@ -99,7 +99,6 @@ class AnthropicLoop(BaseLoop):
         self.client = None
         self.retry_count = 0
         self.tool_manager = None
-        self.callback_manager = None
         self.queue = asyncio.Queue()  # Initialize queue
         self.loop_task = None  # Store the loop task for cancellation
 
@@ -123,13 +122,6 @@ class AnthropicLoop(BaseLoop):
             # Initialize client
             self.client = AnthropicClientFactory.create_client(
                 provider=self.provider, api_key=self.api_key, model=self.model
-            )
-
-            # Initialize callback manager with our callback handlers
-            self.callback_manager = CallbackManager(
-                content_callback=self._handle_content,
-                tool_callback=self._handle_tool_result,
-                api_callback=self._handle_api_interaction,
             )
 
             # Initialize tool manager
@@ -253,6 +245,7 @@ class AnthropicLoop(BaseLoop):
                     # Save screenshot if requested
                     if self.save_trajectory and self.experiment_manager:
                         try:
+                            await self.handle_screenshot(base64_image, action_type="state")
                             self._save_screenshot(base64_image, action_type="state")
                             logger.info("Screenshot saved to trajectory")
                         except Exception as e:
@@ -355,18 +348,13 @@ class AnthropicLoop(BaseLoop):
             # Put the response on the queue
             await self.queue.put(openai_compatible_response)
 
-            if self.callback_manager is None:
-                raise RuntimeError(
-                    "Callback manager not initialized. Call initialize_client() first."
-                )
-
             # Handle tool use blocks and collect ALL results before adding to messages
             tool_result_content = []
             has_tool_use = False
 
             for content_block in response.content:
                 # Notify callback of content
-                self.callback_manager.on_content(cast(BetaContentBlockParam, content_block))
+                # self.callback_manager.on_content(cast(BetaContentBlockParam, content_block))
 
                 # Handle tool use - carefully check and access attributes
                 if hasattr(content_block, "type") and content_block.type == "tool_use":
@@ -391,7 +379,7 @@ class AnthropicLoop(BaseLoop):
                     tool_result_content.append(tool_result)
 
                     # Notify callback of tool result
-                    self.callback_manager.on_tool_result(cast(ToolResult, result), tool_id)
+                    # self.callback_manager.on_tool_result(cast(ToolResult, result), tool_id)
 
             # If we had any tool_use blocks, we MUST add the tool_result message
             # even if there were errors or no actual results
@@ -422,7 +410,7 @@ class AnthropicLoop(BaseLoop):
                 return True
             else:
                 # No tool uses, we're done
-                self.callback_manager.on_content({"type": "text", "text": "<DONE>"})
+                # self.callback_manager.on_content({"type": "text", "text": "<DONE>"})
                 return False
 
         except Exception as e:

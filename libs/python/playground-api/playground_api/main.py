@@ -298,6 +298,8 @@ async def get_or_create_agent(agent_config: AgentConfig, computer_config: Comput
         verbosity=agent_config.verbosity or logging.INFO,
     )
     
+    await agent.__aenter__() # Initialize callback handlers
+
     # Add screenshot handler to the agent's loop if available
     if hasattr(agent, "_loop") and agent._loop is not None:
         print(f"DEBUG - Adding screenshot handler to agent loop for {agent_hash}")
