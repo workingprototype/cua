@@ -789,11 +789,11 @@ class GenericComputerInterface(BaseComputerInterface):
         
         # If REST failed with "Request failed", try WebSocket as fallback
         if not result.get("success", True) and (result.get("error") == "Request failed" or result.get("error") == "Server returned malformed response"):
-            self.logger.debug(f"REST API failed for command '{command}', trying WebSocket fallback")
+            self.logger.warning(f"REST API failed for command '{command}', trying WebSocket fallback")
             try:
                 return await self._send_command_ws(command, params)
             except Exception as e:
-                self.logger.debug(f"WebSocket fallback also failed: {e}")
+                self.logger.error(f"WebSocket fallback also failed: {e}")
                 # Return the original REST error
                 return result
         
