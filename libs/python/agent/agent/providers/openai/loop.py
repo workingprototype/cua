@@ -280,6 +280,7 @@ class OpenAILoop(BaseLoop):
                     display_width=str(screen_size["width"]),
                     display_height=str(screen_size["height"]),
                     previous_response_id=self.last_response_id,
+                    os_type=self.computer.os_type,
                 )
 
                 # Store response ID for next request
@@ -401,6 +402,7 @@ class OpenAILoop(BaseLoop):
                                 display_width=str(screen_size["width"]),
                                 display_height=str(screen_size["height"]),
                                 previous_response_id=self.last_response_id,  # Use instance variable
+                                os_type=self.computer.os_type,
                             )
 
                         # Store response ID for next request

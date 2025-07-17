@@ -3,7 +3,7 @@
 import logging
 import requests
 import os
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 from datetime import datetime
 
 if TYPE_CHECKING:
@@ -45,6 +45,7 @@ class OpenAIAPIHandler:
         display_width: str,
         display_height: str,
         previous_response_id: Optional[str] = None,
+        os_type: str,
     ) -> Dict[str, Any]:
         """Send an initial request to the OpenAI API with a screenshot.
 
@@ -57,6 +58,15 @@ class OpenAIAPIHandler:
         Returns:
             API response
         """
+        # Convert from our internal OS types to the ones OpenAI expects
+        if os_type == "macos":
+            os_type = "mac"
+        elif os_type == "linux":
+            os_type = "ubuntu"
+        
+        if os_type not in ["mac", "windows", "ubuntu", "browser"]:
+            raise ValueError(f"Invalid OS type: {os_type}")
+
         # Convert display dimensions to integers
         try:
             width = int(display_width)
@@ -128,7 +138,7 @@ class OpenAIAPIHandler:
                     "type": "computer_use_preview",
                     "display_width": width,
                     "display_height": height,
-                    "environment": "mac",  # We're on macOS
+                    "environment": os_type,  # We're on macOS
                 }
             ],
             "input": input_array,
@@ -180,6 +190,7 @@ class OpenAIAPIHandler:
         display_width: str,
         display_height: str,
         previous_response_id: str,
+        os_type: str,
     ) -> Dict[str, Any]:
         """Send a request to the OpenAI API with computer_call_output.
 
@@ -193,6 +204,15 @@ class OpenAIAPIHandler:
         Returns:
             API response
         """
+        # Convert from our internal OS types to the ones OpenAI expects
+        if os_type == "macos":
+            os_type = "mac"
+        elif os_type == "linux":
+            os_type = "ubuntu"
+        
+        if os_type not in ["mac", "windows", "ubuntu", "browser"]:
+            raise ValueError(f"Invalid OS type: {os_type}")
+
         # Convert display dimensions to integers
         try:
             width = int(display_width)
@@ -256,7 +276,7 @@ class OpenAIAPIHandler:
                     "type": "computer_use_preview",
                     "display_width": width,
                     "display_height": height,
-                    "environment": "mac",  # We're on macOS
+                    "environment": os_type,  # We're on macOS
                 }
             ],
             "input": [
