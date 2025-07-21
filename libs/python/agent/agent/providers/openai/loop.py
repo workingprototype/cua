@@ -40,6 +40,7 @@ class OpenAILoop(BaseLoop):
         retry_delay: float = 1.0,
         save_trajectory: bool = True,
         acknowledge_safety_check_callback: Optional[Callable[[str], Awaitable[bool]]] = None,
+        disable_response_storage: bool = False,
         **kwargs,
     ):
         """Initialize the OpenAI loop.
@@ -54,6 +55,7 @@ class OpenAILoop(BaseLoop):
             retry_delay: Delay between retries in seconds
             save_trajectory: Whether to save trajectory data
             acknowledge_safety_check_callback: Optional callback for safety check acknowledgment
+            disable_response_storage: Whether to disable response storage on the provider side. Turn this on if you are participating in a Zero Data Retention policy.
             **kwargs: Additional provider-specific arguments
         """
         # Always use computer-use-preview model
@@ -72,6 +74,7 @@ class OpenAILoop(BaseLoop):
             base_dir=base_dir,
             save_trajectory=save_trajectory,
             only_n_most_recent_images=only_n_most_recent_images,
+            disable_response_storage=disable_response_storage,
             **kwargs,
         )
 
@@ -90,7 +93,7 @@ class OpenAILoop(BaseLoop):
         self.loop_task = None  # Store the loop task for cancellation
 
         # Initialize handlers
-        self.api_handler = OpenAIAPIHandler(self)
+        self.api_handler = OpenAIAPIHandler(self, self.disable_response_storage)
         self.response_handler = OpenAIResponseHandler(self)
 
         # Initialize tool manager with callback
@@ -275,24 +278,47 @@ class OpenAILoop(BaseLoop):
 
                 # Call API
                 screen_size = await self.computer.interface.get_screen_size()
-                response = await self.api_handler.send_initial_request(
-                    messages=self.message_manager.get_messages(), # Apply image retention policy
-                    display_width=str(screen_size["width"]),
-                    display_height=str(screen_size["height"]),
-                    previous_response_id=self.last_response_id,
-                    os_type=self.computer.os_type,
-                )
-
-                # Store response ID for next request
-                # OpenAI API response structure: the ID is in the response dictionary
-                if isinstance(response, dict) and "id" in response:
-                    self.last_response_id = response["id"]  # Update instance variable
-                    logger.info(f"Received response with ID: {self.last_response_id}")
-                else:
-                    logger.warning(
-                        f"Could not find response ID in OpenAI response: {type(response)}"
+                
+                # Choose API call method based on disable_response_storage setting
+                if self.disable_response_storage:
+                    # Manual conversation state management - always send full message history
+                    response = await self.api_handler.send_initial_request(
+                        messages=self.message_manager.get_messages(), # Apply image retention policy
+                        display_width=str(screen_size["width"]),
+                        display_height=str(screen_size["height"]),
+                        previous_response_id=None,  # Don't use response chaining
+                        os_type=self.computer.os_type,
                     )
-                    # Don't reset last_response_id to None - keep the previous value if available
+                else:
+                    # Use OpenAI's response storage with previous_response_id
+                    response = await self.api_handler.send_initial_request(
+                        messages=self.message_manager.get_messages(), # Apply image retention policy
+                        display_width=str(screen_size["width"]),
+                        display_height=str(screen_size["height"]),
+                        previous_response_id=self.last_response_id,
+                        os_type=self.computer.os_type,
+                    )
+                    
+                from pprint import pprint
+
+                print("========== send_initial_request ===========")
+                pprint(response)
+                print("===========================================")
+
+                if self.disable_response_storage:
+                    # Manual conversation state management - add response to message history
+                    self.message_manager.add_openai_response(response)
+                else:
+                    # Store response ID for next request
+                    # OpenAI API response structure: the ID is in the response dictionary
+                    if isinstance(response, dict) and "id" in response:
+                        self.last_response_id = response["id"]  # Update instance variable
+                        logger.info(f"Received response with ID: {self.last_response_id}")
+                    else:
+                        logger.warning(
+                            f"Could not find response ID in OpenAI response: {type(response)}"
+                        )
+                        # Don't reset last_response_id to None - keep the previous value if available
 
 
                 # Log standardized response for ease of parsing
@@ -393,27 +419,54 @@ class OpenAILoop(BaseLoop):
                         )
                         self.message_manager.add_user_message([computer_call_output])
 
-                        # For follow-up requests with previous_response_id, we only need to send
-                        # the computer_call_output, not the full message history
-                        # The API handler will extract this from the message history
-                        if isinstance(self.last_response_id, str):
-                            response = await self.api_handler.send_computer_call_request(
+                        # Choose API call method based on disable_response_storage setting
+                        if self.disable_response_storage:
+                            # Manual conversation state management - send full message history
+                            response = await self.api_handler.send_initial_request(
                                 messages=self.message_manager.get_messages(), # Apply image retention policy
                                 display_width=str(screen_size["width"]),
                                 display_height=str(screen_size["height"]),
-                                previous_response_id=self.last_response_id,  # Use instance variable
+                                previous_response_id=None,  # Don't use response chaining
                                 os_type=self.computer.os_type,
                             )
-
-                        # Store response ID for next request
-                        if isinstance(response, dict) and "id" in response:
-                            self.last_response_id = response["id"]  # Update instance variable
-                            logger.info(f"Received response with ID: {self.last_response_id}")
+                            
+                            from pprint import pprint
+                            
+                            print("========== send_initial_request (manual mode) ===========")
+                            pprint(response)
+                            print("========================================================")
+                            
+                            # Add response to message history for manual state management
+                            self.message_manager.add_openai_response(response)
                         else:
-                            logger.warning(
-                                f"Could not find response ID in OpenAI response: {type(response)}"
-                            )
-                            # Keep using the previous response ID if we can't find a new one
+                            # Use OpenAI's response storage with previous_response_id
+                            # For follow-up requests with previous_response_id, we only need to send
+                            # the computer_call_output, not the full message history
+                            # The API handler will extract this from the message history
+                            if isinstance(self.last_response_id, str):
+                                response = await self.api_handler.send_computer_call_request(
+                                    messages=self.message_manager.get_messages(), # Apply image retention policy
+                                    display_width=str(screen_size["width"]),
+                                    display_height=str(screen_size["height"]),
+                                    previous_response_id=self.last_response_id,  # Use instance variable
+                                    os_type=self.computer.os_type,
+                                )
+
+                                from pprint import pprint
+                                
+                                print("========== send_computer_call_request ===========")
+                                pprint(response)
+                                print("============================================")
+
+                            # Store response ID for next request
+                            if isinstance(response, dict) and "id" in response:
+                                self.last_response_id = response["id"]  # Update instance variable
+                                logger.info(f"Received response with ID: {self.last_response_id}")
+                            else:
+                                logger.warning(
+                                    f"Could not find response ID in OpenAI response: {type(response)}"
+                                )
+                                # Keep using the previous response ID if we can't find a new one
 
                         # Process the response
                         # await self.response_handler.process_response(response, queue)
@@ -455,20 +508,3 @@ class OpenAILoop(BaseLoop):
                 }
             )
             await queue.put(None)  # Signal that we're done
-
-    def get_last_response_id(self) -> Optional[str]:
-        """Get the last response ID.
-
-        Returns:
-            The last response ID or None if no response has been received
-        """
-        return self.last_response_id
-
-    def set_last_response_id(self, response_id: str) -> None:
-        """Set the last response ID.
-
-        Args:
-            response_id: OpenAI response ID to set
-        """
-        self.last_response_id = response_id
-        logger.info(f"Manually set response ID to: {self.last_response_id}")

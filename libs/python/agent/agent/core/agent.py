@@ -29,6 +29,7 @@ class ComputerAgent:
         trajectory_dir: str = "trajectories",
         only_n_most_recent_images: Optional[int] = None,
         verbosity: int = logging.INFO,
+        disable_response_storage: bool = False,
     ):
         """Initialize the ComputerAgent.
 
@@ -45,6 +46,7 @@ class ComputerAgent:
             trajectory_dir: Directory to save the trajectory.
             only_n_most_recent_images: Maximum number of recent screenshots to include in API requests.
             verbosity: Logging level.
+            disable_response_storage: Whether to disable response storage on the provider side. Turn this on if you are participating in a Zero Data Retention policy.
         """
         # Basic agent configuration
         self.max_retries = max_retries
@@ -55,6 +57,7 @@ class ComputerAgent:
         self._retry_count = 0
         self._initialized = False
         self._in_context = False
+        self.disable_response_storage = disable_response_storage
 
         # Set logging level
         logger.setLevel(verbosity)
@@ -105,6 +108,7 @@ class ComputerAgent:
                 trajectory_dir=trajectory_dir,
                 only_n_most_recent_images=only_n_most_recent_images,
                 provider_base_url=self.provider_base_url,
+                disable_response_storage=disable_response_storage,
             )
         except ValueError as e:
             logger.error(f"Failed to create loop: {str(e)}")

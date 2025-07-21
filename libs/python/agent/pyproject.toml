@@ -91,6 +91,9 @@ all = [
     "mlx-vlm>=0.1.27; sys_platform == 'darwin'"
 ]
 
+[tool.uv]
+constraint-dependencies = ["fastrtc>0.43.0", "mlx-audio>0.2.3"]
+
 [tool.pdm]
 distribution = true
 

@@ -69,6 +69,44 @@ class StandardMessageManager:
             return self._apply_image_retention(self.messages)
         return self.messages
 
+    def add_openai_response(self, response: Dict[str, Any]) -> None:
+        """Add OpenAI response output to message history.
+        
+        This method extracts the output items from an OpenAI response and adds them
+        as assistant messages to maintain conversation state manually.
+        
+        Args:
+            response: OpenAI API response containing output items
+        """
+        if not isinstance(response, dict) or "output" not in response:
+            logger.warning("Invalid OpenAI response format for adding to message history")
+            return
+            
+        output_items = response.get("output", [])
+        if not isinstance(output_items, list):
+            logger.warning("OpenAI response output is not a list")
+            return
+            
+        # Convert output items to assistant message content
+        assistant_content = []
+        for item in output_items:
+            if not isinstance(item, dict):
+                continue
+                
+            item_type = item.get("type")
+            if item_type == "output_text":
+                assistant_content.append({
+                    "type": "text",
+                    "text": item.get("text", "")
+                })
+            elif item_type == "computer_call":
+                # Keep computer calls as-is for tool execution tracking
+                assistant_content.append(item)
+        
+        # Add as assistant message if we have content
+        if assistant_content:
+            self.add_assistant_message(assistant_content)
+
     def _apply_image_retention(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Apply image retention policy to messages.
 

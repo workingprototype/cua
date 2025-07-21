@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 class OpenAIAPIHandler:
     """Handler for OpenAI API interactions."""
 
-    def __init__(self, loop: "OpenAILoop"):
+    def __init__(self, loop: "OpenAILoop", disable_response_storage: bool = False):
         """Initialize the API handler.
 
         Args:
             loop: OpenAI loop instance
+            disable_response_storage: Whether to disable response storage
         """
         self.loop = loop
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -45,7 +46,7 @@ class OpenAIAPIHandler:
         display_width: str,
         display_height: str,
         previous_response_id: Optional[str] = None,
-        os_type: str,
+        os_type: str = "mac",
     ) -> Dict[str, Any]:
         """Send an initial request to the OpenAI API with a screenshot.
 
@@ -61,10 +62,7 @@ class OpenAIAPIHandler:
         # Convert from our internal OS types to the ones OpenAI expects
         if os_type == "macos":
             os_type = "mac"
-        elif os_type == "linux":
-            os_type = "ubuntu"
-        
-        if os_type not in ["mac", "windows", "ubuntu", "browser"]:
+        if os_type not in ["mac", "windows", "linux", "browser"]:
             raise ValueError(f"Invalid OS type: {os_type}")
 
         # Convert display dimensions to integers
@@ -143,7 +141,7 @@ class OpenAIAPIHandler:
             ],
             "input": input_array,
             "reasoning": {
-                "generate_summary": "concise",
+                "summary": "concise",
             },
             "truncation": "auto",
         }
@@ -207,10 +205,8 @@ class OpenAIAPIHandler:
         # Convert from our internal OS types to the ones OpenAI expects
         if os_type == "macos":
             os_type = "mac"
-        elif os_type == "linux":
-            os_type = "ubuntu"
         
-        if os_type not in ["mac", "windows", "ubuntu", "browser"]:
+        if os_type not in ["mac", "windows", "linux", "browser"]:
             raise ValueError(f"Invalid OS type: {os_type}")
 
         # Convert display dimensions to integers
@@ -289,6 +285,9 @@ class OpenAIAPIHandler:
                     },
                 }
             ],
+            "reasoning": {
+                "summary": "concise",
+            },
             "truncation": "auto",
         }
 

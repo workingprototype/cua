@@ -29,6 +29,7 @@ class BaseLoop(ABC):
         save_trajectory: bool = True,
         only_n_most_recent_images: Optional[int] = 2,
         callback_handlers: Optional[List[CallbackHandler]] = None,
+        disable_response_storage: bool = False,
         **kwargs,
     ):
         """Initialize base agent loop.
@@ -43,6 +44,7 @@ class BaseLoop(ABC):
             base_dir: Base directory for saving experiment data
             save_trajectory: Whether to save trajectory data
             only_n_most_recent_images: Maximum number of recent screenshots to include in API requests
+            disable_response_storage: Whether to disable response storage on the provider side. Turn this on if you are participating in a Zero Data Retention policy.
             **kwargs: Additional provider-specific arguments
         """
         self.computer = computer
@@ -54,6 +56,7 @@ class BaseLoop(ABC):
         self.base_dir = base_dir
         self.save_trajectory = save_trajectory
         self.only_n_most_recent_images = only_n_most_recent_images
+        self.disable_response_storage = disable_response_storage
         self._kwargs = kwargs
 
         # Initialize message manager
