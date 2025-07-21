@@ -3,6 +3,10 @@ title: Home
 icon: House
 ---
 
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { cn } from 'fumadocs-ui/utils/cn';
+import { ChevronRight } from 'lucide-react';
+
 ## What is C/ua?
 
 C/ua is a collection of cross-platform libraries and tools for building Computer-Use AI agents.
@@ -25,6 +29,27 @@ C/ua is a collection of cross-platform libraries and tools for building Computer
 </Card>
 
 </Cards>
+
+---
+
+<Callout type="info">
+  **Need detailed API documentation?**
+  <span className="w-full">
+    Explore the complete API reference with detailed class documentation, and
+    method signatures.
+  </span>
+  <a
+    href="/api"
+    className={cn(
+      buttonVariants({
+        color: 'secondary',
+      }),
+      'no-underline h-10'
+    )}>
+    View API Reference
+    <ChevronRight size={18} />
+  </a>
+</Callout>
 
 ## Resources
 
