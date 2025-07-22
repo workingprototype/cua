@@ -1,4 +1,4 @@
-# C/ua Computer TypeScript Library
+# Cua Computer TypeScript Library
 
 The TypeScript library for C/cua Computer - a powerful computer control and automation library.
 
@@ -87,4 +87,4 @@ pnpm typecheck
 
 ## License
 
-[MIT](./LICENSE) License 2025 [C/UA](https://github.com/trycua)
+[MIT](./LICENSE) License 2025 [CUA](https://github.com/trycua)

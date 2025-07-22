@@ -286,10 +286,10 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  let title = `${page.data.title} | C/ua Docs`;
-  if (page.url.includes('api')) title = `${page.data.title} | C/ua API Docs`;
+  let title = `${page.data.title} | Cua Docs`;
+  if (page.url.includes('api')) title = `${page.data.title} | Cua API Docs`;
   if (page.url.includes('guide'))
-    title = ` Guide: ${page.data.title} | C/ua Docs`;
+    title = ` Guide: ${page.data.title} | Cua Docs`;
 
   return {
     title,
@@ -298,7 +298,7 @@ export async function generateMetadata(props: {
       title,
       description: page.data.description,
       type: 'article',
-      siteName: 'C/ua Docs',
+      siteName: 'Cua Docs',
       url: 'https://trycua.com/docs',
     },
   };

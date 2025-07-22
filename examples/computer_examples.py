@@ -43,7 +43,7 @@ async def main():
             ephemeral=False,
         )
 
-        # Create a remote Linux computer with C/ua
+        # Create a remote Linux computer with Cua
         # computer = Computer(
         #     os_type="linux",
         #     api_key=os.getenv("CUA_API_KEY"),
