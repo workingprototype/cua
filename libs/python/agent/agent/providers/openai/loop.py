@@ -422,7 +422,7 @@ class OpenAILoop(BaseLoop):
                         # Choose API call method based on disable_response_storage setting
                         if self.disable_response_storage:
                             # Manual conversation state management - send full message history
-                            response = await self.api_handler.send_initial_request(
+                            response = await self.api_handler.send_computer_call_request(
                                 messages=self.message_manager.get_messages(), # Apply image retention policy
                                 display_width=str(screen_size["width"]),
                                 display_height=str(screen_size["height"]),

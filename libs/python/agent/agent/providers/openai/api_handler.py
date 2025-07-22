@@ -187,8 +187,8 @@ class OpenAIAPIHandler:
         messages: List[Dict[str, Any]],
         display_width: str,
         display_height: str,
-        previous_response_id: str,
-        os_type: str,
+        previous_response_id: Optional[str] = None,
+        os_type: Optional[str] = "mac",
     ) -> Dict[str, Any]:
         """Send a request to the OpenAI API with computer_call_output.
 
@@ -257,6 +257,8 @@ class OpenAIAPIHandler:
                     source = item.get("source", {})
                     if source.get("type") == "base64" and "data" in source:
                         screenshot_base64 = source["data"]
+
+
 
         if not call_id or not screenshot_base64:
             logger.error("Missing call_id or screenshot for computer_call_output")

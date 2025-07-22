@@ -369,6 +369,7 @@ def create_agent(
     computer_provider: str = "lume",
     computer_name: Optional[str] = None,
     computer_api_key: Optional[str] = None,
+    disable_response_storage: bool = False,
 ) -> ComputerAgent:
     """Create or update the global agent with the specified parameters."""
     global global_agent
@@ -419,6 +420,7 @@ def create_agent(
         save_trajectory=save_trajectory,
         only_n_most_recent_images=only_n_most_recent_images,
         verbosity=verbosity,
+        disable_response_storage=disable_response_storage,
     )
 
     return global_agent
@@ -755,7 +757,7 @@ if __name__ == "__main__":
                     container_name = gr.Textbox(
                         label="Container Name",
                         placeholder="Enter container name (optional)",
-                        value="",
+                        value=os.environ.get("CUA_CONTAINER_NAME", ""),
                         info="Optional name for the container",
                     )
                     
@@ -1023,6 +1025,13 @@ if __name__ == "__main__":
                         interactive=True,
                     )
 
+                    disable_response_storage = gr.Checkbox(
+                        label="Disable Response Storage",
+                        value=False,
+                        info="Disable response storage on provider side for Zero Data Retention policy. Enables manual conversation state management.",
+                        interactive=True,
+                    )
+
                     recent_images = gr.Slider(
                         label="Recent Images",
                         minimum=1,
@@ -1093,6 +1102,7 @@ if __name__ == "__main__":
                     computer_provider="lume",
                     container_name="",
                     cua_cloud_api_key="",
+                    disable_response_storage=False,
                 ):
                     if not history:
                         yield history
@@ -1227,6 +1237,7 @@ if __name__ == "__main__":
                             computer_name=container_name,
                             computer_api_key=cua_cloud_api_key,
                             verbosity=logging.DEBUG,  # Added verbosity here
+                            disable_response_storage=disable_response_storage,
                         )
 
                         if global_agent is None:
@@ -1356,6 +1367,7 @@ if __name__ == "__main__":
                         computer_provider,
                         container_name,
                         cua_cloud_api_key,
+                        disable_response_storage,
                     ],
                     outputs=[chatbot_history],
                     queue=True,
