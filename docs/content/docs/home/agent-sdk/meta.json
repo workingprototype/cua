@@ -8,6 +8,8 @@
 		"callbacks",
         "sandboxed-tools",
     	"local-models",
+        "prompt-caching",
+		"usage-tracking",
         "migration-guide"
 	]
 }
