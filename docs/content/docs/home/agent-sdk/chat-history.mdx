@@ -26,10 +26,12 @@ The messages array contains different types of messages that represent the conve
 
 ```python
 messages = [
+    # user input
     {
         "role": "user",
         "content": "go to trycua on gh"
     },
+    # first agent turn adds the model output to the history
     {
         "summary": [
             {
@@ -48,6 +50,7 @@ messages = [
         "status": "completed",
         "type": "computer_call"
     },
+    # second agent turn adds the computer output to the history
     {
         "type": "computer_call_output",
         "call_id": "call_QI6OsYkXxl6Ww1KvyJc4LKKq",
@@ -55,6 +58,17 @@ messages = [
             "type": "input_image",
             "image_url": "[omitted]"
         }
+    },
+    # final agent turn adds the agent output text to the history
+    {
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "text": "Success! The Trycua GitHub page has been opened.",
+            "type": "output_text"
+          }
+        ]
     }
 ]
 ```

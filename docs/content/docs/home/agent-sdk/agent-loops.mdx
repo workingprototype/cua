@@ -25,7 +25,8 @@ agent = ComputerAgent(
 prompt = "open github, navigate to trycua/cua"
 
 async for result in agent.run(prompt):
-    print("Agent:", result["output"][-1]["content"][0]["text"])
+    if result["output"][-1]["type"] == "message":
+        print("Agent:", result["output"][-1]["content"][0]["text"])
 ```
 
 We currently support 4 computer-using agent loops:
