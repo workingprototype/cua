@@ -1,0 +1,92 @@
+---
+title: Quickstart (CLI)
+description: Get started with the c/ua Agent CLI in 5 steps
+icon: Rocket
+---
+
+Get up and running with the c/ua Agent CLI in 5 simple steps.
+
+## 1. Introduction
+
+c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent CLI provides a clean terminal interface to control your remote computer using natural language commands.
+
+## 2. Create Your First c/ua Container
+
+1. Go to [trycua.com/signin](https://www.trycua.com/signin)
+2. Navigate to **Dashboard > Containers > Create Instance**
+3. Create a **Medium, Ubuntu 22** container
+4. Note your container name and API key
+
+## 3. Install c/ua
+
+```bash
+pip install "cua-agent[all]" cua-computer
+```
+
+## 4. Run the Agent CLI
+
+Choose your preferred AI model and run the CLI:
+
+### OpenAI Computer Use Preview
+```bash
+python -m agent.cli openai/computer-use-preview
+```
+
+### Anthropic Claude
+```bash
+python -m agent.cli anthropic/claude-3-5-sonnet-20241022
+python -m agent.cli anthropic/claude-opus-4-20250514
+python -m agent.cli anthropic/claude-sonnet-4-20250514
+```
+
+### Omniparser + LLMs
+```bash
+python -m agent.cli omniparser+anthropic/claude-3-5-sonnet-20241022
+python -m agent.cli omniparser+openai/gpt-4o
+python -m agent.cli omniparser+vertex_ai/gemini-pro
+```
+
+### Local Models
+```bash
+# Hugging Face models (local)
+python -m agent.cli huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B
+
+# MLX models (Apple Silicon)
+python -m agent.cli mlx/mlx-community/UI-TARS-1.5-7B-6bit
+
+# Ollama models
+python -m agent.cli omniparser+ollama_chat/llama3.2:latest
+```
+
+## 5. Interactive Setup
+
+If you haven't set up environment variables, the CLI will guide you through the setup:
+
+1. **Container Name**: Enter your c/ua container name (or get one at [trycua.com](https://www.trycua.com/))
+2. **CUA API Key**: Enter your c/ua API key
+3. **Provider API Key**: Enter your AI provider API key (OpenAI, Anthropic, etc.)
+
+## 6. Start Chatting
+
+Once connected, you'll see:
+```
+💻 Connected to your-container-name (model, agent_loop)
+Type 'exit' to quit.
+
+> 
+```
+
+You can ask your agent to perform actions like:
+- "Take a screenshot and tell me what's on the screen"
+- "Open Firefox and go to github.com"
+- "Type 'Hello world' into the terminal"
+- "Close the current window"
+- "Click on the search button"
+
+---
+
+For advanced Python usage and GUI interface, see the [Quickstart (GUI)](/docs/quickstart-ui) and [Quickstart for Developers](/docs/quickstart-devs).
+
+For a complete list of supported models, see [Supported Agents](/docs/agent-sdk/supported-agents).
+
+For running models locally, see [Running Models Locally](/docs/agent-sdk/local-models).
