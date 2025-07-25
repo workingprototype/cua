@@ -5,13 +5,9 @@ github:
   - https://github.com/trycua/cua/tree/main/libs/python/som
 ---
 
-## ⚠️ 🚧 Under Construction 🚧 ⚠️
-
-The SOM (Set-of-Mark) API reference documentation is currently under development.
-
 ## Overview
 
-The SOM library provides visual element detection and interaction capabilities.
+The SOM library provides visual element detection and interaction capabilities. It is based on the [Set-of-Mark](https://arxiv.org/abs/2310.11441) research paper and the [OmniParser](https://github.com/microsoft/OmniParser) model.
 
 ## API Documentation
 
@@ -49,4 +45,12 @@ class ParseResult:
         """Filter elements by type ('icon' or 'text')"""
 ```
 
-More Coming soon.
+### UIElement
+```python
+class UIElement(BaseModel):
+    id: Optional[int] = Field(None)     # Element ID (1-indexed)
+    type: Literal["icon", "text"]       # Element type
+    bbox: BoundingBox                   # Bounding box coordinates { x1, y1, x2, y2 }
+    interactivity: bool = Field(default=False)   # Whether the element is interactive
+    confidence: float = Field(default=1.0)       # Detection confidence
+```
