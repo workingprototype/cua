@@ -93,7 +93,7 @@ async def main():
             # Supported models:
             
             # == OpenAI CUA (computer-use-preview) ==
-            # model="openai/computer-use-preview",
+            model="openai/computer-use-preview",
 
             # == Anthropic CUA (Claude > 3.5) ==
             # model="anthropic/claude-opus-4-20250514", 
@@ -109,7 +109,7 @@ async def main():
 
             # == Omniparser + Any LLM ==
             # model="omniparser+..."
-            model="omniparser+anthropic/claude-opus-4-20250514",
+            # model="omniparser+anthropic/claude-opus-4-20250514",
 
             tools=[computer],
             only_n_most_recent_images=3,

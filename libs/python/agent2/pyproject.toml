@@ -3,9 +3,9 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [project]
-name = "cua-agent2"
-version = "0.1.0"
-description = "CUA Agent2 - Decorator-based Computer Use Agent with liteLLM integration"
+name = "cua-agent"
+version = "0.4.0"
+description = "CUA (Computer Use) Agent for AI-driven computer interaction"
 readme = "README.md"
 authors = [
     { name = "TryCua", email = "gh@trycua.com" }
@@ -19,27 +19,41 @@ dependencies = [
     "pydantic>=2.6.4",
     "rich>=13.7.1",
     "python-dotenv>=1.0.1",
-    "cua-computer>=0.3.0,<0.4.0",
+    "cua-computer>=0.3.0,<0.5.0",
     "cua-core>=0.1.0,<0.2.0",
     "certifi>=2024.2.2",
-    "litellm>=1.0.0"
+    "litellm>=1.74.8"
 ]
 requires-python = ">=3.11"
 
 [project.optional-dependencies]
-anthropic = [
-    "anthropic>=0.49.0",
-    "boto3>=1.35.81",
+openai = []
+anthropic = []
+omni = [
+    "ultralytics>=8.0.0",
+    "cua-som>=0.1.0,<0.2.0",
 ]
-openai = [
-    "openai>=1.14.0",
-    "httpx>=0.27.0",
+uitars = []
+uitars-mlx = [
+    "mlx-vlm>=0.1.27; sys_platform == 'darwin'"
+]
+uitars-hf = [
+    "transformers>=4.54.0"
+]
+ui = [
+    "gradio>=5.23.3",
+    "python-dotenv>=1.0.1",
 ]
 all = [
-    "anthropic>=0.49.0",
-    "boto3>=1.35.81",
-    "openai>=1.14.0",
-    "httpx>=0.27.0",
+    # omni requirements
+    "ultralytics>=8.0.0",
+    "cua-som>=0.1.0,<0.2.0",
+    # uitars requirements
+    "mlx-vlm>=0.1.27; sys_platform == 'darwin'",
+    "transformers>=4.54.0",
+    # ui requirements
+    "gradio>=5.23.3",
+    "python-dotenv>=1.0.1",
 ]
 
 [tool.uv]
