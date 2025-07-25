@@ -10,7 +10,7 @@ Built-in logging callback and custom logger creation for agent monitoring.
 ## Callbacks Example
 
 ```python
-from agent2.callbacks import LoggingCallback
+from agent.callbacks import LoggingCallback
 import logging
 
 agent = ComputerAgent(
@@ -40,7 +40,7 @@ agent = ComputerAgent(
 Create custom loggers by extending AsyncCallbackHandler:
 
 ```python
-from agent2.callbacks.base import AsyncCallbackHandler
+from agent.callbacks.base import AsyncCallbackHandler
 import logging
 
 class CustomLogger(AsyncCallbackHandler):
