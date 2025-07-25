@@ -20,7 +20,7 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Com
 ## 3. Install c/ua
 
 ```bash
-pip install "cua-agent2[all]" cua-computer
+pip install "cua-agent[all]" cua-computer
 ```
 
 ## 4. Using Computer
@@ -45,7 +45,7 @@ async with Computer(
 ## 5. Using Agent
 
 ```python
-from agent2 import ComputerAgent
+from agent import ComputerAgent
 
 agent = ComputerAgent(
     model="anthropic/claude-3-5-sonnet-20241022",

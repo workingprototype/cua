@@ -7,6 +7,7 @@
 		"chat-history",
 		"callbacks",
         "sandboxed-tools",
+    	"local-models",
         "migration-guide"
 	]
 }
