@@ -1,0 +1,32 @@
+---
+title: Supported Agents
+---
+
+This page lists all supported agent loops and their compatible models/configurations in c/ua.
+
+All agent loops are compatible with any LLM provider supported by LiteLLM.
+
+## Anthropic CUAs
+
+- Claude 4: `claude-opus-4-20250514`, `claude-sonnet-4-20250514`
+- Claude 3.7: `claude-3-7-sonnet-20250219`
+- Claude 3.5: `claude-3-5-sonnet-20240620`
+
+## OpenAI CUA Preview
+
+- Computer-use-preview: `computer-use-preview`
+
+## UI-TARS 1.5
+
+- `huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B`
+- `huggingface/ByteDance-Seed/UI-TARS-1.5-7B` (requires TGI endpoint)
+
+## Omniparser + LLMs
+
+- `omniparser+vertex_ai/gemini-pro`
+- `omniparser+openai/gpt-4o`
+- Any LiteLLM-compatible model combined with Omniparser
+
+---
+
+For details on agent loop behavior and usage, see [Agent Loops](./agent-loops).

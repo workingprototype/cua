@@ -1,100 +1,115 @@
 ---
-title: Computer
-description: Reference for the current version of the Computer library.
-github:
-  - https://github.com/trycua/cua/tree/main/libs/python/computer
-  - https://github.com/trycua/cua/tree/main/libs/typescript/computer
+title: Commands
+description: Computer commands and interface methods
 ---
 
-## ⚠️ 🚧 Under Construction 🚧 ⚠️
+This page describes the set of supported **commands** you can use to control a C/ua Computer directly via the Python SDK.
 
-The Computer API reference documentation is currently under development.
+These commands map to the same actions available in the [Computer Server API Commands Reference](../libraries/computer-server/Commands), and provide low-level, async access to system operations from your agent or automation code.
 
-## Overview
+## Shell Actions
 
-The Computer library provides programmatic interfaces for computer automation and control.
-
-## Reference
+Execute shell commands and get detailed results:
 
 ```python
-# Shell Actions
-result = await computer.interface.run_command(cmd)       # Run shell command
+# Run shell command
+result = await computer.interface.run_command(cmd)
 # result.stdout, result.stderr, result.returncode
+```
 
-# Mouse Actions
+## Mouse Actions
+
+Precise mouse control and interaction:
+
+```python
+# Basic clicks
 await computer.interface.left_click(x, y)       # Left click at coordinates
 await computer.interface.right_click(x, y)      # Right click at coordinates
 await computer.interface.double_click(x, y)     # Double click at coordinates
+
+# Cursor movement and dragging
 await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
 await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
 await computer.interface.get_cursor_position()  # Get current cursor position
+
+# Advanced mouse control
 await computer.interface.mouse_down(x, y, button="left")  # Press and hold a mouse button
 await computer.interface.mouse_up(x, y, button="left")    # Release a mouse button
+```
 
-# Keyboard Actions
+## Keyboard Actions
+
+Text input and key combinations:
+
+```python
+# Text input
 await computer.interface.type_text("Hello")     # Type text
 await computer.interface.press_key("enter")     # Press a single key
+
+# Key combinations and advanced control
 await computer.interface.hotkey("command", "c") # Press key combination
 await computer.interface.key_down("command")    # Press and hold a key
 await computer.interface.key_up("command")      # Release a key
+```
 
-# Scrolling Actions
+## Scrolling Actions
+
+Mouse wheel and scrolling control:
+
+```python
+# Scrolling
 await computer.interface.scroll(x, y)           # Scroll the mouse wheel
 await computer.interface.scroll_down(clicks)    # Scroll down
 await computer.interface.scroll_up(clicks)      # Scroll up
+```
 
-# Screen Actions
+## Screen Actions
+
+Screen capture and display information:
+
+```python
+# Screen operations
 await computer.interface.screenshot()           # Take a screenshot
 await computer.interface.get_screen_size()      # Get screen dimensions
+```
 
-# Clipboard Actions
+## Clipboard Actions
+
+System clipboard management:
+
+```python
+# Clipboard operations
 await computer.interface.set_clipboard(text)    # Set clipboard content
 await computer.interface.copy_to_clipboard()    # Get clipboard content
+```
 
-# File System Operations
+## File System Operations
+
+Direct file and directory manipulation:
+
+```python
+# File existence checks
 await computer.interface.file_exists(path)      # Check if file exists
 await computer.interface.directory_exists(path) # Check if directory exists
+
+# File content operations
 await computer.interface.read_text(path, encoding="utf-8")        # Read file content
 await computer.interface.write_text(path, content, encoding="utf-8") # Write file content
 await computer.interface.read_bytes(path)       # Read file content as bytes
 await computer.interface.write_bytes(path, content) # Write file content as bytes
+
+# File and directory management
 await computer.interface.delete_file(path)      # Delete file
 await computer.interface.create_dir(path)       # Create directory
 await computer.interface.delete_dir(path)       # Delete directory
 await computer.interface.list_dir(path)         # List directory contents
+```
 
+## Accessibility
+
+Access system accessibility information:
+
+```python
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
-
-# Delay Configuration
-# Set default delay between all actions (in seconds)
-computer.interface.delay = 0.5  # 500ms delay between actions
-
-# Or specify delay for individual actions
-await computer.interface.left_click(x, y, delay=1.0)     # 1 second delay after click
-await computer.interface.type_text("Hello", delay=0.2)   # 200ms delay after typing
-await computer.interface.press_key("enter", delay=0.5)   # 500ms delay after key press
-
-# Python Virtual Environment Operations
-await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
-await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
-await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
-
-# Example: Use sandboxed functions to execute code in a Cua Container
-from computer.helpers import sandboxed
-
-@sandboxed("demo_venv")
-def greet_and_print(name):
-    """Get the HTML of the current Safari tab"""
-    import PyXA
-    safari = PyXA.Application("Safari")
-    html = safari.current_document.source()
-    print(f"Hello from inside the container, {name}!")
-    return {"greeted": name, "safari_html": html}
-
-# When a @sandboxed function is called, it will execute in the container
-result = await greet_and_print("Cua")
-# Result: {"greeted": "Cua", "safari_html": "<html>...</html>"}
-# stdout and stderr are also captured and printed / raised
-print("Result from sandboxed function:", result)
 ```

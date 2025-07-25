@@ -7,85 +7,59 @@ import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import { cn } from 'fumadocs-ui/utils/cn';
 import { ChevronRight } from 'lucide-react';
 
-## What is Cua?
+# Welcome!
 
-Cua is a collection of cross-platform libraries and tools for building Computer-Use AI agents.
+c/ua is a framework for automating Windows, Mac, and Linux apps powered by computer-using agents (CUAs).
 
-## Quick Start
+c/ua makes every stage of computer-using agent development simple:
 
-<Cards>
-<Card 
-  href="./home/guides/computer-use-agent-quickstart" 
-  title="Computer-Use Agent UI">
-  Read our guide on getting started with a Computer-Use Agent.
-</Card>
+- **Development**: Use any LLM provider with liteLLM. The agent SDK makes multiple agent loop providers, trajectory tracing, caching, and budget management easy
+- **Containerization**: c/ua offers Docker containers pre-installed with everything needed for AI-powered RPA
+- **Deployment**: c/ua cloud gives you a production-ready cloud environment for your assistants
 
-<Card href="./home/guides/cua-usage-guide" title="Cua Usage Guide">
-  Get started using Cua services on your machine.
-</Card>
-
-<Card href="./home/guides/dev-container-setup" title="Dev Container Setup">
-  Set up a development environment with the Dev Container.
-</Card>
-
-</Cards>
-
----
-
-<Callout type="info">
-  **Need detailed API documentation?**
-  <span className="w-full">
-    Explore the complete API reference with detailed class documentation, and
-    method signatures.
-  </span>
-  <a
-    href="/api"
-    className={cn(
-      buttonVariants({
-        color: 'secondary',
-      }),
-      'no-underline h-10'
-    )}>
-    View API Reference
-    <ChevronRight size={18} />
-  </a>
-</Callout>
-
-## Resources
-
-- [How to use the MCP Server with Claude Desktop or other MCP clients](./libraries/mcp-server) - One of the easiest ways to get started with Cua
-- [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libraries/agent)
-- [How to use Lume CLI for managing desktops](./libraries/lume)
-- [Training Computer-Use Models: Collecting Human Trajectories with Cua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
-- [Build Your Own Operator on macOS (Part 1)](https://www.trycua.com/blog/build-your-own-operator-on-macos-1)
-
-## Modules
-
-| Module                                                 | Description                                                          | Installation                                                                                        |
-| ------------------------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [**Lume**](./libraries/lume.mdx)                       | VM management for macOS/Linux using Apple's Virtualization.Framework | `curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh \| bash` |
-| [**Lumier**](./libraries/lumier.mdx)                   | Docker interface for macOS and Linux VMs                             | `docker pull trycua/lumier:latest`                                                                  |
-| [**Computer**](./libraries/computer.mdx)               | Python Interface for controlling virtual machines                    | `pip install "cua-computer[all]"`<br/><br/>`npm install @trycua/computer`                           |
-| [**Agent**](./libraries/agent.mdx)                     | AI agent framework for automating tasks                              | `pip install "cua-agent[all]"`                                                                      |
-| [**MCP Server**](./libraries/mcp-server.mdx)           | MCP server for using CUA with Claude Desktop                         | `pip install cua-mcp-server`                                                                        |
-| [**SOM**](./libs/python/som/README.md)                 | Self-of-Mark library for Agent                                       | `pip install cua-som`                                                                               |
-| [**Computer Server**](./libraries/computer-server.mdx) | Server component for Computer                                        | `pip install cua-computer-server`                                                                   |
-| [**Core**](./libraries/core.mdx)                       | Python Core utilities                                                | `pip install cua-core`<br/><br/>`npm install @trycua/core`                                          |
-
-## Community
-
-Join our [Discord community](https://discord.com/invite/mVnXXpdE85) to discuss ideas, get assistance, or share your demos!
-
-## License
-
-Cua is open-sourced under the MIT License - see the [LICENSE](https://github.com/trycua/cua/blob/main/LICENSE.md) file for details.
-
-Microsoft's OmniParser, which is used in this project, is licensed under the Creative Commons Attribution 4.0 International License (CC-BY-4.0) - see the [OmniParser LICENSE](https://github.com/microsoft/OmniParser/blob/master/LICENSE) file for details.
-
-## Contributing
-
-We welcome contributions to CUA! Please refer to our [Contributing Guidelines](https://github.com/trycua/cua/blob/main/CONTRIBUTING.md) for details.
-
-## Trademarks
-
-Apple, macOS, and Apple Silicon are trademarks of Apple Inc. Ubuntu and Canonical are registered trademarks of Canonical Ltd. Microsoft is a registered trademark of Microsoft Corporation. This project is not affiliated with, endorsed by, or sponsored by Apple Inc., Canonical Ltd., or Microsoft Corporation.
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+  <div className="border rounded-lg p-6">
+    <h3 className="text-lg font-semibold mb-2">🖥️ Quickstart (UI)</h3>
+    <p className="text-muted-foreground mb-4">Try the c/ua Agent UI in your browser—no coding required.</p>
+    <a
+      href="/home/quickstart-ui"
+      className={cn(
+        buttonVariants({ variant: 'default' }),
+        'w-full'
+      )}
+    >
+      Get Started (UI)
+      <ChevronRight className="ml-2 h-4 w-4" />
+    </a>
+  </div>
+  <div className="border rounded-lg p-6">
+    <h3 className="text-lg font-semibold mb-2">💻 Quickstart (Developers)</h3>
+    <p className="text-muted-foreground mb-4">Build with Python—full SDK and agent code examples.</p>
+    <a
+      href="/home/quickstart-devs"
+      className={cn(
+        buttonVariants({ variant: 'secondary' }),
+        'w-full'
+      )}
+    >
+      Get Started (Python)
+      <ChevronRight className="ml-2 h-4 w-4" />
+    </a>
+  </div>
+</div>
+<div className="grid grid-cols-1 gap-6 mt-6">
+  <div className="border rounded-lg p-6">
+    <h3 className="text-lg font-semibold mb-2">📚 API Reference</h3>
+    <p className="text-muted-foreground mb-4">Explore the agent SDK and APIs</p>
+    <a
+      href="/home/libraries/agent"
+      className={cn(
+        buttonVariants({ variant: 'outline' }),
+        'w-full'
+      )}
+    >
+      View API Reference
+      <ChevronRight className="ml-2 h-4 w-4" />
+    </a>
+  </div>
+</div>

@@ -1,266 +1,123 @@
 ---
 title: Agent
-description: The Computer-Use framework for running multi-app agentic workflows targeting macOS, Linux, and Windows sandboxes.
-pypi: cua-computer
-macos: true
-windows: true
-linux: true
+description: Reference for the current version of the Agent library.
 github:
   - https://github.com/trycua/cua/tree/main/libs/python/agent
 ---
 
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { cn } from 'fumadocs-ui/utils/cn';
-import { ChevronRight } from 'lucide-react';
+The Agent library provides the ComputerAgent class and tools for building AI agents that automate workflows on C/ua Computers.
 
-**Agent** is a powerful Computer-Use framework that enables AI agents to interact with desktop applications and perform complex multi-step workflows across macOS, Linux, and Windows environments. Built on the Cua platform, it supports both local models (via Ollama) and cloud providers (OpenAI, Anthropic, Groq, DeepSeek, Qwen).
-
-## Installation
-
-Install CUA Agent with pip. Choose the installation that matches your needs:
-
-### All Providers (Recommended)
-
-```bash
-# Install everything you need
-pip install "cua-agent[all]"
-```
-
-### Selective Installation
-
-```bash
-# OpenAI models (GPT-4, Computer Use Preview)
-pip install "cua-agent[openai]"
-
-# Anthropic models (Claude 3.5 Sonnet)
-pip install "cua-agent[anthropic]"
-
-# Local UI-TARS models
-pip install "cua-agent[uitars]"
-
-# OmniParser + Ollama for local models
-pip install "cua-agent[omni]"
-
-# Gradio web interface
-pip install "cua-agent[ui]"
-```
-
-### Advanced: Local UI-TARS with MLX
-
-```bash
-pip install "cua-agent[uitars-mlx]"
-pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
-```
-
-### Requirements
-
-- Python 3.8+
-- macOS, Linux, or Windows
-- For cloud providers: API keys (OpenAI, Anthropic, etc.)
-- For local models: Sufficient RAM and compute resources
-
-## Getting Started
+## Reference
 
 ### Basic Usage
 
-Here's a simple example to get you started with CUA Agent. It instructs the agent to open a text editor and write "Hello World."
-
 ```python
-from cua_agent import ComputerAgent, AgentLoop, LLM, LLMProvider
-from cua_computer import Computer
+from agent2 import ComputerAgent
+from computer import Computer
 
-# Set your API key
-import os
-os.environ["OPENAI_API_KEY"] = "your-api-key-here"
-
-async with Computer() as computer:
-    # Create agent with OpenAI
-    agent = ComputerAgent(
-        computer=computer,
-        loop=AgentLoop.OPENAI,
-        model=LLM(provider=LLMProvider.OPENAI)
-    )
-
-    # Run a simple task
-    async for result in agent.run("Open a text editor and write 'Hello, World!'"):
-        print(result.get("text"))
-```
-
-### Multi-Step Workflow
-
-This example defines multiple tasks for the agent to complete:
-
-```python
-async with Computer() as computer:
-    # Create agent with your preferred provider
-    agent = ComputerAgent(
-        computer=computer,
-        loop=AgentLoop.OPENAI,  # or ANTHROPIC, OMNI, UITARS
-        model=LLM(provider=LLMProvider.OPENAI)
-    )
-
-    # Define complex workflow
-    tasks = [
-        "Look for a repository named trycua/cua on GitHub.",
-        "Check the open issues, open the most recent one and read it.",
-        "Clone the repository in users/lume/projects if it doesn't exist yet.",
-        "Open the repository with an app named Cursor.",
-        "From Cursor, open Composer and write a task to help resolve the GitHub issue.",
-    ]
-
-    # Execute tasks sequentially
-    for i, task in enumerate(tasks):
-        print(f"\nExecuting task {i+1}/{len(tasks)}: {task}")
-        async for result in agent.run(task):
-            print(result.get("text"))
-        print(f"✅ Task {i+1} completed")
-```
-
-### Alternative Model Providers
-
-You may use different models with the agent library -- below are a couple of alternatives that we already support.
-
-```python
-# Anthropic Claude
+computer = Computer()  # Connect to a c/ua container
 agent = ComputerAgent(
-    computer=computer,
-    loop=AgentLoop.ANTHROPIC,
-    model=LLM(provider=LLMProvider.ANTHROPIC)
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[computer]
 )
 
-# Local Ollama model
-agent = ComputerAgent(
-    computer=computer,
-    loop=AgentLoop.OMNI,
-    model=LLM(provider=LLMProvider.OLLAMA, name="gemma3")
-)
+prompt = "open github, navigate to trycua/cua"
 
-# UI-TARS model
-agent = ComputerAgent(
-    computer=computer,
-    loop=AgentLoop.UITARS,
-    model=LLM(
-        provider=LLMProvider.OAICOMPAT,
-        name="ByteDance-Seed/UI-TARS-1.5-7B",
-        provider_base_url="https://your-endpoint.com/v1"
-    )
-)
+async for result in agent.run(prompt):
+    print("Agent:", result["output"][-1]["content"][0]["text"])
 ```
-
-## Agent Loops
-
-The `cua-agent` package provides three agent loops variations, based on different CUA models providers and techniques:
-
-| Agent Loop            | Supported Models                                                                                                                                                                                                               | Description                                                                                  | Set-Of-Marks |
-| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- | :----------- |
-| `AgentLoop.OPENAI`    | • `computer_use_preview`                                                                                                                                                                                                       | Use OpenAI Operator CUA model                                                                | Not Required |
-| `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br/>• `claude-3-7-sonnet-20250219`                                                                                                                                                              | Use Anthropic Computer-Use                                                                   | Not Required |
-| `AgentLoop.UITARS`    | • `mlx-community/UI-TARS-1.5-7B-4bit` (default)<br/>• `mlx-community/UI-TARS-1.5-7B-6bit`<br/>• `ByteDance-Seed/UI-TARS-1.5-7B` (via openAI-compatible endpoint)                                                               | Uses UI-TARS models with MLXVLM (default) or OAICOMPAT providers                             | Not Required |
-| `AgentLoop.OMNI`      | • `claude-3-5-sonnet-20240620`<br/>• `claude-3-7-sonnet-20250219`<br/>• `gpt-4.5-preview`<br/>• `gpt-4o`<br/>• `gpt-4`<br/>• `phi4`<br/>• `phi4-mini`<br/>• `gemma3`<br/>• `...`<br/>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser   |
-
-## Agent Response
-
-The `AgentResponse` class represents the structured output returned after each agent turn. It contains the agent's response, reasoning, tool usage, and other metadata. The response format aligns with the new [OpenAI Agent SDK specification](https://platform.openai.com/docs/api-reference/responses) for better consistency across different agent loops.
-
-```typescript
-interface AgentResponse {
-  id: string;
-  text: string;
-  usage?: {
-    input_tokens: number;
-    input_tokens_details?: {
-      text_tokens: number;
-      image_tokens: number;
-    };
-    output_tokens: number;
-    output_tokens_details?: {
-      text_tokens: number;
-      reasoning_tokens: number;
-    };
-    total_tokens: number;
-  };
-  tools?: Array<{
-    name: string;
-    description: string;
-  }>;
-  output?: Array<{
-    type: 'reasoning' | 'computer_call';
-    content?: string; // for reasoning type
-    tool_name?: string; // for computer_call type
-    parameters?: Record<string, any>; // for computer_call type
-    result?: string; // for computer_call type
-  }>;
-}
-```
-
-### Example Usage
-
-```python
-async for result in agent.run(task):
-  print("Response ID: ", result.get("id"))
-
-  # Print detailed usage information
-  usage = result.get("usage")
-  if usage:
-      print("\nUsage Details:")
-      print(f"  Input Tokens: {usage.get('input_tokens')}")
-      if "input_tokens_details" in usage:
-          print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
-      print(f"  Output Tokens: {usage.get('output_tokens')}")
-      if "output_tokens_details" in usage:
-          print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
-      print(f"  Total Tokens: {usage.get('total_tokens')}")
-
-  print("Response Text: ", result.get("text"))
-
-  # Print tools information
-  tools = result.get("tools")
-  if tools:
-      print("\nTools:")
-      print(tools)
-
-  # Print reasoning and tool call outputs
-  outputs = result.get("output", [])
-  for output in outputs:
-      output_type = output.get("type")
-      if output_type == "reasoning":
-          print("\nReasoning Output:")
-          print(output)
-      elif output_type == "computer_call":
-          print("\nTool Call Output:")
-          print(output)
-```
-
-## Examples & Guides
-
-<Cards>
-  <Card
-    href="https://github.com/trycua/cua/tree/main/notebooks/agent_nb.ipynb"
-    title="Agent Notebook">
-    Step-by-step instructions on using the Computer-Use Agent (CUA)
-  </Card>
-  <Card href="../libraries/agent/agent-gradio-ui" title="Agent Gradio Guide">
-    Use the Agent library with a Python Gradio UI
-  </Card>
-</Cards>
 
 ---
 
-<Callout type="info">
-  **Need detailed API documentation?**{' '}
-  <span className="w-full">
-    Explore the complete API reference with detailed class documentation, and
-    method signatures.
-  </span>
-  <a
-    href="/api/agent"
-    className={cn(
-      buttonVariants({
-        color: 'secondary',
-      }),
-      'no-underline h-10'
-    )}>
-    View API Reference
-    <ChevronRight size={18} />
-  </a>
-</Callout>
+### ComputerAgent Constructor Options
+
+The `ComputerAgent` constructor provides a wide range of options for customizing agent behavior, tool integration, callbacks, resource management, and more.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | `str` | **required** | Model name (e.g., "claude-3-5-sonnet-20241022", "computer-use-preview", "omni+vertex_ai/gemini-pro") |
+| `tools` | `List[Any]` | `None` | List of tools (e.g., computer objects, decorated functions) |
+| `custom_loop` | `Callable` | `None` | Custom agent loop function (overrides auto-selection) |
+| `only_n_most_recent_images` | `int` | `None` | If set, only keep the N most recent images in message history (adds ImageRetentionCallback) |
+| `callbacks` | `List[Any]` | `None` | List of AsyncCallbackHandler instances for preprocessing/postprocessing |
+| `verbosity` | `int` | `None` | Logging level (`logging.DEBUG`, `logging.INFO`, etc.; adds LoggingCallback) |
+| `trajectory_dir` | `str` | `None` | Directory to save trajectory data (adds TrajectorySaverCallback) |
+| `max_retries` | `int` | `3` | Maximum number of retries for failed API calls |
+| `screenshot_delay` | `float` \| `int` | `0.5` | Delay before screenshots (seconds) |
+| `use_prompt_caching` | `bool` | `False` | Use prompt caching to avoid reprocessing the same prompt (mainly for Anthropic) |
+| `max_trajectory_budget` | `float` \| `dict` | `None` | If set, adds BudgetManagerCallback to track usage costs and stop when budget is exceeded |
+| `**kwargs` | _any_ |  | Additional arguments passed to the agent loop |
+
+#### Parameter Details
+
+- **model**: The LLM or agent model to use. Determines which agent loop is selected unless `custom_loop` is provided.
+- **tools**: List of tools the agent can use (e.g., `Computer`, sandboxed Python functions, etc.).
+- **custom_loop**: Optional custom agent loop function. If provided, overrides automatic loop selection.
+- **only_n_most_recent_images**: If set, only the N most recent images are kept in the message history. Useful for limiting memory usage. Automatically adds `ImageRetentionCallback`.
+- **callbacks**: List of callback instances for advanced preprocessing, postprocessing, logging, or custom hooks. See [Callbacks & Extensibility](#callbacks--extensibility).
+- **verbosity**: Logging level (e.g., `logging.INFO`). If set, adds a logging callback.
+- **trajectory_dir**: Directory path to save full trajectory data, including screenshots and responses. Adds `TrajectorySaverCallback`.
+- **max_retries**: Maximum number of retries for failed API calls (default: 3).
+- **screenshot_delay**: Delay (in seconds) before taking screenshots (default: 0.5).
+- **use_prompt_caching**: Enables prompt caching for repeated prompts (mainly for Anthropic models).
+- **max_trajectory_budget**: If set (float or dict), adds a budget manager callback that tracks usage costs and stops execution if the budget is exceeded. Dict allows advanced options (e.g., `{ "max_budget": 5.0, "raise_error": True }`).
+- **\*\*kwargs**: Any additional keyword arguments are passed through to the agent loop or model provider.
+
+**Example with advanced options:**
+
+```python
+from agent2 import ComputerAgent
+from computer import Computer
+from agent2.callbacks import ImageRetentionCallback
+
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[Computer(...)],
+    only_n_most_recent_images=3,
+    callbacks=[ImageRetentionCallback(only_n_most_recent_images=3)],
+    verbosity=logging.INFO,
+    trajectory_dir="trajectories",
+    max_retries=5,
+    screenshot_delay=1.0,
+    use_prompt_caching=True,
+    max_trajectory_budget={"max_budget": 5.0, "raise_error": True}
+)
+```
+
+---
+
+### Message Array (Multi-turn)
+
+```python
+messages = [
+    {"role": "user", "content": "go to trycua on gh"},
+    # ... (reasoning, computer_call, computer_call_output, etc)
+]
+async for result in agent.run(messages):
+    # Handle output, tool invocations, screenshots, etc.
+    print("Agent:", result["output"][-1]["content"][0]["text"])
+    messages += result["output"] # Add agent output to message array
+    ...
+```
+
+### Supported Agent Loops
+- **Anthropic**: Claude 4, 3.7, 3.5 models
+- **OpenAI**: computer-use-preview
+- **UITARS**: UI-TARS 1.5 models (Hugging Face, TGI)
+- **Omni**: Omniparser + any LLM
+
+See [Agent Loops](../../agent-sdk/agent-loops) for supported models and details.
+
+### Callbacks & Extensibility
+
+You can add preprocessing and postprocessing hooks using callbacks, or write your own by subclassing `AsyncCallbackHandler`:
+
+```python
+from agent2.callbacks import ImageRetentionCallback, PIIAnonymizationCallback
+
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[computer],
+    callbacks=[ImageRetentionCallback(only_n_most_recent_images=3)]
+)
+```

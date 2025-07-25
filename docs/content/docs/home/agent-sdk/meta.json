@@ -1,0 +1,12 @@
+{
+	"title": "Agent SDK",
+	"description": "Build computer-using agents with the Agent SDK",
+	"pages": [
+        "agent-loops",
+    	"supported-agents",
+		"chat-history",
+		"callbacks",
+        "sandboxed-tools",
+        "migration-guide"
+	]
+}

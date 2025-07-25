@@ -1,0 +1,38 @@
+---
+title: Agent Loops
+description: Supported computer-using agent loops and models
+---
+
+An agent can be thought of as a loop - it generates actions, executes them, and repeats until done:
+
+1. **Generate**: Your `model` generates `output_text`, `computer_call`, `function_call`
+2. **Execute**: The `computer` safely executes those items
+3. **Complete**: If the model has no more calls, it's done!
+
+To run an agent loop simply do:
+
+```python
+from agent2 import ComputerAgent
+from computer import Computer
+
+computer = Computer() # Connect to a c/ua container
+
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[computer]
+)
+
+prompt = "open github, navigate to trycua/cua"
+
+async for result in agent.run(prompt):
+    print("Agent:", result["output"][-1]["content"][0]["text"])
+```
+
+We currently support 4 computer-using agent loops:
+
+- Anthropic CUAs
+- OpenAI CUA Preview
+- UI-TARS 1.5
+- Omniparser + LLMs
+
+For a full list of supported models and configurations, see the [Supported Agents](./supported-agents) page.

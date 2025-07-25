@@ -1,185 +1,123 @@
 ---
 title: Computer
-description: The Computer-Use Interface (CUI) framework for interacting with local macOS, Linux, and Windows sandboxes.
-macos: true
-windows: true
-linux: true
-pypi: cua-computer
-npm: '@trycua/computer'
+description: Reference for the current version of the Computer library.
 github:
   - https://github.com/trycua/cua/tree/main/libs/python/computer
   - https://github.com/trycua/cua/tree/main/libs/typescript/computer
 ---
 
-import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { cn } from 'fumadocs-ui/utils/cn';
-import { ChevronRight } from 'lucide-react';
+The Computer library provides a Computer class that can be used to control and automate a container running the Computer Server.
 
-Computer, when paired with [Computer Server](../computer-server.mdx) enables programatic interaction with cross-platform sandboxes. It powers Cua systems and is PyAutoGUI-compatible and pluggable with any AI agent system (Cua, Langchain, CrewAI, AutoGen).
+## Reference
 
-The Python version relies on [Lume](./lume.mdx) for creating and managing sandbox environments.
+### Basic Usage
 
-## Installation
+Connect to a c/ua cloud container:
+```python
+from computer import Computer
 
-<Tabs groupId='language' persist items={['Python', 'TypeScript']}>
-  <Tab value="Python">
-    ```bash
-    pip install "cua-computer[all]"
-    ```
-    The `cua-computer` PyPi package automatically pulls the latest executable version of Lume through [pylume](https://github.com/trycua/pylume).
+computer = Computer(
+    os_type="linux",
+    provider_type="cloud", 
+    name="your-container-name",
+    api_key="your-api-key"
+) 
 
-  </Tab>
-  <Tab value="TypeScript">
-    ```bash
-    npm install @trycua/computer
-    ```
-  </Tab>
-</Tabs>
+computer = await computer.run() # Connect to a c/ua cloud container
+```
 
-## Features
+Connect to a c/ua local container:
+```python
+from computer import Computer
 
-- Create and manage virtual machine sandboxes
-- Take screenshots of the virtual machine
-- Control mouse movements and clicks
-- Simulate keyboard input
-- Manage clipboard content
-- Interact with the operating system interface
-- Support for macOS and Linux environments
+computer = Computer(
+    os_type="macos"
+)
 
-## Simple Example
+computer = await computer.run() # Connect to the container
+```
 
-<Tabs groupId='language' persist items={['Python', 'TypeScript']}>
-  <Tab value="Python">
-    ```python
-    from computer import Computer
+### Interface Actions
 
-    computer = Computer(os_type="macos", display="1024x768", memory="8GB", cpu="4")
-    try:
-        # Start a new local vm instance using Lume
-        await computer.run()
+```python
+# Shell Actions
+result = await computer.interface.run_command(cmd)       # Run shell command
+# result.stdout, result.stderr, result.returncode
 
-        # Interface with the instance
-        screenshot = await computer.interface.screenshot()
-        with open("screenshot.png", "wb") as f:
-            f.write(screenshot)
+# Mouse Actions
+await computer.interface.left_click(x, y)       # Left click at coordinates
+await computer.interface.right_click(x, y)      # Right click at coordinates
+await computer.interface.double_click(x, y)     # Double click at coordinates
+await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
+await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
+await computer.interface.get_cursor_position()  # Get current cursor position
+await computer.interface.mouse_down(x, y, button="left")  # Press and hold a mouse button
+await computer.interface.mouse_up(x, y, button="left")    # Release a mouse button
 
-        await computer.interface.move_cursor(100, 100)
-        await computer.interface.left_click()
-        await computer.interface.right_click(300, 300)
-        await computer.interface.double_click(400, 400)
+# Keyboard Actions
+await computer.interface.type_text("Hello")     # Type text
+await computer.interface.press_key("enter")     # Press a single key
+await computer.interface.hotkey("command", "c") # Press key combination
+await computer.interface.key_down("command")    # Press and hold a key
+await computer.interface.key_up("command")      # Release a key
 
-        await computer.interface.type("Hello, World!")
-        await computer.interface.press_key("enter")
+# Scrolling Actions
+await computer.interface.scroll(x, y)           # Scroll the mouse wheel
+await computer.interface.scroll_down(clicks)    # Scroll down
+await computer.interface.scroll_up(clicks)      # Scroll up
 
-        await computer.interface.set_clipboard("Test clipboard")
-        content = await computer.interface.copy_to_clipboard()
-        print(f"Clipboard content: {content}")
-    finally:
-        # Stop the vm instance
-        await computer.stop()
-    ```
+# Screen Actions
+await computer.interface.screenshot()           # Take a screenshot
+await computer.interface.get_screen_size()      # Get screen dimensions
 
-  </Tab>
-  <Tab value="TypeScript">
-    ```typescript
-    import { Computer, OSType } from '@trycua/computer';
+# Clipboard Actions
+await computer.interface.set_clipboard(text)    # Set clipboard content
+await computer.interface.copy_to_clipboard()    # Get clipboard content
 
-    // This creates and interfaces with a cloud-based cua container.
-    const main = async () => {
-      // Create a cloud-based computer
-      const computer = new Computer({
-        name: 'cloud-vm',
-        osType: OSType.Linux,
-        apiKey: 'your-api-key',
-      });
+# File System Operations
+await computer.interface.file_exists(path)      # Check if file exists
+await computer.interface.directory_exists(path) # Check if directory exists
+await computer.interface.read_text(path, encoding="utf-8")        # Read file content
+await computer.interface.write_text(path, content, encoding="utf-8") # Write file content
+await computer.interface.read_bytes(path)       # Read file content as bytes
+await computer.interface.write_bytes(path, content) # Write file content as bytes
+await computer.interface.delete_file(path)      # Delete file
+await computer.interface.create_dir(path)       # Create directory
+await computer.interface.delete_dir(path)       # Delete directory
+await computer.interface.list_dir(path)         # List directory contents
 
-      // Access the interface
-      const interface = computer.interface;
+# Accessibility
+await computer.interface.get_accessibility_tree() # Get accessibility tree
 
-      // Screenshot operations
-      const screenshot = await interface.screenshot();
+# Delay Configuration
+# Set default delay between all actions (in seconds)
+computer.interface.delay = 0.5  # 500ms delay between actions
 
-      // Mouse operations
-      await interface.moveCursor(100, 100);
-      await interface.leftClick();
-      await interface.rightClick(300, 300);
-      await interface.doubleClick(400, 400);
-      await interface.dragTo(500, 500, 'left', 1000); // Drag with left button for 1 second
+# Or specify delay for individual actions
+await computer.interface.left_click(x, y, delay=1.0)     # 1 second delay after click
+await computer.interface.type_text("Hello", delay=0.2)   # 200ms delay after typing
+await computer.interface.press_key("enter", delay=0.5)   # 500ms delay after key press
 
-      // Keyboard operations
-      await interface.typeText('Hello from TypeScript!');
-      await interface.pressKey('enter');
-      await interface.hotkey('command', 'a'); // Select all
+# Python Virtual Environment Operations
+await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
+await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
+await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
 
-      // Clipboard operations
-      await interface.setClipboard('Clipboard content');
-      const content = await interface.copyToClipboard();
+# Example: Use sandboxed functions to execute code in a Cua Container
+from computer.helpers import sandboxed
 
-      // File operations
-      await interface.writeText('/tmp/test.txt', 'Hello world');
-      const fileContent = await interface.readText('/tmp/test.txt');
+@sandboxed("demo_venv")
+def greet_and_print(name):
+    """Get the HTML of the current Safari tab"""
+    import PyXA
+    safari = PyXA.Application("Safari")
+    html = safari.current_document.source()
+    print(f"Hello from inside the container, {name}!")
+    return {"greeted": name, "safari_html": html}
 
-      // Run a command in the VM
-      const [stdout, stderr] = await interface.runCommand('ls -la');
-
-      // Disconnect from the cloud VM
-      await computer.disconnect();
-    };
-
-    main().catch(console.error);
-    ```
-
-  </Tab>
-</Tabs>
-
-## Examples & Guides
-
-<Tabs groupId="language" persist items={['Python', 'TypeScript']}>
-  <Tab value="Python">
-    <Cards>
-      <Card
-        href="https://github.com/trycua/cua/tree/main/notebooks/samples/computer_nb.ipynb"
-        title="Computer-Use Interface (CUI)">
-        Step-by-step guide on using the Computer-Use Interface (CUI)
-      </Card>
-
-      <Card
-        href="../libraries/computer/computer-use-gradio-ui"
-        title="Computer-Use Gradio UI">
-        Use the Computer library with a Python Gradio UI
-      </Card>
-    </Cards>
-
-  </Tab>
-  <Tab value="TypeScript">
-    <Cards>
-      <Card
-        href="https://github.com/trycua/cua/tree/main/examples/computer-example-ts"
-        title="Computer Cloud OpenAI">
-        Use Cua Cloud Containers with OpenAI's API to execute tasks in a sandbox
-      </Card>
-    </Cards>
-  </Tab>
-</Tabs>
-
----
-
-<Callout type="info">
-  **Need detailed API documentation?**{' '}
-  <span className="w-full">
-    Explore the complete API reference with detailed class documentation, and
-    method signatures.
-  </span>
-  <a
-    href="/api/computer"
-    className={cn(
-      buttonVariants({
-        color: 'secondary',
-      }),
-      'no-underline h-10'
-    )}>
-    View API Reference
-    <ChevronRight size={18} />
-  </a>
-</Callout>
+# When a @sandboxed function is called, it will execute in the container
+result = await greet_and_print("Cua")
+# Result: {"greeted": "Cua", "safari_html": "<html>...</html>"}
+# stdout and stderr are also captured and printed / raised
+print("Result from sandboxed function:", result)
+```

@@ -5,17 +5,14 @@
 	"defaultOpen": true,
 	"pages": [
 		"index",
-		"compatibility",
-		"faq",
+		"quickstart-ui",
+		"quickstart-devs",
 		"telemetry",
-		"---[BookCopy]Guides---",
-		"guides/cua-usage-guide",
-		"guides/developer-guide",
-		"guides/dev-container-setup",
-		"guides/computer-use-agent-quickstart",
-		"guides/agent-gradio-ui",
-		"guides/computer-use-gradio-ui",
-		"---[Library]Libraries---",
+        "---[BookCopy]Computer Playbook---",
+        "...computer-sdk",
+		"---[BookCopy]Agent Playbook---",
+        "...agent-sdk",
+		"---[CodeXml]API Reference---",
 		"...libraries"
 	]
 }

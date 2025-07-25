@@ -1,0 +1,49 @@
+---
+title: Sandboxed Python
+slug: sandboxed-python
+---
+
+You can run Python functions securely inside a sandboxed virtual environment on a remote C/ua Computer. This is useful for executing untrusted user code, isolating dependencies, or providing a safe environment for automation tasks.
+
+## How It Works
+
+The `sandboxed` decorator from the Computer SDK wraps a Python function so that it is executed remotely in a specified virtual environment on the target Computer. The function and its arguments are serialized, sent to the remote, and executed in isolation. Results or errors are returned to the caller.
+
+## Example Usage
+
+```python
+from computer import Computer
+from computer.helpers import sandboxed
+
+@sandboxed()
+def read_file(location: str) -> str:
+    """Read contents of a file"""
+    with open(location, 'r') as f:
+        return f.read()
+
+async def main():
+    async with Computer(os_type="linux", provider_type="cloud", name="my-container", api_key="...") as computer:
+        # Call the sandboxed function (runs remotely)
+        result = await read_file("/etc/hostname")
+        print(result)
+```
+
+## Installing Python Packages
+
+You can specify the virtual environment name and target computer:
+
+```python
+@sandboxed(venv_name="myenv", computer=my_computer, max_retries=5)
+def my_function(...):
+    ...
+```
+
+You can also install packages in the virtual environment using the `venv_install` method:
+
+```python
+await my_computer.venv_install("myenv", ["requests"])
+```
+
+## Error Handling
+
+If the remote execution fails, the decorator will retry up to `max_retries` times. If all attempts fail, the last exception is raised locally.

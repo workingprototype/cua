@@ -1,0 +1,31 @@
+---
+title: Sandboxed Tools
+slug: sandboxed-tools
+---
+
+The Agent SDK supports defining custom Python tools that run securely in sandboxed environments on remote C/ua Computers. This enables safe execution of user-defined functions, isolation of dependencies, and robust automation workflows.
+
+## Example: Defining a Sandboxed Tool
+
+```python
+from computer.helpers import sandboxed
+
+@sandboxed()
+def read_file(location: str) -> str:
+    """Read contents of a file"""
+    with open(location, 'r') as f:
+        return f.read()
+```
+
+You can then register this as a tool for your agent:
+
+```python
+from agent2 import ComputerAgent
+from computer import Computer
+
+computer = Computer(...)
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20240620",
+    tools=[computer, read_file],
+)
+```

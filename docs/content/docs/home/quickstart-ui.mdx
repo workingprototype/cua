@@ -1,0 +1,43 @@
+---
+title: Quickstart (GUI)
+description: Get started with the c/ua Agent UI in 5 steps
+icon: Rocket
+---
+
+Get up and running with the c/ua Agent UI in 5 simple steps.
+
+## 1. Introduction
+
+c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent UI provides a simple chat interface to control your remote computer using natural language.
+
+## 2. Create Your First c/ua Container
+
+1. Go to [trycua.com/signin](https://www.trycua.com/signin)
+2. Navigate to **Dashboard > Containers > Create Instance**
+3. Create a **Medium, Ubuntu 22** container
+4. Note your container name and API key
+
+## 3. Install c/ua
+
+```bash
+pip install "cua-agent2[all]" cua-computer
+```
+
+## 4. Run the Agent UI
+
+```bash
+python -m agent.ui
+```
+
+## 5. Start Chatting
+
+Open your browser to the displayed URL and start chatting with your computer-using agent.
+
+You can ask your agent to perform actions like:
+- "Open Firefox and go to github.com"
+- "Take a screenshot and tell me what's on the screen"
+- "Type 'Hello world' into the terminal"
+
+---
+
+For advanced Python usage, see the [Quickstart for Developers](/docs/quickstart-devs).
