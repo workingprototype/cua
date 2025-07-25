@@ -1,5 +1,5 @@
 """
-Agent loops for agent2
+Agent loops for agent
 """
 
 # Import the loops to register them

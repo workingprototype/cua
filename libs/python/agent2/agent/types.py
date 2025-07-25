@@ -1,5 +1,5 @@
 """
-Type definitions for agent2
+Type definitions for agent
 """
 
 from typing import Dict, List, Any, Optional, Callable, Protocol, Literal

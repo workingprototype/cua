@@ -1,12 +1,12 @@
 """
-Example usage of the agent2 library with docstring-based tool definitions.
+Example usage of the agent library with docstring-based tool definitions.
 """
 
 import asyncio
 import logging
 
-from agent2 import agent_loop, ComputerAgent
-from agent2.types import Messages
+from agent import agent_loop, ComputerAgent
+from agent.types import Messages
 from computer import Computer
 from computer.helpers import sandboxed
 

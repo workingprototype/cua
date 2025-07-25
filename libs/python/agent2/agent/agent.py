@@ -192,7 +192,7 @@ class ComputerAgent:
         ]
 
         # == Initialize computer agent ==
-        
+
         # Find the appropriate agent loop
         if custom_loop:
             self.agent_loop = custom_loop
@@ -204,16 +204,26 @@ class ComputerAgent:
             self.agent_loop = loop_info.func
             self.agent_loop_info = loop_info
         
-        # Process tools and create tool schemas
-        self.tool_schemas = self._process_tools()
+        self.tool_schemas = []
+        self.computer_handler = None
         
-        # Find computer tool and create interface adapter
-        computer_handler = None
-        for schema in self.tool_schemas:
-            if schema["type"] == "computer":
-                computer_handler = OpenAIComputerHandler(schema["computer"].interface)
-                break
-        self.computer_handler = computer_handler
+    async def _initialize_computers(self):
+        """Initialize computer objects"""
+        if not self.tool_schemas:
+            for tool in self.tools:
+                if hasattr(tool, '_initialized') and not tool._initialized:
+                    await tool.run()
+                
+            # Process tools and create tool schemas
+            self.tool_schemas = self._process_tools()
+            
+            # Find computer tool and create interface adapter
+            computer_handler = None
+            for schema in self.tool_schemas:
+                if schema["type"] == "computer":
+                    computer_handler = OpenAIComputerHandler(schema["computer"].interface)
+                    break
+            self.computer_handler = computer_handler
     
     def _process_input(self, input: Messages) -> List[Dict[str, Any]]:
         """Process input messages and create schemas for the agent loop"""
@@ -484,6 +494,9 @@ class ComputerAgent:
         Returns:
             AsyncGenerator that yields response chunks
         """
+
+        await self._initialize_computers()
+        
         # Merge kwargs
         merged_kwargs = {**self.kwargs, **kwargs}
         

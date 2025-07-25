@@ -1,5 +1,5 @@
 """
-Decorators for agent2 - agent_loop decorator
+Decorators for agent - agent_loop decorator
 """
 
 import asyncio

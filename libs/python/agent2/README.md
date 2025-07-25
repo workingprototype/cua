@@ -147,12 +147,12 @@ agent = ComputerAgent(
 
 ## Callbacks System
 
-Agent2 provides a comprehensive callback system for extending functionality:
+agent provides a comprehensive callback system for extending functionality:
 
 ### Built-in Callbacks
 
 ```python
-from agent2.callbacks import (
+from agent.callbacks import (
     ImageRetentionCallback,
     TrajectorySaverCallback, 
     BudgetManagerCallback,
@@ -174,7 +174,7 @@ agent = ComputerAgent(
 ### Custom Callbacks
 
 ```python
-from agent2.callbacks.base import AsyncCallbackHandler
+from agent.callbacks.base import AsyncCallbackHandler
 
 class CustomCallback(AsyncCallbackHandler):
     async def on_llm_start(self, messages):

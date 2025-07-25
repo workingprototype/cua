@@ -54,10 +54,10 @@ class LoggingCallback(AsyncCallbackHandler):
         Initialize the logging callback.
         
         Args:
-            logger: Logger instance to use. If None, creates a logger named 'agent2.ComputerAgent'
+            logger: Logger instance to use. If None, creates a logger named 'agent.ComputerAgent'
             level: Logging level (logging.DEBUG, logging.INFO, etc.)
         """
-        self.logger = logger or logging.getLogger('agent2.ComputerAgent')
+        self.logger = logger or logging.getLogger('agent.ComputerAgent')
         self.level = level
         
         # Set up logger if it doesn't have handlers

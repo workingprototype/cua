@@ -1,5 +1,5 @@
 """
-Agent2 - Decorator-based Computer Use Agent with liteLLM integration
+agent - Decorator-based Computer Use Agent with liteLLM integration
 """
 
 from .decorators import agent_loop

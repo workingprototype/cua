@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "cua-agent"
-version = "0.4.0"
+version = "0.4.0b1"
 description = "CUA (Computer Use) Agent for AI-driven computer interaction"
 readme = "README.md"
 authors = [
@@ -44,6 +44,9 @@ ui = [
     "gradio>=5.23.3",
     "python-dotenv>=1.0.1",
 ]
+cli = [
+    "yaspin>=3.1.0",
+]
 all = [
     # omni requirements
     "ultralytics>=8.0.0",
@@ -54,6 +57,8 @@ all = [
     # ui requirements
     "gradio>=5.23.3",
     "python-dotenv>=1.0.1",
+    # cli requirements
+    "yaspin>=3.1.0",
 ]
 
 [tool.uv]
@@ -63,4 +68,4 @@ constraint-dependencies = ["fastrtc>0.43.0", "mlx-audio>0.2.3"]
 distribution = true
 
 [tool.pdm.build]
-includes = ["agent2/"]
+includes = ["agent/"]
