@@ -6,6 +6,7 @@
 	"pages": [
 		"index",
 		"quickstart-ui",
+		"quickstart-cli",
 		"quickstart-devs",
 		"telemetry",
         "---[BookCopy]Computer Playbook---",
