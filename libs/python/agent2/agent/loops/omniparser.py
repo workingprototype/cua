@@ -84,7 +84,7 @@ except ImportError:
     pass
 OMNIPARSER_SINGLETON = None
 
-def get_parser() -> OmniParser:
+def get_parser():
     global OMNIPARSER_SINGLETON
     if OMNIPARSER_SINGLETON is None:
         OMNIPARSER_SINGLETON = OmniParser()
