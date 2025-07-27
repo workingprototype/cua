@@ -1,10 +1,17 @@
 import asyncio
 import warnings
 from typing import Iterator, AsyncIterator, Dict, List, Any, Optional
-import torch
-from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from litellm.types.utils import GenericStreamingChunk, ModelResponse
-from litellm import CustomLLM, completion, acompletion
+from litellm.llms.custom_llm import CustomLLM
+from litellm import completion, acompletion
+
+# Try to import HuggingFace dependencies
+try:
+    import torch
+    from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+    HF_AVAILABLE = True
+except ImportError:
+    HF_AVAILABLE = False
 
 
 class HuggingFaceLocalAdapter(CustomLLM):
@@ -102,6 +109,12 @@ class HuggingFaceLocalAdapter(CustomLLM):
         Returns:
             Generated text response
         """
+        if not HF_AVAILABLE:
+            raise ImportError(
+                "HuggingFace transformers dependencies not found. "
+                "Please install with: pip install \"cua-agent[uitars-hf]\""
+            )
+        
         # Extract messages and model from kwargs
         messages = kwargs.get('messages', [])
         model_name = kwargs.get('model', 'ByteDance-Seed/UI-TARS-1.5-7B')
