@@ -6,6 +6,7 @@ import asyncio
 from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Callable, Set
 
 from litellm.responses.utils import Usage
+
 from .types import Messages, Computer
 from .decorators import find_agent_loop
 from .computer_handler import OpenAIComputerHandler, acknowledge_safety_check_callback, check_blocklisted_url
@@ -14,7 +15,13 @@ import litellm
 import litellm.utils
 import inspect
 from .adapters import HuggingFaceLocalAdapter
-from .callbacks import ImageRetentionCallback, LoggingCallback, TrajectorySaverCallback, BudgetManagerCallback
+from .callbacks import (
+    ImageRetentionCallback, 
+    LoggingCallback, 
+    TrajectorySaverCallback, 
+    BudgetManagerCallback,
+    TelemetryCallback,
+)
 
 def get_json(obj: Any, max_depth: int = 10) -> Any:
     def custom_serializer(o: Any, depth: int = 0, seen: Set[int] = None) -> Any:
@@ -129,6 +136,7 @@ class ComputerAgent:
         screenshot_delay: Optional[float | int] = 0.5,
         use_prompt_caching: Optional[bool] = False,
         max_trajectory_budget: Optional[float | dict] = None,
+        telemetry_enabled: Optional[bool] = True,
         **kwargs
     ):
         """
@@ -146,6 +154,7 @@ class ComputerAgent:
             screenshot_delay: Delay before screenshots in seconds
             use_prompt_caching: If set, use prompt caching to avoid reprocessing the same prompt. Intended for use with anthropic providers.
             max_trajectory_budget: If set, adds BudgetManagerCallback to track usage costs and stop when budget is exceeded
+            telemetry_enabled: If set, adds TelemetryCallback to track anonymized usage data. Enabled by default.
             **kwargs: Additional arguments passed to the agent loop
         """
         self.model = model
@@ -158,9 +167,17 @@ class ComputerAgent:
         self.max_retries = max_retries
         self.screenshot_delay = screenshot_delay
         self.use_prompt_caching = use_prompt_caching
+        self.telemetry_enabled = telemetry_enabled
         self.kwargs = kwargs
 
         # == Add built-in callbacks ==
+
+        # Add telemetry callback if telemetry_enabled is set
+        if self.telemetry_enabled:
+            if isinstance(self.telemetry_enabled, bool):
+                self.callbacks.append(TelemetryCallback(self))
+            else:
+                self.callbacks.append(TelemetryCallback(self, **self.telemetry_enabled))
 
         # Add logging callback if verbosity is set
         if self.verbosity is not None:

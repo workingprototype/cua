@@ -7,6 +7,7 @@ from .image_retention import ImageRetentionCallback
 from .logging import LoggingCallback
 from .trajectory_saver import TrajectorySaverCallback
 from .budget_manager import BudgetManagerCallback
+from .telemetry import TelemetryCallback
 
 __all__ = [
     "AsyncCallbackHandler",
@@ -14,4 +15,5 @@ __all__ = [
     "LoggingCallback",
     "TrajectorySaverCallback",
     "BudgetManagerCallback",
+    "TelemetryCallback",
 ]
