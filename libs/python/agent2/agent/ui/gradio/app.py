@@ -72,26 +72,26 @@ def save_settings(settings: Dict[str, Any]):
         print(f"Warning: Could not save settings to {SETTINGS_FILE}: {e}")
 
 
-# Custom Screenshot Handler for Gradio chat
-class GradioChatScreenshotHandler:
-    """Custom handler that adds screenshots to the Gradio chatbot."""
+# # Custom Screenshot Handler for Gradio chat
+# class GradioChatScreenshotHandler:
+#     """Custom handler that adds screenshots to the Gradio chatbot."""
 
-    def __init__(self, chatbot_history: List[gr.ChatMessage]):
-        self.chatbot_history = chatbot_history
-        print("GradioChatScreenshotHandler initialized")
+#     def __init__(self, chatbot_history: List[gr.ChatMessage]):
+#         self.chatbot_history = chatbot_history
+#         print("GradioChatScreenshotHandler initialized")
 
-    async def on_screenshot(self, screenshot_base64: str, action_type: str = "") -> None:
-        """Add screenshot to chatbot when a screenshot is taken."""
-        image_markdown = f"![Screenshot after {action_type}](data:image/png;base64,{screenshot_base64})"
+#     async def on_screenshot(self, screenshot_base64: str, action_type: str = "") -> None:
+#         """Add screenshot to chatbot when a screenshot is taken."""
+#         image_markdown = f"![Screenshot after {action_type}](data:image/png;base64,{screenshot_base64})"
         
-        if self.chatbot_history is not None:
-            self.chatbot_history.append(
-                gr.ChatMessage(
-                    role="assistant",
-                    content=image_markdown,
-                    metadata={"title": f"🖥️ Screenshot - {action_type}", "status": "done"},
-                )
-            )
+#         if self.chatbot_history is not None:
+#             self.chatbot_history.append(
+#                 gr.ChatMessage(
+#                     role="assistant",
+#                     content=image_markdown,
+#                     metadata={"title": f"🖥️ Screenshot - {action_type}", "status": "done"},
+#                 )
+#             )
 
 
 # Detect platform capabilities
@@ -236,7 +236,7 @@ def create_agent(
     return global_agent
 
 
-def test_cua():
+def launch_ui():
     """Standalone function to launch the Gradio app."""
     from agent.ui.gradio.ui_components import create_gradio_ui
     print(f"Starting Gradio app for CUA Agent...")
@@ -245,4 +245,4 @@ def test_cua():
 
 
 if __name__ == "__main__":
-    test_cua()
+    launch_ui()

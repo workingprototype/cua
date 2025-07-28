@@ -2,6 +2,6 @@
 UI components for agent
 """
 
-from .gradio import test_cua, create_gradio_ui
+from .gradio import launch_ui, create_gradio_ui
 
-__all__ = ["test_cua", "create_gradio_ui"]
+__all__ = ["launch_ui", "create_gradio_ui"]

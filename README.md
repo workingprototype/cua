@@ -166,9 +166,8 @@ async def main():
     
     # Example: Create and run an agent locally using mlx-community/UI-TARS-1.5-7B-6bit
     agent = ComputerAgent(
-      computer=computer,
-      loop="uitars",
-      model=LLM(provider="mlxvlm", name="mlx-community/UI-TARS-1.5-7B-6bit")
+      model="mlx/mlx-community/UI-TARS-1.5-7B-6bit",
+      tools=[computer],
     )
     async for result in agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide"):
         print(result)
@@ -343,27 +342,17 @@ For complete examples, see [agent_examples.py](./examples/agent_examples.py) or 
 
 ```python
 # Import necessary components
-from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
+from agent import ComputerAgent
 
 # UI-TARS-1.5 agent for local execution with MLX
-ComputerAgent(loop=AgentLoop.UITARS, model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-6bit"))   
+ComputerAgent(model="mlx/mlx-community/UI-TARS-1.5-7B-6bit")   
 # OpenAI Computer-Use agent using OPENAI_API_KEY  
-ComputerAgent(loop=AgentLoop.OPENAI, model=LLM(provider=LLMProvider.OPENAI, name="computer-use-preview"))
+ComputerAgent(model="computer-use-preview")
 # Anthropic Claude agent using ANTHROPIC_API_KEY
-ComputerAgent(loop=AgentLoop.ANTHROPIC, model=LLM(provider=LLMProvider.ANTHROPIC))
+ComputerAgent(model="anthropic/claude-3-5-sonnet-20240620")
 
 # OmniParser loop for UI control using Set-of-Marks (SOM) prompting and any vision LLM
-ComputerAgent(loop=AgentLoop.OMNI, model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:12b-it-q4_K_M"))      
-# OpenRouter example using OAICOMPAT provider
-ComputerAgent(
-    loop=AgentLoop.OMNI,
-    model=LLM(
-        provider=LLMProvider.OAICOMPAT, 
-        name="openai/gpt-4o-mini",
-        provider_base_url="https://openrouter.ai/api/v1"
-    ),
-    api_key="your-openrouter-api-key"
-)
+ComputerAgent(model="omniparser+ollama_chat/gemma3:12b-it-q4_K_M")      
 ```
 
 ## Community
