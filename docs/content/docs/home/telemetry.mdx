@@ -10,26 +10,33 @@ CUA tracks anonymized usage and error report statistics; we ascribe to Posthog's
 
 ## What telemetry data we collect
 
-CUA libraries collect minimal anonymous usage data to help improve our software. The telemetry data we collect is specifically limited to:
+CUA libraries collect usage data to help improve our software. We have two categories of telemetry:
 
-- Basic system information:
-  - Operating system (e.g., 'darwin', 'win32', 'linux')
-  - Python version (e.g., '3.11.0')
-- Module initialization events:
-  - When a module (like 'computer' or 'agent') is imported
-  - Version of the module being used
+### Opt-Out Telemetry (Enabled by Default)
 
-We do NOT collect:
+Basic performance metrics and system information that help us understand usage patterns:
 
-- Personal information
-- Contents of files
-- Specific text being typed
+- **System Information**: Operating system, OS version, Python version
+- **Module Initialization**: When modules are imported and their versions
+- **Performance Metrics**: Agent run durations, step counts, token usage, and API costs
+- **Session Tracking**: Anonymous session IDs and run IDs for performance analysis
+
+### Opt-In Telemetry (Disabled by Default)
+
+**Conversation Trajectory Logging**: Full conversation history including:
+- User messages and agent responses
+- Computer actions and their outputs
+- Reasoning traces from the agent
+
+**Important**: Trajectory logging is **opt-in only** and must be explicitly enabled.
+
+### We do NOT collect:
+
+- Personal information or user identifiers
+- API keys or credentials
 - Actual screenshots or screen contents
-- User-specific identifiers
-- API keys
-- File contents
-- Application data or content
-- User interactions with the computer
+- File contents or application data
+- Specific text being typed, including user inputs, model outputs, computer outputs, or tool call outputs (unless trajectory logging is enabled)
 - Information about files being accessed
 
 ## Controlling Telemetry
@@ -58,23 +65,79 @@ os.environ["CUA_TELEMETRY_ENABLED"] = "false"
 
 ### 2. Instance-Level Control
 
-You can control telemetry for specific CUA instances by setting `telemetry_enabled` when creating them:
+#### Computer SDK
 
 ```python
-# Disable telemetry for a specific Computer instance
-computer = Computer(telemetry_enabled=False)
+from computer import Computer
 
-# Enable telemetry for a specific Agent instance
-agent = ComputerAgent(telemetry_enabled=True)
+# Enable telemetry (default)
+computer = Computer(telemetry_enabled=True)
+
+# Disable telemetry
+computer = Computer(telemetry_enabled=False)
+```
+
+#### Agent SDK
+
+```python
+from agent import ComputerAgent
+import os
+
+# Basic telemetry - performance metrics only (opt-out, enabled by default)
+agent = ComputerAgent(
+    model="claude-3-5-sonnet-20241022",
+    telemetry_enabled=True  # Default is True
+)
+
+# Enable telemetry with full conversation trajectory logging (opt-in)
+agent = ComputerAgent(
+    model="claude-3-5-sonnet-20241022",
+    telemetry_enabled={
+        "log_trajectory": True  # Logs full conversation items
+    }
+)
+
+# Disable telemetry completely
+agent = ComputerAgent(
+    model="claude-3-5-sonnet-20241022",
+    telemetry_enabled=False
+)
+
+# Disable telemetry completely using environment variables
+os.environ["CUA_TELEMETRY_ENABLED"] = "false"
+agent = ComputerAgent(
+    model="claude-3-5-sonnet-20241022"
+)
 ```
 
 You can check if telemetry is enabled for an instance:
 
 ```python
 print(computer.telemetry_enabled)  # Will print True or False
+print(agent.telemetry_enabled)     # Will print True, False, or dict
 ```
 
 Note that telemetry settings must be configured during initialization and cannot be changed after the object is created.
+
+## Detailed Telemetry Events
+
+### Computer SDK Events
+
+| Event Name | Data Collected | Trigger Notes |
+|------------|----------------|---------------|
+| **computer_initialized** | • `os`: Operating system (e.g., 'windows', 'darwin', 'linux')<br />• `os_version`: OS version<br />• `python_version`: Python version | Triggered when a Computer instance is created |
+| **module_init** | • `module`: "computer"<br />• `version`: Package version<br />• `python_version`: Full Python version string | Triggered once when the computer package is imported for the first time |
+
+### Agent SDK Events
+
+| Event Name | Data Collected | Trigger Notes |
+|------------|----------------|---------------|
+| **module_init** | • `module`: "agent"<br />• `version`: Package version<br />• `python_version`: Full Python version string | Triggered once when the agent package is imported for the first time |
+| **agent_session_start** | • `session_id`: Unique UUID for this agent instance<br />• `agent_type`: Class name (e.g., "ComputerAgent")<br />• `model`: Model name (e.g., "claude-3-5-sonnet")<br />• `os`: Operating system<br />• `os_version`: OS version<br />• `python_version`: Python version | Triggered when TelemetryCallback is initialized (agent instantiation) |
+| **agent_run_start** | • `session_id`: Agent session UUID<br />• `run_id`: Unique UUID for this run<br />• `start_time`: Unix timestamp<br />• `input_context_size`: Character count of input messages<br />• `num_existing_messages`: Count of existing messages<br />• `uploaded_trajectory`: Full conversation items (opt-in) | Triggered at the start of each agent.run() call |
+| **agent_run_end** | • `session_id`: Agent session UUID<br />• `run_id`: Run UUID<br />• `end_time`: Unix timestamp<br />• `duration_seconds`: Total run duration<br />• `num_steps`: Total steps taken in this run<br />• `total_usage`: Accumulated token usage and costs<br />• `uploaded_trajectory`: Full conversation items (opt-in) | Triggered at the end of each agent.run() call |
+| **agent_step** | • `session_id`: Agent session UUID<br />• `run_id`: Run UUID<br />• `step`: Step number (incremental)<br />• `timestamp`: Unix timestamp<br />• `duration_seconds`: Duration of previous step | Triggered on each agent response/step during a run |
+| **agent_usage** | • `session_id`: Agent session UUID<br />• `run_id`: Run UUID<br />• `step`: Current step number<br />• `prompt_tokens`: Tokens in prompt<br />• `completion_tokens`: Tokens in response<br />• `total_tokens`: Total tokens used<br />• `response_cost`: Cost of this API call | Triggered whenever usage information is received from LLM API |
 
 ## Transparency
 
