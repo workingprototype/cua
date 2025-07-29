@@ -57,7 +57,7 @@ lume run macos-sequoia-cua:latest
 ```
 
 3. Connect with Computer
-<Tabs items={['Python', 'TypeScript']}>
+<Tabs items={['Python']}>
   <Tab value="Python">
     ```python
     computer = Computer(
@@ -67,18 +67,6 @@ lume run macos-sequoia-cua:latest
     )
 
     await computer.run() # Connect to the container
-    ```
-  </Tab>
-  <Tab value="TypeScript">
-    ```typescript
-    import { Computer, OSType } from '@trycua/computer';
-
-    const computer = new Computer({
-      osType: OSType.MACOS,
-      name: "macos-sequoia-cua:latest"
-    });
-
-    await computer.run(); // Connect to the container
     ```
   </Tab>
 </Tabs>
@@ -93,19 +81,11 @@ python -m computer-server
 ```
 
 Connect with:
-<Tabs items={['Python', 'TypeScript']}>
+<Tabs items={['Python']}>
   <Tab value="Python">
     ```python
     computer = Computer(use_host_computer_server=True)
     await computer.run() # Connect to the host desktop
-    ```
-  </Tab>
-  <Tab value="TypeScript">
-    ```typescript
-    import { Computer } from '@trycua/computer';
-
-    const computer = new Computer({ useHostComputerServer: true });
-    await computer.run(); // Connect to the host desktop
     ```
   </Tab>
 </Tabs>

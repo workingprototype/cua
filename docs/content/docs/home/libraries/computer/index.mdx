@@ -44,7 +44,7 @@ Connect to a c/ua cloud container:
 </Tabs>
 
 Connect to a c/ua local container:
-<Tabs items={['Python', 'TypeScript']}>
+<Tabs items={['Python']}>
   <Tab value="Python">
     ```python
     from computer import Computer
@@ -54,17 +54,6 @@ Connect to a c/ua local container:
     )
 
     computer = await computer.run() # Connect to the container
-    ```
-  </Tab>
-  <Tab value="TypeScript">
-    ```typescript
-    import { Computer, OSType } from '@trycua/computer';
-
-    const computer = new Computer({
-      osType: OSType.MACOS
-    });
-
-    await computer.run(); // Connect to the container
     ```
   </Tab>
 </Tabs>
