@@ -3,9 +3,7 @@ title: Home
 icon: House
 ---
 
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { cn } from 'fumadocs-ui/utils/cn';
-import { ChevronRight } from 'lucide-react';
+import { Monitor, Code, BookOpen } from 'lucide-react';
 
 # Welcome!
 
@@ -18,48 +16,18 @@ c/ua makes every stage of computer-using agent development simple:
 - **Deployment**: c/ua cloud gives you a production-ready cloud environment for your assistants
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-  <div className="border rounded-lg p-6">
-    <h3 className="text-lg font-semibold mb-2">🖥️ Quickstart (UI)</h3>
-    <p className="text-muted-foreground mb-4">Try the c/ua Agent UI in your browser—no coding required.</p>
-    <a
-      href="/home/quickstart-ui"
-      className={cn(
-        buttonVariants({ variant: 'default' }),
-        'w-full'
-      )}
-    >
-      Get Started (UI)
-      <ChevronRight className="ml-2 h-4 w-4" />
-    </a>
-  </div>
-  <div className="border rounded-lg p-6">
-    <h3 className="text-lg font-semibold mb-2">💻 Quickstart (Developers)</h3>
-    <p className="text-muted-foreground mb-4">Build with Python—full SDK and agent code examples.</p>
-    <a
-      href="/home/quickstart-devs"
-      className={cn(
-        buttonVariants({ variant: 'secondary' }),
-        'w-full'
-      )}
-    >
-      Get Started (Python)
-      <ChevronRight className="ml-2 h-4 w-4" />
-    </a>
-  </div>
+  <Card icon={<Monitor />} href="/home/quickstart-ui" title="Quickstart (UI)">
+    Try the c/ua Agent UI in your browser—no coding required.
+  </Card>
+  <Card
+    icon={<Code />}
+    href="/home/quickstart-devs"
+    title="Quickstart (Developers)">
+    Build with Python—full SDK and agent code examples.
+  </Card>
 </div>
 <div className="grid grid-cols-1 gap-6 mt-6">
-  <div className="border rounded-lg p-6">
-    <h3 className="text-lg font-semibold mb-2">📚 API Reference</h3>
-    <p className="text-muted-foreground mb-4">Explore the agent SDK and APIs</p>
-    <a
-      href="/home/libraries/agent"
-      className={cn(
-        buttonVariants({ variant: 'outline' }),
-        'w-full'
-      )}
-    >
-      View API Reference
-      <ChevronRight className="ml-2 h-4 w-4" />
-    </a>
-  </div>
+  <Card icon={<BookOpen />} href="/home/libraries/agent" title="API Reference">
+    Explore the agent SDK and APIs
+  </Card>
 </div>

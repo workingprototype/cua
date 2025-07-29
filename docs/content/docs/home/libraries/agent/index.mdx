@@ -1,6 +1,7 @@
 ---
 title: Agent
 description: Reference for the current version of the Agent library.
+pypi: cua-agent
 github:
   - https://github.com/trycua/cua/tree/main/libs/python/agent
 ---
@@ -33,20 +34,20 @@ async for result in agent.run(prompt):
 
 The `ComputerAgent` constructor provides a wide range of options for customizing agent behavior, tool integration, callbacks, resource management, and more.
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `model` | `str` | **required** | Model name (e.g., "claude-3-5-sonnet-20241022", "computer-use-preview", "omni+vertex_ai/gemini-pro") |
-| `tools` | `List[Any]` | `None` | List of tools (e.g., computer objects, decorated functions) |
-| `custom_loop` | `Callable` | `None` | Custom agent loop function (overrides auto-selection) |
-| `only_n_most_recent_images` | `int` | `None` | If set, only keep the N most recent images in message history (adds ImageRetentionCallback) |
-| `callbacks` | `List[Any]` | `None` | List of AsyncCallbackHandler instances for preprocessing/postprocessing |
-| `verbosity` | `int` | `None` | Logging level (`logging.DEBUG`, `logging.INFO`, etc.; adds LoggingCallback) |
-| `trajectory_dir` | `str` | `None` | Directory to save trajectory data (adds TrajectorySaverCallback) |
-| `max_retries` | `int` | `3` | Maximum number of retries for failed API calls |
-| `screenshot_delay` | `float` \| `int` | `0.5` | Delay before screenshots (seconds) |
-| `use_prompt_caching` | `bool` | `False` | Use prompt caching to avoid reprocessing the same prompt (mainly for Anthropic) |
-| `max_trajectory_budget` | `float` \| `dict` | `None` | If set, adds BudgetManagerCallback to track usage costs and stop when budget is exceeded |
-| `**kwargs` | _any_ |  | Additional arguments passed to the agent loop |
+| Parameter                   | Type              | Default      | Description                                                                                          |
+| --------------------------- | ----------------- | ------------ | ---------------------------------------------------------------------------------------------------- |
+| `model`                     | `str`             | **required** | Model name (e.g., "claude-3-5-sonnet-20241022", "computer-use-preview", "omni+vertex_ai/gemini-pro") |
+| `tools`                     | `List[Any]`       | `None`       | List of tools (e.g., computer objects, decorated functions)                                          |
+| `custom_loop`               | `Callable`        | `None`       | Custom agent loop function (overrides auto-selection)                                                |
+| `only_n_most_recent_images` | `int`             | `None`       | If set, only keep the N most recent images in message history (adds ImageRetentionCallback)          |
+| `callbacks`                 | `List[Any]`       | `None`       | List of AsyncCallbackHandler instances for preprocessing/postprocessing                              |
+| `verbosity`                 | `int`             | `None`       | Logging level (`logging.DEBUG`, `logging.INFO`, etc.; adds LoggingCallback)                          |
+| `trajectory_dir`            | `str`             | `None`       | Directory to save trajectory data (adds TrajectorySaverCallback)                                     |
+| `max_retries`               | `int`             | `3`          | Maximum number of retries for failed API calls                                                       |
+| `screenshot_delay`          | `float` \| `int`  | `0.5`        | Delay before screenshots (seconds)                                                                   |
+| `use_prompt_caching`        | `bool`            | `False`      | Use prompt caching to avoid reprocessing the same prompt (mainly for Anthropic)                      |
+| `max_trajectory_budget`     | `float` \| `dict` | `None`       | If set, adds BudgetManagerCallback to track usage costs and stop when budget is exceeded             |
+| `**kwargs`                  | _any_             |              | Additional arguments passed to the agent loop                                                        |
 
 #### Parameter Details
 
@@ -101,6 +102,7 @@ async for result in agent.run(messages):
 ```
 
 ### Supported Agent Loops
+
 - **Anthropic**: Claude 4, 3.7, 3.5 models
 - **OpenAI**: computer-use-preview
 - **UITARS**: UI-TARS 1.5 models (Hugging Face, TGI)

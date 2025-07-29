@@ -1,6 +1,8 @@
 ---
 title: Computer
 description: Reference for the current version of the Computer library.
+pypi: cua-computer
+npm: '@trycua/computer'
 github:
   - https://github.com/trycua/cua/tree/main/libs/python/computer
   - https://github.com/trycua/cua/tree/main/libs/typescript/computer
@@ -13,6 +15,7 @@ The Computer library provides a Computer class that can be used to control and a
 ### Basic Usage
 
 Connect to a c/ua cloud container:
+
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
     ```python
@@ -20,13 +23,14 @@ Connect to a c/ua cloud container:
 
     computer = Computer(
         os_type="linux",
-        provider_type="cloud", 
+        provider_type="cloud",
         name="your-container-name",
         api_key="your-api-key"
-    ) 
+    )
 
     computer = await computer.run() # Connect to a c/ua cloud container
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -40,10 +44,12 @@ Connect to a c/ua cloud container:
 
     await computer.run(); // Connect to a c/ua cloud container
     ```
+
   </Tab>
 </Tabs>
 
 Connect to a c/ua local container:
+
 <Tabs items={['Python']}>
   <Tab value="Python">
     ```python
@@ -55,6 +61,7 @@ Connect to a c/ua local container:
 
     computer = await computer.run() # Connect to the container
     ```
+
   </Tab>
 </Tabs>
 
@@ -144,6 +151,7 @@ Connect to a c/ua local container:
     # stdout and stderr are also captured and printed / raised
     print("Result from sandboxed function:", result)
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -196,5 +204,6 @@ Connect to a c/ua local container:
     // Accessibility
     await computer.interface.getAccessibilityTree(); // Get accessibility tree
     ```
+
   </Tab>
 </Tabs>
