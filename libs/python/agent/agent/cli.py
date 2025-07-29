@@ -92,26 +92,30 @@ def print_welcome(model: str, agent_loop: str, container_name: str):
 async def ainput(prompt: str = ""):
     return await asyncio.to_thread(input, prompt)
 
-async def chat_loop(agent, model: str, container_name: str):
+async def chat_loop(agent, model: str, container_name: str, initial_prompt: str = ""):
     """Main chat loop with the agent."""
     print_welcome(model, agent.agent_loop.__name__, container_name)
     
     history = []
     
+    if initial_prompt:
+        history.append({"role": "user", "content": initial_prompt})
+    
     while True:
-        # Get user input with prompt
-        print_colored("> ", end="")
-        user_input = await ainput()
-        
-        if user_input.lower() in ['exit', 'quit', 'q']:
-            print_colored("\n👋 Goodbye!")
-            break
+        if history[-1].get("role") != "user":
+            # Get user input with prompt
+            print_colored("> ", end="")
+            user_input = await ainput()
             
-        if not user_input:
-            continue
-            
-        # Add user message to history
-        history.append({"role": "user", "content": user_input})
+            if user_input.lower() in ['exit', 'quit', 'q']:
+                print_colored("\n👋 Goodbye!")
+                break
+                
+            if not user_input:
+                continue
+                
+            # Add user message to history
+            history.append({"role": "user", "content": user_input})
         
         # Stream responses from the agent with spinner
         with yaspin(text="Thinking...", spinner="line", attrs=["dark"]) as spinner:
@@ -204,6 +208,12 @@ Examples:
         action="store_true",
         help="Enable verbose logging"
     )
+
+    parser.add_argument(
+        "-p", "--prompt",
+        type=str,
+        help="Initial prompt to send to the agent. Leave blank for interactive mode."
+    )
     
     args = parser.parse_args()
     
@@ -269,9 +279,11 @@ Examples:
         agent_kwargs = {
             "model": args.model,
             "tools": [computer],
-            "only_n_most_recent_images": args.images,
             "verbosity": 20 if args.verbose else 30,  # DEBUG vs WARNING
         }
+
+        if args.images > 0:
+            agent_kwargs["only_n_most_recent_images"] = args.images
         
         if args.trajectory:
             agent_kwargs["trajectory_dir"] = "trajectories"
@@ -286,7 +298,7 @@ Examples:
         agent = ComputerAgent(**agent_kwargs)
         
         # Start chat loop
-        await chat_loop(agent, args.model, container_name)
+        await chat_loop(agent, args.model, container_name, args.prompt)
 
 
 
