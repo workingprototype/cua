@@ -326,13 +326,13 @@ def _convert_responses_items_to_completion_messages(messages: Messages) -> List[
                         "text": "+".join(action.get("keys", []))
                     }
                 })
-            elif action_type == "mouse_move":
+            elif action_type in ["mouse_move", "move"]:
                 # Input:
                 # {
                 #     "type": "computer_call",
                 #     "call_id": "call_1",
                 #     "action": {
-                #         "type": "mouse_move",
+                #         "type": "move",
                 #         "x": 150,
                 #         "y": 250
                 #     }
