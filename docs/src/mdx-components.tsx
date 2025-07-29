@@ -1,4 +1,5 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import * as TabsComponents from 'fumadocs-ui/components/tabs';
 import type { MDXComponents } from 'mdx/types';
 import { Mermaid } from './components/mermaid';
 import IOU from './components/iou';
@@ -9,6 +10,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...defaultMdxComponents,
     Mermaid,
     IOU,
+    ...TabsComponents,
     ...components,
   };
 }
