@@ -342,7 +342,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             ))
                         elif action_type == "key":
                             responses_items.append(make_keypress_item(
-                                key=tool_input.get("key", ""),
+                                keys=tool_input.get("text", "").replace("+", "-").split("-"),
                                 call_id=call_id
                             ))
                         elif action_type == "mouse_move":
@@ -361,21 +361,32 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                         # Enhanced actions (computer_20250124) Available in Claude 4 and Claude Sonnet 3.7
                         elif action_type == "scroll":
                             coordinate = tool_input.get("coordinate", [0, 0])
+                            scroll_amount = tool_input.get("scroll_amount", 3)
+                            scroll_x = scroll_amount if tool_input.get("scroll_direction", "down") == "right" else \
+                                -scroll_amount if tool_input.get("scroll_direction", "down") == "left" else 0
+                            scroll_y = scroll_amount if tool_input.get("scroll_direction", "down") == "down" else \
+                                -scroll_amount if tool_input.get("scroll_direction", "down") == "up" else 0
                             responses_items.append(make_scroll_item(
                                 x=coordinate[0] if len(coordinate) > 0 else 0,
                                 y=coordinate[1] if len(coordinate) > 1 else 0,
-                                direction=tool_input.get("scroll_direction", "down"),
-                                amount=tool_input.get("scroll_amount", 3),
+                                scroll_x=scroll_x,
+                                scroll_y=scroll_y,
                                 call_id=call_id
                             ))
                         elif action_type == "left_click_drag":
                             start_coord = tool_input.get("start_coordinate", [0, 0])
                             end_coord = tool_input.get("end_coordinate", [0, 0])
                             responses_items.append(make_drag_item(
-                                start_x=start_coord[0] if len(start_coord) > 0 else 0,
-                                start_y=start_coord[1] if len(start_coord) > 1 else 0,
-                                end_x=end_coord[0] if len(end_coord) > 0 else 0,
-                                end_y=end_coord[1] if len(end_coord) > 1 else 0,
+                                path=[
+                                    {
+                                        "x": start_coord[0] if len(start_coord) > 0 else 0,
+                                        "y": start_coord[1] if len(start_coord) > 1 else 0
+                                    },
+                                    {
+                                        "x": end_coord[0] if len(end_coord) > 0 else 0,
+                                        "y": end_coord[1] if len(end_coord) > 1 else 0
+                                    }
+                                ],
                                 call_id=call_id
                             ))
                         elif action_type == "right_click":
@@ -459,7 +470,6 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
     # Handle tool calls (alternative format)
     if hasattr(message, 'tool_calls') and message.tool_calls:
         for tool_call in message.tool_calls:
-            print(tool_call)
             if tool_call.function.name == "computer":
                 try:
                     args = json.loads(tool_call.function.arguments)
