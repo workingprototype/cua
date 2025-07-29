@@ -28,6 +28,9 @@ try:
 except Exception as e:
     logger.warning(f"pyautogui import failed: {str(e)}. GUI operations will be simulated.")
 
+from pynput.mouse import Button, Controller as MouseController
+from pynput.keyboard import Key, Controller as KeyboardController
+
 from .base import BaseAccessibilityHandler, BaseAutomationHandler
 
 class LinuxAccessibilityHandler(BaseAccessibilityHandler):
@@ -83,6 +86,7 @@ class LinuxAccessibilityHandler(BaseAccessibilityHandler):
 
 class LinuxAutomationHandler(BaseAutomationHandler):
     """Linux implementation of automation handler using pyautogui."""
+    keyboard = KeyboardController()
     
     # Mouse Actions
     async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> Dict[str, Any]:
@@ -189,7 +193,8 @@ class LinuxAutomationHandler(BaseAutomationHandler):
     
     async def type_text(self, text: str) -> Dict[str, Any]:
         try:
-            pyautogui.write(text)
+            # use pynput for Unicode support
+            self.keyboard.type(text)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
