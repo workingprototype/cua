@@ -193,17 +193,98 @@ def _convert_responses_items_to_completion_messages(messages: Messages) -> List[
             
             tool_use_content = []
             
+            # Basic actions (all versions)
             if action_type == "click":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "click",
+                #         "x": 100,
+                #         "y": 200
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "click",
+                #             "coordinate": [100, 200]
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
+                button = action.get("button", "left")
+                action_name = "right_click" if button == "right" else "middle_click" if button == "wheel" else "left_click"
                 tool_use_content.append({
                     "type": "tool_use",
                     "id": call_id,
                     "name": "computer",
                     "input": {
-                        "action": "click",
+                        "action": action_name,
+                        "coordinate": [action.get("x", 0), action.get("y", 0)]
+                    }
+                })
+            elif action_type == "double_click":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "double_click",
+                #         "x": 160,
+                #         "y": 240
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "double_click",
+                #             "coordinate": [160, 240]
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "double_click",
                         "coordinate": [action.get("x", 0), action.get("y", 0)]
                     }
                 })
             elif action_type == "type":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "type",
+                #         "text": "Hello World"
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "type",
+                #             "text": "Hello World"
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
                 tool_use_content.append({
                     "type": "tool_use",
                     "id": call_id,
@@ -213,26 +294,223 @@ def _convert_responses_items_to_completion_messages(messages: Messages) -> List[
                         "text": action.get("text", "")
                     }
                 })
-            elif action_type == "key":
+            elif action_type == "keypress":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "keypress",
+                #         "keys": ["ctrl", "c"]
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "key",
+                #             "text": "ctrl+c"
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
                 tool_use_content.append({
                     "type": "tool_use",
                     "id": call_id,
                     "name": "computer",
                     "input": {
                         "action": "key",
-                        "key": action.get("key", "")
+                        "text": "+".join(action.get("keys", []))
                     }
                 })
-            elif action_type == "wait":
+            elif action_type == "mouse_move":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "mouse_move",
+                #         "x": 150,
+                #         "y": 250
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "mouse_move",
+                #             "coordinate": [150, 250]
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
                 tool_use_content.append({
                     "type": "tool_use",
                     "id": call_id,
                     "name": "computer",
                     "input": {
-                        "action": "screenshot"
+                        "action": "mouse_move",
+                        "coordinate": [action.get("x", 0), action.get("y", 0)]
+                    }
+                })
+            elif action_type == "scroll":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "scroll",
+                #         "x": 300,
+                #         "y": 400,
+                #         "scroll_x": 0,
+                #         "scroll_y": -5
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "scroll",
+                #             "coordinate": [300, 400],
+                #             "scroll_direction": "down",
+                #             "scroll_amount": 5
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
+                scroll_x = action.get("scroll_x", 0)
+                scroll_y = action.get("scroll_y", 0)
+                # Determine direction and amount from scroll values
+                if scroll_x > 0:
+                    direction = "left"
+                    amount = scroll_x
+                elif scroll_x < 0:
+                    direction = "right"
+                    amount = -scroll_x
+                elif scroll_y > 0:
+                    direction = "up"
+                    amount = scroll_y
+                elif scroll_y < 0:
+                    direction = "down"
+                    amount = -scroll_y
+                else:
+                    direction = "down"
+                    amount = 3
+                
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "scroll",
+                        "coordinate": [action.get("x", 0), action.get("y", 0)],
+                        "scroll_direction": direction,
+                        "scroll_amount": amount
+                    }
+                })
+            elif action_type == "drag":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "drag",
+                #         "path": [
+                #             {"x": 100, "y": 150},
+                #             {"x": 200, "y": 250}
+                #         ]
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "left_click_drag",
+                #             "start_coordinate": [100, 150],
+                #             "end_coordinate": [200, 250]
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
+                path = action.get("path", [])
+                start_coord = [0, 0]
+                end_coord = [0, 0]
+                if isinstance(path, list) and len(path) >= 2:
+                    start_coord = [path[0].get("x", 0), path[0].get("y", 0)]
+                    end_coord = [path[-1].get("x", 0), path[-1].get("y", 0)]
+                
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "left_click_drag",
+                        "start_coordinate": start_coord,
+                        "end_coordinate": end_coord
+                    }
+                })
+            elif action_type == "wait":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "wait"
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "wait"
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "wait"
                     }
                 })
             elif action_type == "screenshot":
+                # Input:
+                # {
+                #     "type": "computer_call",
+                #     "call_id": "call_1",
+                #     "action": {
+                #         "type": "screenshot"
+                #     }
+                # }
+                
+                # Output:
+                # {
+                #     "function": {
+                #         "name": "computer",
+                #         "arguments": json.dumps({
+                #             "action": "screenshot"
+                #         })
+                #     },
+                #     "id": "call_1",
+                #     "type": "function"
+                # }
                 tool_use_content.append({
                     "type": "tool_use",
                     "id": call_id,
@@ -342,7 +620,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             ))
                         elif action_type == "key":
                             responses_items.append(make_keypress_item(
-                                key=tool_input.get("key", ""),
+                                keys=tool_input.get("text", "").replace("+", "-").split("-"),
                                 call_id=call_id
                             ))
                         elif action_type == "mouse_move":
@@ -361,21 +639,32 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                         # Enhanced actions (computer_20250124) Available in Claude 4 and Claude Sonnet 3.7
                         elif action_type == "scroll":
                             coordinate = tool_input.get("coordinate", [0, 0])
+                            scroll_amount = tool_input.get("scroll_amount", 3)
+                            scroll_x = scroll_amount if tool_input.get("scroll_direction", "down") == "right" else \
+                                -scroll_amount if tool_input.get("scroll_direction", "down") == "left" else 0
+                            scroll_y = scroll_amount if tool_input.get("scroll_direction", "down") == "down" else \
+                                -scroll_amount if tool_input.get("scroll_direction", "down") == "up" else 0
                             responses_items.append(make_scroll_item(
                                 x=coordinate[0] if len(coordinate) > 0 else 0,
                                 y=coordinate[1] if len(coordinate) > 1 else 0,
-                                direction=tool_input.get("scroll_direction", "down"),
-                                amount=tool_input.get("scroll_amount", 3),
+                                scroll_x=scroll_x,
+                                scroll_y=scroll_y,
                                 call_id=call_id
                             ))
                         elif action_type == "left_click_drag":
                             start_coord = tool_input.get("start_coordinate", [0, 0])
                             end_coord = tool_input.get("end_coordinate", [0, 0])
                             responses_items.append(make_drag_item(
-                                start_x=start_coord[0] if len(start_coord) > 0 else 0,
-                                start_y=start_coord[1] if len(start_coord) > 1 else 0,
-                                end_x=end_coord[0] if len(end_coord) > 0 else 0,
-                                end_y=end_coord[1] if len(end_coord) > 1 else 0,
+                                path=[
+                                    {
+                                        "x": start_coord[0] if len(start_coord) > 0 else 0,
+                                        "y": start_coord[1] if len(start_coord) > 1 else 0
+                                    },
+                                    {
+                                        "x": end_coord[0] if len(end_coord) > 0 else 0,
+                                        "y": end_coord[1] if len(end_coord) > 1 else 0
+                                    }
+                                ],
                                 call_id=call_id
                             ))
                         elif action_type == "right_click":
@@ -459,7 +748,6 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
     # Handle tool calls (alternative format)
     if hasattr(message, 'tool_calls') and message.tool_calls:
         for tool_call in message.tool_calls:
-            print(tool_call)
             if tool_call.function.name == "computer":
                 try:
                     args = json.loads(tool_call.function.arguments)
@@ -468,10 +756,53 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
 
                     # Basic actions (all versions)
                     if action_type == "screenshot":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "screenshot"
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "screenshot"
+                        #     }
+                        # }
                         responses_items.append(make_screenshot_item(
                             call_id=call_id
                         ))
                     elif action_type in ["click", "left_click"]:
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "click",
+                        #             "coordinate": [100, 200]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "click",
+                        #         "x": 100,
+                        #         "y": 200
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         responses_items.append(make_click_item(
                             x=coordinate[0] if len(coordinate) > 0 else 0,
@@ -479,16 +810,83 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             call_id=call_id
                         ))
                     elif action_type == "type":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "type",
+                        #             "text": "Hello World"
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "type",
+                        #         "text": "Hello World"
+                        #     }
+                        # }
                         responses_items.append(make_type_item(
                             text=args.get("text", ""),
                             call_id=call_id
                         ))
                     elif action_type == "key":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "key",
+                        #             "text": "ctrl+c"
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "keypress",
+                        #         "keys": ["ctrl", "c"]
+                        #     }
+                        # }
                         responses_items.append(make_keypress_item(
-                            key=args.get("key", ""),
+                            keys=args.get("text", "").replace("+", "-").split("-"),
                             call_id=call_id
                         ))
                     elif action_type == "mouse_move":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "mouse_move",
+                        #             "coordinate": [150, 250]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "mouse_move",
+                        #         "x": 150,
+                        #         "y": 250
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         responses_items.append(make_move_item(
                             x=coordinate[0] if len(coordinate) > 0 else 0,
@@ -498,6 +896,33 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                     
                     # Enhanced actions (computer_20250124) Available in Claude 4 and Claude Sonnet 3.7
                     elif action_type == "scroll":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "scroll",
+                        #             "coordinate": [300, 400],
+                        #             "scroll_direction": "down",
+                        #             "scroll_amount": 5
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "scroll",
+                        #         "x": 300,
+                        #         "y": 400,
+                        #         "scroll_x": 0,
+                        #         "scroll_y": -5
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         direction = args.get("scroll_direction", "down")
                         amount = args.get("scroll_amount", 3)
@@ -513,16 +938,72 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             call_id=call_id
                         ))
                     elif action_type == "left_click_drag":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "left_click_drag",
+                        #             "start_coordinate": [100, 150],
+                        #             "end_coordinate": [200, 250]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "drag",
+                        #         "path": [
+                        #             {"x": 100, "y": 150},
+                        #             {"x": 200, "y": 250}
+                        #         ]
+                        #     }
+                        # }
                         start_coord = args.get("start_coordinate", [0, 0])
                         end_coord = args.get("end_coordinate", [0, 0])
                         responses_items.append(make_drag_item(
-                            start_x=start_coord[0] if len(start_coord) > 0 else 0,
-                            start_y=start_coord[1] if len(start_coord) > 1 else 0,
-                            end_x=end_coord[0] if len(end_coord) > 0 else 0,
-                            end_y=end_coord[1] if len(end_coord) > 1 else 0,
+                            path=[
+                                {
+                                    "x": start_coord[0] if len(start_coord) > 0 else 0,
+                                    "y": start_coord[1] if len(start_coord) > 1 else 0
+                                },
+                                {
+                                    "x": end_coord[0] if len(end_coord) > 0 else 0,
+                                    "y": end_coord[1] if len(end_coord) > 1 else 0
+                                }
+                            ],
                             call_id=call_id
                         ))
                     elif action_type == "right_click":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "right_click",
+                        #             "coordinate": [120, 180]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "click",
+                        #         "x": 120,
+                        #         "y": 180,
+                        #         "button": "right"
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         responses_items.append(make_click_item(
                             x=coordinate[0] if len(coordinate) > 0 else 0,
@@ -531,14 +1012,61 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             call_id=call_id
                         ))
                     elif action_type == "middle_click":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "middle_click",
+                        #             "coordinate": [140, 220]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "click",
+                        #         "x": 140,
+                        #         "y": 220,
+                        #         "button": "wheel"
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         responses_items.append(make_click_item(
                             x=coordinate[0] if len(coordinate) > 0 else 0,
                             y=coordinate[1] if len(coordinate) > 1 else 0,
-                            button="scroll",
+                            button="wheel",
                             call_id=call_id
                         ))
                     elif action_type == "double_click":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "double_click",
+                        #             "coordinate": [160, 240]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "double_click",
+                        #         "x": 160,
+                        #         "y": 240
+                        #     }
+                        # }
                         coordinate = args.get("coordinate", [0, 0])
                         responses_items.append(make_double_click_item(
                             x=coordinate[0] if len(coordinate) > 0 else 0,
@@ -546,14 +1074,127 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             call_id=call_id
                         ))
                     elif action_type == "triple_click":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "triple_click",
+                        #             "coordinate": [180, 260]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "triple_click",
+                        #         "x": 180,
+                        #         "y": 260
+                        #     }
+                        # }
                         raise NotImplementedError("triple_click")
                     elif action_type == "left_mouse_down":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "left_mouse_down",
+                        #             "coordinate": [200, 280]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "mouse_down",
+                        #         "button": "left",
+                        #         "x": 200,
+                        #         "y": 280
+                        #     }
+                        # }
                         raise NotImplementedError("left_mouse_down")
                     elif action_type == "left_mouse_up":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "left_mouse_up",
+                        #             "coordinate": [220, 300]
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "mouse_up",
+                        #         "button": "left",
+                        #         "x": 220,
+                        #         "y": 300
+                        #     }
+                        # }
                         raise NotImplementedError("left_mouse_up")
                     elif action_type == "hold_key":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "hold_key",
+                        #             "key": "shift"
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "key_hold",
+                        #         "key": "shift"
+                        #     }
+                        # }
                         raise NotImplementedError("hold_key")
                     elif action_type == "wait":
+                        # Input:
+                        # {
+                        #     "function": {
+                        #         "name": "computer",
+                        #         "arguments": json.dumps({
+                        #             "action": "wait"
+                        #         })
+                        #     },
+                        #     "id": "call_1",
+                        #     "type": "function"
+                        # }
+                        
+                        # Output:
+                        # {
+                        #     "type": "computer_call",
+                        #     "call_id": "call_1",
+                        #     "action": {
+                        #         "type": "wait"
+                        #     }
+                        # }
                         responses_items.append(make_wait_item(
                             call_id=call_id
                         ))

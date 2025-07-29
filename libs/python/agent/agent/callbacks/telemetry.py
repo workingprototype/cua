@@ -60,7 +60,7 @@ class TelemetryCallback(AsyncCallbackHandler):
         """Record agent type/model and session initialization."""
         agent_info = {
             "session_id": self.session_id,
-            "agent_type": self.agent.agent_loop.__name__,
+            "agent_type": self.agent.agent_loop.__name__ if hasattr(self.agent, 'agent_loop') else 'unknown',
             "model": getattr(self.agent, 'model', 'unknown'),
             **SYSTEM_INFO
         }
