@@ -4,12 +4,13 @@ Anthropic hosted tools agent loop implementation using liteLLM
 
 import asyncio
 import json
-from typing import Dict, List, Any, AsyncGenerator, Union, Optional
+from typing import Dict, List, Any, AsyncGenerator, Union, Optional, Tuple
 import litellm
 from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
 
-from ..decorators import agent_loop
-from ..types import Messages, AgentResponse, Tools
+from ..decorators import register_agent
+from ..types import Messages, AgentResponse, Tools, AgentCapability
+from ..loops.base import AsyncAgentConfig
 from ..responses import (
     make_reasoning_item,
     make_output_text_item,
@@ -1284,84 +1285,100 @@ def _merge_consecutive_text(content_list: List[Dict[str, Any]]) -> List[Dict[str
     
     return merged
 
-@agent_loop(models=r".*claude-.*", priority=5)
-async def anthropic_hosted_tools_loop(
-    messages: Messages,
-    model: str,
-    tools: Optional[List[Dict[str, Any]]] = None,
-    max_retries: Optional[int] = None,
-    stream: bool = False,
-    computer_handler=None,
-    use_prompt_caching: Optional[bool] = False,
-    _on_api_start=None,
-    _on_api_end=None,
-    _on_usage=None,
-    _on_screenshot=None,
-    **kwargs
-) -> Union[AgentResponse, AsyncGenerator[Dict[str, Any], None]]:
-    """
-    Anthropic hosted tools agent loop using liteLLM acompletion.
+@register_agent(models=r".*claude-.*", priority=5)
+class AnthropicHostedToolsConfig(AsyncAgentConfig):
+    """Anthropic hosted tools agent configuration implementing AsyncAgentConfig protocol."""
     
-    Supports Anthropic's computer use models with hosted tools.
-    """
-    tools = tools or []
-    
-    # Get tool configuration for this model
-    tool_config = _get_tool_config_for_model(model)
-    
-    # Prepare tools for Anthropic API
-    anthropic_tools = _prepare_tools_for_anthropic(tools, model)
-    
-    # Convert responses_items messages to completion format
-    completion_messages = _convert_responses_items_to_completion_messages(messages)
-    if use_prompt_caching:
-        # First combine messages to reduce number of blocks
-        completion_messages = _combine_completion_messages(completion_messages)
-        # Then add cache control, anthropic requires explicit "cache_control" dicts
-        completion_messages = _add_cache_control(completion_messages)
-    
-    # Prepare API call kwargs
-    api_kwargs = {
-        "model": model,
-        "messages": completion_messages,
-        "tools": anthropic_tools if anthropic_tools else None,
-        "stream": stream,
-        "num_retries": max_retries,
+    async def predict_step(
+        self,
+        messages: Messages,
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_retries: Optional[int] = None,
+        stream: bool = False,
+        computer_handler=None,
+        use_prompt_caching: Optional[bool] = False,
+        _on_api_start=None,
+        _on_api_end=None,
+        _on_usage=None,
+        _on_screenshot=None,
         **kwargs
-    }
-    
-    # Add beta header for computer use
-    if anthropic_tools:
-        api_kwargs["headers"] = {
-            "anthropic-beta": tool_config["beta_flag"]
+    ) -> Dict[str, Any]:
+        """
+        Anthropic hosted tools agent loop using liteLLM acompletion.
+        
+        Supports Anthropic's computer use models with hosted tools.
+        """
+        tools = tools or []
+        
+        # Get tool configuration for this model
+        tool_config = _get_tool_config_for_model(model)
+        
+        # Prepare tools for Anthropic API
+        anthropic_tools = _prepare_tools_for_anthropic(tools, model)
+        
+        # Convert responses_items messages to completion format
+        completion_messages = _convert_responses_items_to_completion_messages(messages)
+        if use_prompt_caching:
+            # First combine messages to reduce number of blocks
+            completion_messages = _combine_completion_messages(completion_messages)
+            # Then add cache control, anthropic requires explicit "cache_control" dicts
+            completion_messages = _add_cache_control(completion_messages)
+        
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "messages": completion_messages,
+            "tools": anthropic_tools if anthropic_tools else None,
+            "stream": stream,
+            "num_retries": max_retries,
+            **kwargs
+        }
+        
+        # Add beta header for computer use
+        if anthropic_tools:
+            api_kwargs["headers"] = {
+                "anthropic-beta": tool_config["beta_flag"]
+            }
+        
+        # Call API start hook
+        if _on_api_start:
+            await _on_api_start(api_kwargs)
+        
+        # Use liteLLM acompletion
+        response = await litellm.acompletion(**api_kwargs)
+        
+        # Call API end hook
+        if _on_api_end:
+            await _on_api_end(api_kwargs, response)
+        
+        # Convert response to responses_items format
+        responses_items = _convert_completion_to_responses_items(response)
+
+        # Extract usage information
+        responses_usage = { 
+            **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
+            "response_cost": response._hidden_params.get("response_cost", 0.0),
+        }
+        if _on_usage:
+            await _on_usage(responses_usage)
+
+        # Return in AsyncAgentConfig format
+        return {
+            "output": responses_items,
+            "usage": responses_usage
         }
     
-    # Call API start hook
-    if _on_api_start:
-        await _on_api_start(api_kwargs)
+    async def predict_click(
+        self,
+        model: str,
+        image_b64: str,
+        instruction: str,
+        **kwargs
+    ) -> Optional[Tuple[float, float]]:
+        """Anthropic hosted tools does not support click prediction."""
+        return None
     
-    # Use liteLLM acompletion
-    response = await litellm.acompletion(**api_kwargs)
-    
-    # Call API end hook
-    if _on_api_end:
-        await _on_api_end(api_kwargs, response)
-    
-    # Convert response to responses_items format
-    responses_items = _convert_completion_to_responses_items(response)
-
-    # Extract usage information
-    responses_usage = { 
-        **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
-        "response_cost": response._hidden_params.get("response_cost", 0.0),
-    }
-    if _on_usage:
-        await _on_usage(responses_usage)
-
-    # Create agent response
-    agent_response = {
-        "output": responses_items,
-        "usage": responses_usage
-    }
-    
-    return agent_response
+    def get_capabilities(self) -> List[AgentCapability]:
+        """Return the capabilities supported by this agent."""
+        return ["step"]

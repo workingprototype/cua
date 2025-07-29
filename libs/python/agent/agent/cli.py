@@ -260,7 +260,12 @@ Examples:
         help="Show total cost of the agent runs"
     )
 
-
+    parser.add_argument(
+        "-r", "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for the LLM API calls"
+    )
     
     args = parser.parse_args()
     
@@ -327,6 +332,7 @@ Examples:
             "model": args.model,
             "tools": [computer],
             "verbosity": 20 if args.verbose else 30,  # DEBUG vs WARNING
+            "max_retries": args.max_retries
         }
 
         if args.images > 0:

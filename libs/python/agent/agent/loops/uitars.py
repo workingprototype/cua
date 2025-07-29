@@ -9,7 +9,7 @@ import base64
 import math
 import re
 import ast
-from typing import Dict, List, Any, AsyncGenerator, Union, Optional
+from typing import Dict, List, Any, AsyncGenerator, Union, Optional, Tuple
 from io import BytesIO
 from PIL import Image
 import litellm
@@ -21,8 +21,8 @@ from openai.types.responses.response_input_param import ComputerCallOutput
 from openai.types.responses.response_output_message_param import ResponseOutputMessageParam
 from openai.types.responses.response_reasoning_item_param import ResponseReasoningItemParam, Summary
 
-from ..decorators import agent_loop
-from ..types import Messages, AgentResponse, Tools
+from ..decorators import register_agent
+from ..types import Messages, AgentResponse, Tools, AgentCapability
 from ..responses import (
     make_reasoning_item, 
     make_output_text_item,
@@ -501,188 +501,298 @@ def convert_uitars_messages_to_litellm(messages: Messages) -> List[Dict[str, Any
     
     return litellm_messages
 
-@agent_loop(models=r"(?i).*ui-?tars.*", priority=10)
-async def uitars_loop(
-    messages: Messages,
-    model: str,
-    tools: Optional[List[Dict[str, Any]]] = None,
-    max_retries: Optional[int] = None,
-    stream: bool = False,
-    computer_handler=None,
-    use_prompt_caching: Optional[bool] = False,
-    _on_api_start=None,
-    _on_api_end=None,
-    _on_usage=None,
-    _on_screenshot=None,
-    **kwargs
-) -> Union[AgentResponse, AsyncGenerator[Dict[str, Any], None]]:
+@register_agent(models=r"(?i).*ui-?tars.*", priority=10)
+class UITARSConfig:
     """
-    UITARS agent loop using liteLLM for ByteDance-Seed/UI-TARS-1.5-7B model.
+    UITARS agent configuration using liteLLM for ByteDance-Seed/UI-TARS-1.5-7B model.
     
     Supports UITARS vision-language models for computer control.
     """
-    tools = tools or []
     
-    # Create response items
-    response_items = []
-    
-    # Find computer tool for screen dimensions
-    computer_tool = None
-    for tool_schema in tools:
-        if tool_schema["type"] == "computer":
-            computer_tool = tool_schema["computer"]
-            break
-    
-    # Get screen dimensions
-    screen_width, screen_height = 1024, 768
-    if computer_tool:
-        try:
-            screen_width, screen_height = await computer_tool.get_dimensions()
-        except:
-            pass
-    
-    # Process messages to extract instruction and image
-    instruction = ""
-    image_data = None
-    
-    # Convert messages to list if string
-    if isinstance(messages, str):
-        messages = [{"role": "user", "content": messages}]
-    
-    # Extract instruction and latest screenshot
-    for message in reversed(messages):
-        if isinstance(message, dict):
-            content = message.get("content", "")
+    async def predict_step(
+        self,
+        messages: Messages,
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_retries: Optional[int] = None,
+        stream: bool = False,
+        computer_handler=None,
+        use_prompt_caching: Optional[bool] = False,
+        _on_api_start=None,
+        _on_api_end=None,
+        _on_usage=None,
+        _on_screenshot=None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Predict the next step based on input messages.
+        
+        Args:
+            messages: Input messages following Responses format
+            model: Model name to use
+            tools: Optional list of tool schemas
+            max_retries: Maximum number of retries
+            stream: Whether to stream responses
+            computer_handler: Computer handler instance
+            _on_api_start: Callback for API start
+            _on_api_end: Callback for API end
+            _on_usage: Callback for usage tracking
+            _on_screenshot: Callback for screenshot events
+            **kwargs: Additional arguments
             
-            # Handle different content formats
-            if isinstance(content, str):
-                if not instruction and message.get("role") == "user":
-                    instruction = content
-            elif isinstance(content, list):
-                for item in content:
-                    if isinstance(item, dict):
-                        if item.get("type") == "text" and not instruction:
-                            instruction = item.get("text", "")
-                        elif item.get("type") == "image_url" and not image_data:
-                            image_url = item.get("image_url", {})
-                            if isinstance(image_url, dict):
-                                image_data = image_url.get("url", "")
-                            else:
-                                image_data = image_url
+        Returns:
+            Dictionary with "output" (output items) and "usage" array
+        """
+        tools = tools or []
         
-        # Also check for computer_call_output with screenshots
-        if message.get("type") == "computer_call_output" and not image_data:
-            output = message.get("output", {})
-            if isinstance(output, dict) and output.get("type") == "input_image":
-                image_data = output.get("image_url", "")
+        # Create response items
+        response_items = []
         
-        if instruction and image_data:
-            break
-    
-    if not instruction:
-        instruction = "Help me complete this task by analyzing the screen and taking appropriate actions."
-    
-    # Create prompt
-    user_prompt = UITARS_PROMPT_TEMPLATE.format(
-        instruction=instruction,
-        action_space=UITARS_ACTION_SPACE,
-        language="English"
-    )
-    
-    # Convert conversation history to LiteLLM format
-    history_messages = convert_uitars_messages_to_litellm(messages)
-    
-    # Prepare messages for liteLLM
-    litellm_messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant."
-        }
-    ]
-
-    # Add current user instruction with screenshot
-    current_user_message = {
-        "role": "user", 
-        "content": [
-            {"type": "text", "text": user_prompt},
+        # Find computer tool for screen dimensions
+        computer_tool = None
+        for tool_schema in tools:
+            if tool_schema["type"] == "computer":
+                computer_tool = tool_schema["computer"]
+                break
+        
+        # Get screen dimensions
+        screen_width, screen_height = 1024, 768
+        if computer_tool:
+            try:
+                screen_width, screen_height = await computer_tool.get_dimensions()
+            except:
+                pass
+        
+        # Process messages to extract instruction and image
+        instruction = ""
+        image_data = None
+        
+        # Convert messages to list if string
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
+        
+        # Extract instruction and latest screenshot
+        for message in reversed(messages):
+            if isinstance(message, dict):
+                content = message.get("content", "")
+                
+                # Handle different content formats
+                if isinstance(content, str):
+                    if not instruction and message.get("role") == "user":
+                        instruction = content
+                elif isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict):
+                            if item.get("type") == "text" and not instruction:
+                                instruction = item.get("text", "")
+                            elif item.get("type") == "image_url" and not image_data:
+                                image_url = item.get("image_url", {})
+                                if isinstance(image_url, dict):
+                                    image_data = image_url.get("url", "")
+                                else:
+                                    image_data = image_url
+            
+            # Also check for computer_call_output with screenshots
+            if message.get("type") == "computer_call_output" and not image_data:
+                output = message.get("output", {})
+                if isinstance(output, dict) and output.get("type") == "input_image":
+                    image_data = output.get("image_url", "")
+            
+            if instruction and image_data:
+                break
+        
+        if not instruction:
+            instruction = "Help me complete this task by analyzing the screen and taking appropriate actions."
+        
+        # Create prompt
+        user_prompt = UITARS_PROMPT_TEMPLATE.format(
+            instruction=instruction,
+            action_space=UITARS_ACTION_SPACE,
+            language="English"
+        )
+        
+        # Convert conversation history to LiteLLM format
+        history_messages = convert_uitars_messages_to_litellm(messages)
+        
+        # Prepare messages for liteLLM
+        litellm_messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            }
         ]
-    }
-    litellm_messages.append(current_user_message)
-    
-    # Process image for UITARS
-    if not image_data:
-        # Take screenshot if none found in messages
-        if computer_handler:
-            image_data = await computer_handler.screenshot()
-            await _on_screenshot(image_data, "screenshot_before")
 
-            # Add screenshot to output items so it can be retained in history
-            response_items.append(make_input_image_item(image_data))
-        else:
-            raise ValueError("No screenshot found in messages and no computer_handler provided")
-    processed_image, original_width, original_height = process_image_for_uitars(image_data)
-    encoded_image = pil_to_base64(processed_image)
-    
-    # Add conversation history
-    if history_messages:
-        litellm_messages.extend(history_messages)
-    else:
-        litellm_messages.append({
-            "role": "user",
+        # Add current user instruction with screenshot
+        current_user_message = {
+            "role": "user", 
             "content": [
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded_image}"}}
+                {"type": "text", "text": user_prompt},
             ]
-        })
+        }
+        litellm_messages.append(current_user_message)
+        
+        # Process image for UITARS
+        if not image_data:
+            # Take screenshot if none found in messages
+            if computer_handler:
+                image_data = await computer_handler.screenshot()
+                await _on_screenshot(image_data, "screenshot_before")
 
-    # Prepare API call kwargs
-    api_kwargs = {
-        "model": model,
-        "messages": litellm_messages,
-        "max_tokens": kwargs.get("max_tokens", 500),
-        "temperature": kwargs.get("temperature", 0.0),
-        "do_sample": kwargs.get("temperature", 0.0) > 0.0,
-        "num_retries": max_retries,
-        **{k: v for k, v in kwargs.items() if k not in ["max_tokens", "temperature"]}
-    }
-    
-    # Call API start hook
-    if _on_api_start:
-        await _on_api_start(api_kwargs)
-    
-    # Call liteLLM with UITARS model
-    response = await litellm.acompletion(**api_kwargs)
-    
-    # Call API end hook
-    if _on_api_end:
-        await _on_api_end(api_kwargs, response)
-    
-    # Extract response content
-    response_content = response.choices[0].message.content.strip() # type: ignore
-    
-    # Parse UITARS response
-    parsed_responses = parse_uitars_response(response_content, original_width, original_height)
-    
-    # Convert to computer actions
-    computer_actions = convert_to_computer_actions(parsed_responses, original_width, original_height)
-    
-    # Add computer actions to response items
-    thought = parsed_responses[0].get("thought", "")
-    if thought:
-        response_items.append(make_reasoning_item(thought))
-    response_items.extend(computer_actions)
-    
-    # Extract usage information
-    response_usage = {
-        **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
-        "response_cost": response._hidden_params.get("response_cost", 0.0),
-    }
-    if _on_usage:
-        await _on_usage(response_usage)
+                # Add screenshot to output items so it can be retained in history
+                response_items.append(make_input_image_item(image_data))
+            else:
+                raise ValueError("No screenshot found in messages and no computer_handler provided")
+        processed_image, original_width, original_height = process_image_for_uitars(image_data)
+        encoded_image = pil_to_base64(processed_image)
+        
+        # Add conversation history
+        if history_messages:
+            litellm_messages.extend(history_messages)
+        else:
+            litellm_messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded_image}"}}
+                ]
+            })
 
-    # Create agent response
-    agent_response = {
-        "output": response_items,
-        "usage": response_usage
-    }
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "messages": litellm_messages,
+            "max_tokens": kwargs.get("max_tokens", 500),
+            "temperature": kwargs.get("temperature", 0.0),
+            "do_sample": kwargs.get("temperature", 0.0) > 0.0,
+            "num_retries": max_retries,
+            **{k: v for k, v in kwargs.items() if k not in ["max_tokens", "temperature"]}
+        }
+        
+        # Call API start hook
+        if _on_api_start:
+            await _on_api_start(api_kwargs)
+        
+        # Call liteLLM with UITARS model
+        response = await litellm.acompletion(**api_kwargs)
+        
+        # Call API end hook
+        if _on_api_end:
+            await _on_api_end(api_kwargs, response)
+        
+        # Extract response content
+        response_content = response.choices[0].message.content.strip() # type: ignore
+        
+        # Parse UITARS response
+        parsed_responses = parse_uitars_response(response_content, original_width, original_height)
+        
+        # Convert to computer actions
+        computer_actions = convert_to_computer_actions(parsed_responses, original_width, original_height)
+        
+        # Add computer actions to response items
+        thought = parsed_responses[0].get("thought", "")
+        if thought:
+            response_items.append(make_reasoning_item(thought))
+        response_items.extend(computer_actions)
+        
+        # Extract usage information
+        response_usage = {
+            **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
+            "response_cost": response._hidden_params.get("response_cost", 0.0),
+        }
+        if _on_usage:
+            await _on_usage(response_usage)
+
+        # Create agent response
+        agent_response = {
+            "output": response_items,
+            "usage": response_usage
+        }
+        
+        return agent_response
     
-    return agent_response
+    async def predict_click(
+        self,
+        model: str,
+        image_b64: str,
+        instruction: str
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Predict click coordinates based on image and instruction.
+        
+        UITARS supports click prediction through its action parsing.
+        
+        Args:
+            model: Model name to use
+            image_b64: Base64 encoded image
+            instruction: Instruction for where to click
+            
+        Returns:
+            Tuple with (x, y) coordinates or None
+        """
+        try:
+            # Create a simple click instruction for UITARS
+            user_prompt = UITARS_PROMPT_TEMPLATE.format(
+                instruction=f"Click on: {instruction}",
+                action_space=UITARS_ACTION_SPACE,
+                language="English"
+            )
+            
+            # Prepare messages for liteLLM
+            litellm_messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant."
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+                    ]
+                }
+            ]
+            
+            # Call liteLLM with UITARS model
+            response = await litellm.acompletion(
+                model=model,
+                messages=litellm_messages,
+                max_tokens=100,
+                temperature=0.0
+            )
+            
+            # Extract response content
+            response_content = response.choices[0].message.content.strip() # type: ignore
+            
+            # Parse UITARS response to extract click coordinates
+            parsed_responses = parse_uitars_response(response_content, 1024, 768)  # Default dimensions
+            
+            if parsed_responses and len(parsed_responses) > 0:
+                action_type = parsed_responses[0].get("action_type")
+                if action_type == "click":
+                    action_inputs = parsed_responses[0].get("action_inputs", {})
+                    start_box = action_inputs.get("start_box")
+                    if start_box:
+                        # Parse coordinates from start_box
+                        try:
+                            coords = eval(start_box)  # Parse the coordinate list
+                            if len(coords) >= 2:
+                                # Convert normalized coordinates back to pixel coordinates
+                                x = int(coords[0] * 1024)
+                                y = int(coords[1] * 768)
+                                return (x, y)
+                        except:
+                            pass
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error in UITARS predict_click: {e}")
+            return None
+    
+    def get_capabilities(self) -> List[AgentCapability]:
+        """
+        Get list of capabilities supported by this agent config.
+        
+        Returns:
+            List of capability strings
+        """
+        return ["step", "click"]

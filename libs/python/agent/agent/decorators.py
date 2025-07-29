@@ -7,84 +7,51 @@ import inspect
 from typing import Dict, List, Any, Callable, Optional
 from functools import wraps
 
-from .types import AgentLoopInfo
+from .types import AgentConfigInfo
+from .loops.base import AsyncAgentConfig
 
 # Global registry
-_agent_loops: List[AgentLoopInfo] = []
+_agent_configs: List[AgentConfigInfo] = []
 
-def agent_loop(models: str, priority: int = 0):
+def register_agent(models: str, priority: int = 0):
     """
-    Decorator to register an agent loop function.
+    Decorator to register an AsyncAgentConfig class.
     
     Args:
         models: Regex pattern to match supported models
-        priority: Priority for loop selection (higher = more priority)
+        priority: Priority for agent selection (higher = more priority)
     """
-    def decorator(func: Callable):
-        # Validate function signature
-        sig = inspect.signature(func)
-        required_params = {'messages', 'model'}
-        func_params = set(sig.parameters.keys())
+    def decorator(agent_class: type):
+        # Validate that the class implements AsyncAgentConfig protocol
+        if not hasattr(agent_class, 'predict_step'):
+            raise ValueError(f"Agent class {agent_class.__name__} must implement predict_step method")
+        if not hasattr(agent_class, 'predict_click'):
+            raise ValueError(f"Agent class {agent_class.__name__} must implement predict_click method")
+        if not hasattr(agent_class, 'get_capabilities'):
+            raise ValueError(f"Agent class {agent_class.__name__} must implement get_capabilities method")
         
-        if not required_params.issubset(func_params):
-            missing = required_params - func_params
-            raise ValueError(f"Agent loop function must have parameters: {missing}")
-        
-        # Register the loop
-        loop_info = AgentLoopInfo(
-            func=func,
+        # Register the agent config
+        config_info = AgentConfigInfo(
+            agent_class=agent_class,
             models_regex=models,
             priority=priority
         )
-        _agent_loops.append(loop_info)
+        _agent_configs.append(config_info)
         
         # Sort by priority (highest first)
-        _agent_loops.sort(key=lambda x: x.priority, reverse=True)
+        _agent_configs.sort(key=lambda x: x.priority, reverse=True)
         
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Wrap the function in an asyncio.Queue for cancellation support
-            queue = asyncio.Queue()
-            task = None
-            
-            try:
-                # Create a task that can be cancelled
-                async def run_loop():
-                    try:
-                        result = await func(*args, **kwargs)
-                        await queue.put(('result', result))
-                    except Exception as e:
-                        await queue.put(('error', e))
-                
-                task = asyncio.create_task(run_loop())
-                
-                # Wait for result or cancellation
-                event_type, data = await queue.get()
-                
-                if event_type == 'error':
-                    raise data
-                return data
-                
-            except asyncio.CancelledError:
-                if task:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-                raise
-        
-        return wrapper
+        return agent_class
     
     return decorator
 
-def get_agent_loops() -> List[AgentLoopInfo]:
-    """Get all registered agent loops"""
-    return _agent_loops.copy()
+def get_agent_configs() -> List[AgentConfigInfo]:
+    """Get all registered agent configs"""
+    return _agent_configs.copy()
 
-def find_agent_loop(model: str) -> Optional[AgentLoopInfo]:
-    """Find the best matching agent loop for a model"""
-    for loop_info in _agent_loops:
-        if loop_info.matches_model(model):
-            return loop_info
+def find_agent_config(model: str) -> Optional[AgentConfigInfo]:
+    """Find the best matching agent config for a model"""
+    for config_info in _agent_configs:
+        if config_info.matches_model(model):
+            return config_info
     return None

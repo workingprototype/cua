@@ -9,8 +9,9 @@ import litellm
 import inspect
 import base64
 
-from ..decorators import agent_loop
-from ..types import Messages, AgentResponse, Tools
+from ..decorators import register_agent
+from ..types import Messages, AgentResponse, Tools, AgentCapability
+from ..loops.base import AsyncAgentConfig
 
 SOM_TOOL_SCHEMA = {
   "type": "function",
@@ -246,94 +247,114 @@ async def replace_computer_call_with_function(item: Dict[str, Any], xy2id: Dict[
     return [item]
 
 
-@agent_loop(models=r"omniparser\+.*|omni\+.*", priority=10)
-async def omniparser_loop(
-    messages: Messages,
-    model: str,
-    tools: Optional[List[Dict[str, Any]]] = None,
-    max_retries: Optional[int] = None,
-    stream: bool = False,
-    computer_handler=None,
-    use_prompt_caching: Optional[bool] = False,
-    _on_api_start=None,
-    _on_api_end=None,
-    _on_usage=None,
-    _on_screenshot=None,
-    **kwargs
-) -> Union[AgentResponse, AsyncGenerator[Dict[str, Any], None]]:
-    """
-    OpenAI computer-use-preview agent loop using liteLLM responses.
+@register_agent(models=r"omniparser\+.*|omni\+.*", priority=10)
+class OmniparsrConfig(AsyncAgentConfig):
+    """Omniparser agent configuration implementing AsyncAgentConfig protocol."""
     
-    Supports OpenAI's computer use preview models.
-    """
-    if not OMNIPARSER_AVAILABLE:
-        raise ValueError("omniparser loop requires som to be installed. Install it with `pip install cua-som`.")
-      
-    tools = tools or []
-    
-    llm_model = model.split('+')[-1]
-
-    # Prepare tools for OpenAI API
-    openai_tools, id2xy = _prepare_tools_for_omniparser(tools)
-
-    # Find last computer_call_output
-    last_computer_call_output = get_last_computer_call_output(messages)
-    if last_computer_call_output:
-        image_url = last_computer_call_output.get("output", {}).get("image_url", "")
-        image_data = image_url.split(",")[-1]
-        if image_data:
-            parser = get_parser()
-            result = parser.parse(image_data)
-            if _on_screenshot:
-                await _on_screenshot(result.annotated_image_base64, "annotated_image")
-            for element in result.elements:
-                id2xy[element.id] = ((element.bbox.x1 + element.bbox.x2) / 2, (element.bbox.y1 + element.bbox.y2) / 2)
-    
-    # handle computer calls -> function calls
-    new_messages = []
-    for message in messages:
-        if not isinstance(message, dict):
-            message = message.__dict__
-        new_messages += await replace_computer_call_with_function(message, id2xy)
-    messages = new_messages
-
-    # Prepare API call kwargs
-    api_kwargs = {
-        "model": llm_model,
-        "input": messages,
-        "tools": openai_tools if openai_tools else None,
-        "stream": stream,
-        "reasoning": {"summary": "concise"},
-        "truncation": "auto",
-        "num_retries": max_retries,
+    async def predict_step(
+        self,
+        messages: Messages,
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_retries: Optional[int] = None,
+        stream: bool = False,
+        computer_handler=None,
+        use_prompt_caching: Optional[bool] = False,
+        _on_api_start=None,
+        _on_api_end=None,
+        _on_usage=None,
+        _on_screenshot=None,
         **kwargs
-    }
+    ) -> Dict[str, Any]:
+        """
+        OpenAI computer-use-preview agent loop using liteLLM responses.
+        
+        Supports OpenAI's computer use preview models.
+        """
+        if not OMNIPARSER_AVAILABLE:
+            raise ValueError("omniparser loop requires som to be installed. Install it with `pip install cua-som`.")
+          
+        tools = tools or []
+        
+        llm_model = model.split('+')[-1]
+
+        # Prepare tools for OpenAI API
+        openai_tools, id2xy = _prepare_tools_for_omniparser(tools)
+
+        # Find last computer_call_output
+        last_computer_call_output = get_last_computer_call_output(messages)
+        if last_computer_call_output:
+            image_url = last_computer_call_output.get("output", {}).get("image_url", "")
+            image_data = image_url.split(",")[-1]
+            if image_data:
+                parser = get_parser()
+                result = parser.parse(image_data)
+                if _on_screenshot:
+                    await _on_screenshot(result.annotated_image_base64, "annotated_image")
+                for element in result.elements:
+                    id2xy[element.id] = ((element.bbox.x1 + element.bbox.x2) / 2, (element.bbox.y1 + element.bbox.y2) / 2)
+        
+        # handle computer calls -> function calls
+        new_messages = []
+        for message in messages:
+            if not isinstance(message, dict):
+                message = message.__dict__
+            new_messages += await replace_computer_call_with_function(message, id2xy)
+        messages = new_messages
+
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": llm_model,
+            "input": messages,
+            "tools": openai_tools if openai_tools else None,
+            "stream": stream,
+            "reasoning": {"summary": "concise"},
+            "truncation": "auto",
+            "num_retries": max_retries,
+            **kwargs
+        }
+        
+        # Call API start hook
+        if _on_api_start:
+            await _on_api_start(api_kwargs)
+        
+        print(str(api_kwargs)[:1000])
+
+        # Use liteLLM responses
+        response = await litellm.aresponses(**api_kwargs)
+
+        # Call API end hook
+        if _on_api_end:
+            await _on_api_end(api_kwargs, response)
+
+        # Extract usage information
+        usage = {
+            **response.usage.model_dump(),
+            "response_cost": response._hidden_params.get("response_cost", 0.0),
+        }
+        if _on_usage:
+            await _on_usage(usage)
+
+        # handle som function calls -> xy computer calls
+        new_output = []
+        for i in range(len(response.output)):
+          new_output += await replace_function_with_computer_call(response.output[i].model_dump(), id2xy)
+        
+        return {
+            "output": new_output,
+            "usage": usage
+        }
     
-    # Call API start hook
-    if _on_api_start:
-        await _on_api_start(api_kwargs)
+    async def predict_click(
+        self,
+        model: str,
+        image_b64: str,
+        instruction: str,
+        **kwargs
+    ) -> Optional[Tuple[float, float]]:
+        """Omniparser does not support click prediction."""
+        return None
     
-    print(str(api_kwargs)[:1000])
-
-    # Use liteLLM responses
-    response = await litellm.aresponses(**api_kwargs)
-
-    # Call API end hook
-    if _on_api_end:
-        await _on_api_end(api_kwargs, response)
-
-    # Extract usage information
-    response.usage = {
-        **response.usage.model_dump(),
-        "response_cost": response._hidden_params.get("response_cost", 0.0),
-    }
-    if _on_usage:
-        await _on_usage(response.usage)
-
-    # handle som function calls -> xy computer calls
-    new_output = []
-    for i in range(len(response.output)):
-      new_output += await replace_function_with_computer_call(response.output[i].model_dump(), id2xy)
-    response.output = new_output
-
-    return response
+    def get_capabilities(self) -> List[AgentCapability]:
+        """Return the capabilities supported by this agent."""
+        return ["step"]

@@ -3,12 +3,12 @@ ComputerAgent - Main agent class that selects and runs agent loops
 """
 
 import asyncio
-from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Callable, Set
+from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Callable, Set, Tuple
 
 from litellm.responses.utils import Usage
 
-from .types import Messages, Computer
-from .decorators import find_agent_loop
+from .types import Messages, Computer, AgentCapability
+from .decorators import find_agent_config
 from .computer_handler import OpenAIComputerHandler, acknowledge_safety_check_callback, check_blocklisted_url
 import json
 import litellm
@@ -213,13 +213,14 @@ class ComputerAgent:
         # Find the appropriate agent loop
         if custom_loop:
             self.agent_loop = custom_loop
-            self.agent_loop_info = None
+            self.agent_config_info = None
         else:
-            loop_info = find_agent_loop(model)
-            if not loop_info:
-                raise ValueError(f"No agent loop found for model: {model}")
-            self.agent_loop = loop_info.func
-            self.agent_loop_info = loop_info
+            config_info = find_agent_config(model)
+            if not config_info:
+                raise ValueError(f"No agent config found for model: {model}")
+            # Instantiate the agent config class
+            self.agent_loop = config_info.agent_class()
+            self.agent_config_info = config_info
         
         self.tool_schemas = []
         self.computer_handler = None
@@ -511,6 +512,9 @@ class ComputerAgent:
         Returns:
             AsyncGenerator that yields response chunks
         """
+        capabilities = self.get_capabilities()
+        if "step" not in capabilities:
+            raise ValueError(f"Agent loop {self.agent_loop.__name__} does not support step predictions")
 
         await self._initialize_computers()
         
@@ -555,7 +559,7 @@ class ComputerAgent:
             }
 
             # Run agent loop iteration
-            result = await self.agent_loop(
+            result = await self.agent_loop.predict_step(
                 **loop_kwargs,
                 _on_api_start=self._on_api_start,
                 _on_api_end=self._on_api_end,
@@ -592,3 +596,44 @@ class ComputerAgent:
                 }
         
         await self._on_run_end(loop_kwargs, old_items, new_items)
+    
+    async def predict_click(
+        self,
+        instruction: str,
+        image_b64: Optional[str] = None
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Predict click coordinates based on image and instruction.
+        
+        Args:
+            instruction: Instruction for where to click
+            image_b64: Base64 encoded image (optional, will take screenshot if not provided)
+            
+        Returns:
+            None or tuple with (x, y) coordinates
+        """
+        capabilities = self.get_capabilities()
+        if "click" not in capabilities:
+            raise ValueError(f"Agent loop {self.agent_loop.__name__} does not support click predictions")
+        if hasattr(self.agent_loop, 'predict_click'):
+            if not self.computer_handler:
+                raise ValueError("Computer tool is required for predict_click")
+            if not image_b64:
+                image_b64 = await self.computer_handler.screenshot()
+            return await self.agent_loop.predict_click(
+                model=self.model,
+                image_b64=image_b64,
+                instruction=instruction
+            )
+        return None
+    
+    def get_capabilities(self) -> List[AgentCapability]:
+        """
+        Get list of capabilities supported by the current agent config.
+        
+        Returns:
+            List of capability strings (e.g., ["step", "click"])
+        """
+        if hasattr(self.agent_loop, 'get_capabilities'):
+            return self.agent_loop.get_capabilities()
+        return ["step"]  # Default capability
