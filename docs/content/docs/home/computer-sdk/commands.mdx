@@ -3,7 +3,7 @@ title: Commands
 description: Computer commands and interface methods
 ---
 
-This page describes the set of supported **commands** you can use to control a C/ua Computer directly via the Python SDK.
+This page describes the set of supported **commands** you can use to control a Cua Computer directly via the Python SDK.
 
 These commands map to the same actions available in the [Computer Server API Commands Reference](../libraries/computer-server/Commands), and provide low-level, async access to system operations from your agent or automation code.
 
@@ -13,18 +13,14 @@ Execute shell commands and get detailed results:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python
-    # Run shell command
-    result = await computer.interface.run_command(cmd)
-    # result.stdout, result.stderr, result.returncode
-    ```
+    ```python # Run shell command result = await
+    computer.interface.run_command(cmd) # result.stdout, result.stderr,
+    result.returncode ```
   </Tab>
   <Tab value="TypeScript">
-    ```typescript
-    // Run shell command
-    const result = await computer.interface.runCommand(cmd);
-    // result.stdout, result.stderr, result.returncode
-    ```
+    ```typescript // Run shell command const result = await
+    computer.interface.runCommand(cmd); // result.stdout, result.stderr,
+    result.returncode ```
   </Tab>
 </Tabs>
 
@@ -49,6 +45,7 @@ Precise mouse control and interaction:
     await computer.interface.mouse_down(x, y, button="left")  # Press and hold a mouse button
     await computer.interface.mouse_up(x, y, button="left")    # Release a mouse button
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -66,6 +63,7 @@ Precise mouse control and interaction:
     await computer.interface.mouseDown(x, y, "left");  // Press and hold a mouse button
     await computer.interface.mouseUp(x, y, "left");    // Release a mouse button
     ```
+
   </Tab>
 </Tabs>
 
@@ -85,6 +83,7 @@ Text input and key combinations:
     await computer.interface.key_down("command")    # Press and hold a key
     await computer.interface.key_up("command")      # Release a key
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -97,6 +96,7 @@ Text input and key combinations:
     await computer.interface.keyDown("command");    // Press and hold a key
     await computer.interface.keyUp("command");      // Release a key
     ```
+
   </Tab>
 </Tabs>
 
@@ -106,20 +106,14 @@ Mouse wheel and scrolling control:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python
-    # Scrolling
-    await computer.interface.scroll(x, y)           # Scroll the mouse wheel
-    await computer.interface.scroll_down(clicks)    # Scroll down
-    await computer.interface.scroll_up(clicks)      # Scroll up
-    ```
+    ```python # Scrolling await computer.interface.scroll(x, y) # Scroll the
+    mouse wheel await computer.interface.scroll_down(clicks) # Scroll down await
+    computer.interface.scroll_up(clicks) # Scroll up ```
   </Tab>
   <Tab value="TypeScript">
-    ```typescript
-    // Scrolling
-    await computer.interface.scroll(x, y);           // Scroll the mouse wheel
-    await computer.interface.scrollDown(clicks);    // Scroll down
-    await computer.interface.scrollUp(clicks);      // Scroll up
-    ```
+    ```typescript // Scrolling await computer.interface.scroll(x, y); // Scroll
+    the mouse wheel await computer.interface.scrollDown(clicks); // Scroll down
+    await computer.interface.scrollUp(clicks); // Scroll up ```
   </Tab>
 </Tabs>
 
@@ -129,18 +123,14 @@ Screen capture and display information:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python
-    # Screen operations
-    await computer.interface.screenshot()           # Take a screenshot
-    await computer.interface.get_screen_size()      # Get screen dimensions
-    ```
+    ```python # Screen operations await computer.interface.screenshot() # Take a
+    screenshot await computer.interface.get_screen_size() # Get screen
+    dimensions ```
   </Tab>
   <Tab value="TypeScript">
-    ```typescript
-    // Screen operations
-    await computer.interface.screenshot();           // Take a screenshot
-    await computer.interface.getScreenSize();      // Get screen dimensions
-    ```
+    ```typescript // Screen operations await computer.interface.screenshot(); //
+    Take a screenshot await computer.interface.getScreenSize(); // Get screen
+    dimensions ```
   </Tab>
 </Tabs>
 
@@ -150,18 +140,14 @@ System clipboard management:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python
-    # Clipboard operations
-    await computer.interface.set_clipboard(text)    # Set clipboard content
-    await computer.interface.copy_to_clipboard()    # Get clipboard content
-    ```
+    ```python # Clipboard operations await
+    computer.interface.set_clipboard(text) # Set clipboard content await
+    computer.interface.copy_to_clipboard() # Get clipboard content ```
   </Tab>
   <Tab value="TypeScript">
-    ```typescript
-    // Clipboard operations
-    await computer.interface.setClipboard(text);    // Set clipboard content
-    await computer.interface.copyToClipboard();    // Get clipboard content
-    ```
+    ```typescript // Clipboard operations await
+    computer.interface.setClipboard(text); // Set clipboard content await
+    computer.interface.copyToClipboard(); // Get clipboard content ```
   </Tab>
 </Tabs>
 
@@ -188,6 +174,7 @@ Direct file and directory manipulation:
     await computer.interface.delete_dir(path)       # Delete directory
     await computer.interface.list_dir(path)         # List directory contents
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -207,6 +194,7 @@ Direct file and directory manipulation:
     await computer.interface.deleteDir(path);       // Delete directory
     await computer.interface.listDir(path);         // List directory contents
     ```
+
   </Tab>
 </Tabs>
 
@@ -216,15 +204,11 @@ Access system accessibility information:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python
-    # Accessibility
-    await computer.interface.get_accessibility_tree() # Get accessibility tree
-    ```
+    ```python # Accessibility await computer.interface.get_accessibility_tree()
+    # Get accessibility tree ```
   </Tab>
   <Tab value="TypeScript">
-    ```typescript
-    // Accessibility
-    await computer.interface.getAccessibilityTree(); // Get accessibility tree
-    ```
+    ```typescript // Accessibility await
+    computer.interface.getAccessibilityTree(); // Get accessibility tree ```
   </Tab>
 </Tabs>

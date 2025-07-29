@@ -1,6 +1,6 @@
 ---
 title: Quickstart (GUI)
-description: Get started with the c/ua Agent UI in 3 steps
+description: Get started with the cua Agent UI in 3 steps
 icon: Rocket
 ---
 
@@ -8,20 +8,20 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
-Get up and running with the c/ua Agent UI in 3 simple steps.
+Get up and running with the cua Agent UI in 3 simple steps.
 
 <Steps>
 <Step>
 
 ## Introduction
 
-c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent UI provides a simple chat interface to control your remote computer using natural language.
+cua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent UI provides a simple chat interface to control your remote computer using natural language.
 
 </Step>
 
 <Step>
 
-## Create Your First c/ua Container
+## Create Your First cua Container
 
 1. Go to [trycua.com/signin](https://www.trycua.com/signin)
 2. Navigate to **Dashboard > Containers > Create Instance**
@@ -32,7 +32,7 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The
 
 <Step>
 
-## Install and Run c/ua
+## Install and Run cua
 
 <Accordions type="single" defaultValue="uv">
 
@@ -68,7 +68,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv python install 3.12
 ```
 
-### Run c/ua
+### Run cua
 
 ```bash
 uv run --with "cua-agent[ui]" -m agent.ui
@@ -121,7 +121,7 @@ conda create -n cua python=3.12
 conda activate cua
 ```
 
-### Install and run c/ua
+### Install and run cua
 
 ```bash
 pip install "cua-agent[ui]" cua-computer
@@ -132,7 +132,7 @@ python -m agent.ui
 
 <Accordion title="pip" value="pip">
 
-### Install c/ua
+### Install cua
 
 ```bash
 pip install "cua-agent[ui]" cua-computer
@@ -153,6 +153,7 @@ python -m agent.ui
 Open your browser to the displayed URL and start chatting with your computer-using agent.
 
 You can ask your agent to perform actions like:
+
 - "Open Firefox and go to github.com"
 - "Take a screenshot and tell me what's on the screen"
 - "Type 'Hello world' into the terminal"

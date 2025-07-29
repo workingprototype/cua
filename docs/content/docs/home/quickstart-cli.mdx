@@ -1,6 +1,6 @@
 ---
 title: Quickstart (CLI)
-description: Get started with the c/ua Agent CLI in 4 steps
+description: Get started with the cua Agent CLI in 4 steps
 icon: Rocket
 ---
 
@@ -8,20 +8,20 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
-Get up and running with the c/ua Agent CLI in 4 simple steps.
+Get up and running with the cua Agent CLI in 4 simple steps.
 
 <Steps>
 <Step>
 
 ## Introduction
 
-c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent CLI provides a clean terminal interface to control your remote computer using natural language commands.
+cua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent CLI provides a clean terminal interface to control your remote computer using natural language commands.
 
 </Step>
 
 <Step>
 
-## Create Your First c/ua Container
+## Create Your First cua Container
 
 1. Go to [trycua.com/signin](https://www.trycua.com/signin)
 2. Navigate to **Dashboard > Containers > Create Instance**
@@ -32,7 +32,7 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The
 
 <Step>
 
-## Install c/ua
+## Install cua
 
 <Accordions type="single" defaultValue="uv">
 
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ```bash
 uv python install 3.12
-# uv will install c/ua dependencies automatically when you use --with "cua-agent[cli]"
+# uv will install cua dependencies automatically when you use --with "cua-agent[cli]"
 ```
 
 </Accordion>
@@ -116,7 +116,7 @@ conda create -n cua python=3.12
 conda activate cua
 ```
 
-### Install c/ua
+### Install cua
 
 ```bash
 pip install "cua-agent[cli]" cua-computer
@@ -126,7 +126,7 @@ pip install "cua-agent[cli]" cua-computer
 
 <Accordion title="pip" value="pip">
 
-### Install c/ua
+### Install cua
 
 ```bash
 pip install "cua-agent[cli]" cua-computer
@@ -140,7 +140,7 @@ pip install "cua-agent[cli]" cua-computer
 
 <Step>
 
-## Run c/ua CLI
+## Run cua CLI
 
 Choose your preferred AI model:
 
@@ -246,21 +246,23 @@ python -m agent.cli omniparser+ollama_chat/llama3.2:latest
 
 If you haven't set up environment variables, the CLI will guide you through the setup:
 
-1. **Container Name**: Enter your c/ua container name (or get one at [trycua.com](https://www.trycua.com/))
-2. **CUA API Key**: Enter your c/ua API key
+1. **Container Name**: Enter your cua container name (or get one at [trycua.com](https://www.trycua.com/))
+2. **CUA API Key**: Enter your cua API key
 3. **Provider API Key**: Enter your AI provider API key (OpenAI, Anthropic, etc.)
 
 ### Start Chatting
 
 Once connected, you'll see:
+
 ```
 💻 Connected to your-container-name (model, agent_loop)
 Type 'exit' to quit.
 
-> 
+>
 ```
 
 You can ask your agent to perform actions like:
+
 - "Take a screenshot and tell me what's on the screen"
 - "Open Firefox and go to github.com"
 - "Type 'Hello world' into the terminal"

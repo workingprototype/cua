@@ -1,26 +1,26 @@
 ---
 title: Quickstart (for Developers)
-description: Get started with c/ua in 5 steps
+description: Get started with cua in 5 steps
 icon: Rocket
 ---
 
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-Get up and running with c/ua in 5 simple steps.
+Get up and running with cua in 5 simple steps.
 
 <Steps>
 <Step>
 
 ## Introduction
 
-c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Computer handles clicks/typing, Agent provides the intelligence.
+cua combines Computer (interface) + Agent (AI) for automating desktop apps. Computer handles clicks/typing, Agent provides the intelligence.
 
 </Step>
 
 <Step>
 
-## Create Your First c/ua Container
+## Create Your First cua Container
 
 1. Go to [trycua.com/signin](https://www.trycua.com/signin)
 2. Navigate to **Dashboard > Containers > Create Instance**
@@ -31,19 +31,13 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Com
 
 <Step>
 
-## Install c/ua
+## Install cua
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```bash
-    pip install "cua-agent[all]" cua-computer
-    ```
+    ```bash pip install "cua-agent[all]" cua-computer ```
   </Tab>
-  <Tab value="TypeScript">
-    ```bash
-    npm install @trycua/computer
-    ```
-  </Tab>
+  <Tab value="TypeScript">```bash npm install @trycua/computer ```</Tab>
 </Tabs>
 
 </Step>
@@ -59,17 +53,18 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Com
 
     async with Computer(
         os_type="linux",
-        provider_type="cloud", 
+        provider_type="cloud",
         name="your-container-name",
         api_key="your-api-key"
     ) as computer:
         # Take screenshot
         screenshot = await computer.interface.screenshot()
-        
+
         # Click and type
         await computer.interface.left_click(100, 100)
         await computer.interface.type("Hello!")
     ```
+
   </Tab>
   <Tab value="TypeScript">
     ```typescript
@@ -86,7 +81,7 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Com
     try {
       // Take screenshot
       const screenshot = await computer.interface.screenshot();
-      
+
       // Click and type
       await computer.interface.leftClick(100, 100);
       await computer.interface.typeText("Hello!");
@@ -94,6 +89,7 @@ c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Com
       await computer.close();
     }
     ```
+
   </Tab>
 </Tabs>
 
