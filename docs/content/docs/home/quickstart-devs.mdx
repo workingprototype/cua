@@ -4,45 +4,104 @@ description: Get started with c/ua in 5 steps
 icon: Rocket
 ---
 
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 Get up and running with c/ua in 5 simple steps.
 
-## 1. Introduction
+<Steps>
+<Step>
+
+## Introduction
 
 c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. Computer handles clicks/typing, Agent provides the intelligence.
 
-## 2. Create Your First c/ua Container
+</Step>
+
+<Step>
+
+## Create Your First c/ua Container
 
 1. Go to [trycua.com/signin](https://www.trycua.com/signin)
 2. Navigate to **Dashboard > Containers > Create Instance**
 3. Create a **Medium, Ubuntu 22** container
 4. Note your container name and API key
 
-## 3. Install c/ua
+</Step>
 
-```bash
-pip install "cua-agent[all]" cua-computer
-```
+<Step>
 
-## 4. Using Computer
+## Install c/ua
 
-```python
-from computer import Computer
+<Tabs items={['Python', 'TypeScript']}>
+  <Tab value="Python">
+    ```bash
+    pip install "cua-agent[all]" cua-computer
+    ```
+  </Tab>
+  <Tab value="TypeScript">
+    ```bash
+    npm install @trycua/computer
+    ```
+  </Tab>
+</Tabs>
 
-async with Computer(
-    os_type="linux",
-    provider_type="cloud", 
-    name="your-container-name",
-    api_key="your-api-key"
-) as computer:
-    # Take screenshot
-    screenshot = await computer.interface.screenshot()
-    
-    # Click and type
-    await computer.interface.left_click(100, 100)
-    await computer.interface.type("Hello!")
-```
+</Step>
 
-## 5. Using Agent
+<Step>
+
+## Using Computer
+
+<Tabs items={['Python', 'TypeScript']}>
+  <Tab value="Python">
+    ```python
+    from computer import Computer
+
+    async with Computer(
+        os_type="linux",
+        provider_type="cloud", 
+        name="your-container-name",
+        api_key="your-api-key"
+    ) as computer:
+        # Take screenshot
+        screenshot = await computer.interface.screenshot()
+        
+        # Click and type
+        await computer.interface.left_click(100, 100)
+        await computer.interface.type("Hello!")
+    ```
+  </Tab>
+  <Tab value="TypeScript">
+    ```typescript
+    import { Computer, OSType } from '@trycua/computer';
+
+    const computer = new Computer({
+      osType: OSType.LINUX,
+      name: "your-container-name",
+      apiKey: "your-api-key"
+    });
+
+    await computer.run();
+
+    try {
+      // Take screenshot
+      const screenshot = await computer.interface.screenshot();
+      
+      // Click and type
+      await computer.interface.leftClick(100, 100);
+      await computer.interface.typeText("Hello!");
+    } finally {
+      await computer.close();
+    }
+    ```
+  </Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+## Using Agent
 
 ```python
 from agent import ComputerAgent
@@ -60,6 +119,9 @@ async for result in agent.run(messages):
         if item["type"] == "message":
             print(item["content"][0]["text"])
 ```
+
+</Step>
+</Steps>
 
 ## Next Steps
 

@@ -1,52 +1,233 @@
 ---
 title: Quickstart (CLI)
-description: Get started with the c/ua Agent CLI in 5 steps
+description: Get started with the c/ua Agent CLI in 4 steps
 icon: Rocket
 ---
 
-Get up and running with the c/ua Agent CLI in 5 simple steps.
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
-## 1. Introduction
+Get up and running with the c/ua Agent CLI in 4 simple steps.
+
+<Steps>
+<Step>
+
+## Introduction
 
 c/ua combines Computer (interface) + Agent (AI) for automating desktop apps. The Agent CLI provides a clean terminal interface to control your remote computer using natural language commands.
 
-## 2. Create Your First c/ua Container
+</Step>
+
+<Step>
+
+## Create Your First c/ua Container
 
 1. Go to [trycua.com/signin](https://www.trycua.com/signin)
 2. Navigate to **Dashboard > Containers > Create Instance**
 3. Create a **Medium, Ubuntu 22** container
 4. Note your container name and API key
 
-## 3. Install c/ua
+</Step>
+
+<Step>
+
+## Install c/ua
+
+<Accordions type="single" defaultValue="uv">
+
+<Accordion title="uv (Recommended)" value="uv">
+
+### Install uv
+
+<Tabs items={['macOS / Linux', 'Windows']} persist>
+<Tab value="macOS / Linux">
 
 ```bash
-pip install "cua-agent[all]" cua-computer
+# Use curl to download the script and execute it with sh:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# If your system doesn't have curl, you can use wget:
+# wget -qO- https://astral.sh/uv/install.sh | sh
 ```
 
-## 4. Run the Agent CLI
+</Tab>
+<Tab value="Windows">
 
-Choose your preferred AI model and run the CLI:
+```powershell
+# Use irm to download the script and execute it with iex:
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+</Tab>
+</Tabs>
+
+### Install Python 3.12
+
+```bash
+uv python install 3.12
+# uv will install c/ua dependencies automatically when you use --with "cua-agent[cli]"
+```
+
+</Accordion>
+
+<Accordion title="conda" value="conda">
+
+### Install conda
+
+<Tabs items={['macOS', 'Linux', 'Windows']} persist>
+<Tab value="macOS">
+
+```bash
+mkdir -p ~/miniconda3
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm ~/miniconda3/miniconda.sh
+source ~/miniconda3/bin/activate
+```
+
+</Tab>
+<Tab value="Linux">
+
+```bash
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm ~/miniconda3/miniconda.sh
+source ~/miniconda3/bin/activate
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+wget "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe" -outfile ".\miniconda.exe"
+Start-Process -FilePath ".\miniconda.exe" -ArgumentList "/S" -Wait
+del .\miniconda.exe
+```
+
+</Tab>
+</Tabs>
+
+### Create and activate Python 3.12 environment
+
+```bash
+conda create -n cua python=3.12
+conda activate cua
+```
+
+### Install c/ua
+
+```bash
+pip install "cua-agent[cli]" cua-computer
+```
+
+</Accordion>
+
+<Accordion title="pip" value="pip">
+
+### Install c/ua
+
+```bash
+pip install "cua-agent[cli]" cua-computer
+```
+
+</Accordion>
+
+</Accordions>
+
+</Step>
+
+<Step>
+
+## Run c/ua CLI
+
+Choose your preferred AI model:
 
 ### OpenAI Computer Use Preview
+
+<Tabs items={['uv', 'conda/pip']} persist>
+<Tab value="uv">
+
+```bash
+uv run --with "cua-agent[cli]" -m agent.cli openai/computer-use-preview
+```
+
+</Tab>
+<Tab value="conda/pip">
+
 ```bash
 python -m agent.cli openai/computer-use-preview
 ```
 
+</Tab>
+</Tabs>
+
 ### Anthropic Claude
+
+<Tabs items={['uv', 'conda/pip']} persist>
+<Tab value="uv">
+
+```bash
+uv run --with "cua-agent[cli]" -m agent.cli anthropic/claude-3-5-sonnet-20241022
+uv run --with "cua-agent[cli]" -m agent.cli anthropic/claude-opus-4-20250514
+uv run --with "cua-agent[cli]" -m agent.cli anthropic/claude-sonnet-4-20250514
+```
+
+</Tab>
+<Tab value="conda/pip">
+
 ```bash
 python -m agent.cli anthropic/claude-3-5-sonnet-20241022
 python -m agent.cli anthropic/claude-opus-4-20250514
 python -m agent.cli anthropic/claude-sonnet-4-20250514
 ```
 
+</Tab>
+</Tabs>
+
 ### Omniparser + LLMs
+
+<Tabs items={['uv', 'conda/pip']} persist>
+<Tab value="uv">
+
+```bash
+uv run --with "cua-agent[cli]" -m agent.cli omniparser+anthropic/claude-3-5-sonnet-20241022
+uv run --with "cua-agent[cli]" -m agent.cli omniparser+openai/gpt-4o
+uv run --with "cua-agent[cli]" -m agent.cli omniparser+vertex_ai/gemini-pro
+```
+
+</Tab>
+<Tab value="conda/pip">
+
 ```bash
 python -m agent.cli omniparser+anthropic/claude-3-5-sonnet-20241022
 python -m agent.cli omniparser+openai/gpt-4o
 python -m agent.cli omniparser+vertex_ai/gemini-pro
 ```
 
+</Tab>
+</Tabs>
+
 ### Local Models
+
+<Tabs items={['uv', 'conda/pip']} persist>
+<Tab value="uv">
+
+```bash
+# Hugging Face models (local)
+uv run --with "cua-agent[cli]" -m agent.cli huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B
+
+# MLX models (Apple Silicon)
+uv run --with "cua-agent[cli]" -m agent.cli mlx/mlx-community/UI-TARS-1.5-7B-6bit
+
+# Ollama models
+uv run --with "cua-agent[cli]" -m agent.cli omniparser+ollama_chat/llama3.2:latest
+```
+
+</Tab>
+<Tab value="conda/pip">
+
 ```bash
 # Hugging Face models (local)
 python -m agent.cli huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B
@@ -58,7 +239,10 @@ python -m agent.cli mlx/mlx-community/UI-TARS-1.5-7B-6bit
 python -m agent.cli omniparser+ollama_chat/llama3.2:latest
 ```
 
-## 5. Interactive Setup
+</Tab>
+</Tabs>
+
+### Interactive Setup
 
 If you haven't set up environment variables, the CLI will guide you through the setup:
 
@@ -66,7 +250,7 @@ If you haven't set up environment variables, the CLI will guide you through the 
 2. **CUA API Key**: Enter your c/ua API key
 3. **Provider API Key**: Enter your AI provider API key (OpenAI, Anthropic, etc.)
 
-## 6. Start Chatting
+### Start Chatting
 
 Once connected, you'll see:
 ```
@@ -82,6 +266,9 @@ You can ask your agent to perform actions like:
 - "Type 'Hello world' into the terminal"
 - "Close the current window"
 - "Click on the search button"
+
+</Step>
+</Steps>
 
 ---
 
