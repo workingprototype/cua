@@ -51,9 +51,8 @@ class Colors:
     BG_YELLOW = '\033[43m'
     BG_BLUE = '\033[44m'
 
-
-def print_colored(text: str, color: str = "", bold: bool = False, dim: bool = False, end: str = "\n"):
-    """Print colored text to terminal."""
+def print_colored(text: str, color: str = "", bold: bool = False, dim: bool = False, end: str = "\n", right: str = ""):
+    """Print colored text to terminal with optional right-aligned text."""
     prefix = ""
     if bold:
         prefix += Colors.BOLD
@@ -62,10 +61,35 @@ def print_colored(text: str, color: str = "", bold: bool = False, dim: bool = Fa
     if color:
         prefix += color
     
-    print(f"{prefix}{text}{Colors.RESET}", end=end)
+    if right:
+        # Get terminal width (default to 80 if unable to determine)
+        try:
+            import shutil
+            terminal_width = shutil.get_terminal_size().columns
+        except:
+            terminal_width = 80
+
+        # Add right margin
+        terminal_width -= 1
+        
+        # Calculate padding needed
+        # Account for ANSI escape codes not taking visual space
+        visible_left_len = len(text)
+        visible_right_len = len(right)
+        padding = terminal_width - visible_left_len - visible_right_len
+        
+        if padding > 0:
+            output = f"{prefix}{text}{' ' * padding}{right}{Colors.RESET}"
+        else:
+            # If not enough space, just put a single space between
+            output = f"{prefix}{text} {right}{Colors.RESET}"
+    else:
+        output = f"{prefix}{text}{Colors.RESET}"
+    
+    print(output, end=end)
 
 
-def print_action(action_type: str, details: Dict[str, Any]):
+def print_action(action_type: str, details: Dict[str, Any], total_cost: float):
     """Print computer action with nice formatting."""
     # Format action details
     args_str = ""
@@ -81,8 +105,10 @@ def print_action(action_type: str, details: Dict[str, Any]):
     elif action_type == "scroll" and "x" in details and "y" in details:
         args_str = f"({details['x']}, {details['y']})"
     
-    print_colored(f"🛠️  {action_type}{args_str}", dim=True)
-
+    if total_cost > 0:
+        print_colored(f"🛠️  {action_type}{args_str}", dim=True, right=f"💸 ${total_cost:.2f}")
+    else:
+        print_colored(f"🛠️  {action_type}{args_str}", dim=True)
 
 def print_welcome(model: str, agent_loop: str, container_name: str):
     """Print welcome message."""
@@ -92,7 +118,7 @@ def print_welcome(model: str, agent_loop: str, container_name: str):
 async def ainput(prompt: str = ""):
     return await asyncio.to_thread(input, prompt)
 
-async def chat_loop(agent, model: str, container_name: str, initial_prompt: str = ""):
+async def chat_loop(agent, model: str, container_name: str, initial_prompt: str = "", show_usage: bool = True):
     """Main chat loop with the agent."""
     print_welcome(model, agent.agent_loop.__name__, container_name)
     
@@ -101,6 +127,8 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
     if initial_prompt:
         history.append({"role": "user", "content": initial_prompt})
     
+    total_cost = 0
+
     while True:
         if history[-1].get("role") != "user":
             # Get user input with prompt
@@ -124,6 +152,9 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
             async for result in agent.run(history):
                 # Add agent responses to history
                 history.extend(result.get("output", []))
+
+                if show_usage:
+                    total_cost += result.get("usage", {}).get("response_cost", 0)
                 
                 # Process and display the output
                 for item in result.get("output", []):
@@ -143,7 +174,7 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
                         action_type = action.get("type", "")
                         if action_type:
                             spinner.hide()
-                            print_action(action_type, action)
+                            print_action(action_type, action, total_cost)
                             spinner.text = f"Performing {action_type}..."
                             spinner.show()
                     
@@ -163,6 +194,8 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
                             print_colored(f"📤 {output}", dim=True)
             
             spinner.hide()
+            if show_usage and total_cost > 0:
+                print_colored(f"Total cost: ${total_cost:.2f}", dim=True)
         
 
 async def main():
@@ -214,6 +247,20 @@ Examples:
         type=str,
         help="Initial prompt to send to the agent. Leave blank for interactive mode."
     )
+
+    parser.add_argument(
+        "-c", "--cache",
+        action="store_true",
+        help="Tell the API to enable caching"
+    )
+
+    parser.add_argument(
+        "-u", "--usage",
+        action="store_true",
+        help="Show total cost of the agent runs"
+    )
+
+
     
     args = parser.parse_args()
     
@@ -294,11 +341,14 @@ Examples:
                 "raise_error": True,
                 "reset_after_each_run": False
             }
+
+        if args.cache:
+            agent_kwargs["use_prompt_caching"] = True
         
         agent = ComputerAgent(**agent_kwargs)
         
         # Start chat loop
-        await chat_loop(agent, args.model, container_name, args.prompt)
+        await chat_loop(agent, args.model, container_name, args.prompt, args.usage)
 
 
 
