@@ -606,35 +606,33 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                         # Basic actions (all versions)
                         if action_type == "screenshot":
                             responses_items.append(make_screenshot_item(call_id=call_id))
-                        elif action_type == "left_click":
+                        elif action_type in ["click", "left_click"]:
                             coordinate = tool_input.get("coordinate", [0, 0])
                             responses_items.append(make_click_item(
                                 x=coordinate[0] if len(coordinate) > 0 else 0,
                                 y=coordinate[1] if len(coordinate) > 1 else 0,
                                 call_id=call_id
                             ))
-                        elif action_type == "type":
+                        elif action_type in ["type", "type_text"]:
                             responses_items.append(make_type_item(
                                 text=tool_input.get("text", ""),
                                 call_id=call_id
                             ))
-                        elif action_type == "key":
+                        elif action_type in ["key", "keypress", "hotkey"]:
                             responses_items.append(make_keypress_item(
                                 keys=tool_input.get("text", "").replace("+", "-").split("-"),
                                 call_id=call_id
                             ))
-                        elif action_type == "mouse_move":
+                        elif action_type in ["mouse_move", "move_cursor", "move"]:
                             # Mouse move - create a custom action item
                             coordinate = tool_input.get("coordinate", [0, 0])
-                            responses_items.append({
-                                "type": "computer_call",
-                                "call_id": call_id,
-                                "action": {
-                                    "type": "mouse_move",
-                                    "x": coordinate[0] if len(coordinate) > 0 else 0,
-                                    "y": coordinate[1] if len(coordinate) > 1 else 0
-                                }
-                            })
+                            responses_items.append(
+                                make_move_item(
+                                    x=coordinate[0] if len(coordinate) > 0 else 0,
+                                    y=coordinate[1] if len(coordinate) > 1 else 0,
+                                    call_id=call_id
+                                )
+                            )
                         
                         # Enhanced actions (computer_20250124) Available in Claude 4 and Claude Sonnet 3.7
                         elif action_type == "scroll":
@@ -651,7 +649,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                                 scroll_y=scroll_y,
                                 call_id=call_id
                             ))
-                        elif action_type == "left_click_drag":
+                        elif action_type in ["left_click_drag", "drag"]:
                             start_coord = tool_input.get("start_coordinate", [0, 0])
                             end_coord = tool_input.get("end_coordinate", [0, 0])
                             responses_items.append(make_drag_item(
@@ -809,7 +807,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             y=coordinate[1] if len(coordinate) > 1 else 0,
                             call_id=call_id
                         ))
-                    elif action_type == "type":
+                    elif action_type in ["type", "type_text"]:
                         # Input:
                         # {
                         #     "function": {
@@ -836,7 +834,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             text=args.get("text", ""),
                             call_id=call_id
                         ))
-                    elif action_type == "key":
+                    elif action_type in ["key", "keypress", "hotkey"]:
                         # Input:
                         # {
                         #     "function": {
@@ -863,7 +861,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             keys=args.get("text", "").replace("+", "-").split("-"),
                             call_id=call_id
                         ))
-                    elif action_type == "mouse_move":
+                    elif action_type in ["mouse_move", "move_cursor", "move"]:
                         # Input:
                         # {
                         #     "function": {
@@ -937,7 +935,7 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             scroll_y=scroll_y,
                             call_id=call_id
                         ))
-                    elif action_type == "left_click_drag":
+                    elif action_type in ["left_click_drag", "drag"]:
                         # Input:
                         # {
                         #     "function": {
