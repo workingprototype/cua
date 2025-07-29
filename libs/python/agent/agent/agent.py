@@ -616,9 +616,9 @@ class ComputerAgent:
         if "click" not in capabilities:
             raise ValueError(f"Agent loop {self.agent_loop.__name__} does not support click predictions")
         if hasattr(self.agent_loop, 'predict_click'):
-            if not self.computer_handler:
-                raise ValueError("Computer tool is required for predict_click")
             if not image_b64:
+                if not self.computer_handler:
+                    raise ValueError("Computer tool or image_b64 is required for predict_click")
                 image_b64 = await self.computer_handler.screenshot()
             return await self.agent_loop.predict_click(
                 model=self.model,

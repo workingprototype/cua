@@ -2,13 +2,8 @@
 Decorators for agent - agent_loop decorator
 """
 
-import asyncio
-import inspect
-from typing import Dict, List, Any, Callable, Optional
-from functools import wraps
-
+from typing import List, Optional
 from .types import AgentConfigInfo
-from .loops.base import AsyncAgentConfig
 
 # Global registry
 _agent_configs: List[AgentConfigInfo] = []
