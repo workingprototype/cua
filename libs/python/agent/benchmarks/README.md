@@ -31,68 +31,6 @@ The benchmark system evaluates models on GUI grounding tasks, specifically click
   - `quit`/`exit` → exit tool
 - **Output**: Visual predictions with crosshairs for each model
 
-## Adding Reference Agent Implementations
-
-### 1. Implement the ModelProtocol
-
-Create a new file in `models/` directory implementing the `ModelProtocol`:
-
-```python
-from models.base import ModelProtocol
-from typing import Optional, Tuple
-from PIL import Image
-
-class YourModelName(ModelProtocol):
-    def __init__(self, model_path: str):
-        self.model_path = model_path
-        self._model = None
-    
-    @property
-    def model_name(self) -> str:
-        return self.model_path
-    
-    async def load_model(self) -> None:
-        """Load the model into memory."""
-        # Your model loading logic here
-        pass
-    
-    async def unload_model(self) -> None:
-        """Unload the model from memory."""
-        # Your model cleanup logic here
-        pass
-    
-    async def predict_click(self, image: Image.Image, instruction: str) -> Optional[Tuple[int, int]]:
-        """
-        Predict click coordinates for the given image and instruction.
-        
-        Args:
-            image: PIL Image to analyze
-            instruction: Text instruction describing what to click
-            
-        Returns:
-            Tuple of (x, y) coordinates or None if prediction fails
-        """
-        # Your prediction logic here
-        return (x, y)  # Return predicted coordinates
-```
-
-### 2. Register Your Model
-
-Add your model to the `get_available_models()` function in `utils.py`:
-
-```python
-def get_available_models() -> List[Union[str, ModelProtocol]]:
-    models = [
-        # Computer Agent SDK providers
-        "huggingface-local/HelloKKMe/GTA1-7B",
-        
-        # Reference implementations
-        GTA1Model("HelloKKMe/GTA1-7B"),
-        YourModelName("path/to/your/model"),  # Add your model here
-    ]
-    return models
-```
-
 ## Running Benchmarks
 
 ### 1. Configure Models
@@ -142,8 +80,4 @@ The benchmark system is designed for:
 
 ## Contributing
 
-To add a new benchmark:
-1. Create a new script following the pattern in `ss-v2.py`
-2. Use the `evaluate_model()` function from utils
-3. Ensure your dataset yields dicts with `image`, `bbox`, `instruction` keys
-4. Update this README with benchmark details
+To add a new reference model, follow the instructions in [contrib.md](contrib.md).
