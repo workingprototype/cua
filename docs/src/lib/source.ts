@@ -43,7 +43,7 @@ export async function getApiVersions(
 // See https://fumadocs.vercel.app/docs/headless/source-api for more info
 export const source = loader({
   // it assigns a URL to your pages
-  baseUrl: '/docs',
+  baseUrl: '/',
   source: docs.toFumadocsSource(),
   icon(icon) {
     if (!icon) return;
