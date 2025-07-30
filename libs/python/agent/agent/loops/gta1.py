@@ -1,5 +1,7 @@
 """
 GTA1 agent loop implementation for click prediction using litellm.acompletion
+Paper: https://arxiv.org/pdf/2507.05791
+Code: https://github.com/Yan98/GTA1
 """
 
 import asyncio
@@ -20,7 +22,7 @@ You are an expert UI element locator. Given a GUI image and a user's element des
 
 Output the coordinate pair exactly:
 (x,y)
-'''
+'''.strip()
 
 def extract_coordinates(raw_string: str) -> Tuple[float, float]:
     """Extract coordinates from model output."""

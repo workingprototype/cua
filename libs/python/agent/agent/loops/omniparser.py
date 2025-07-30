@@ -1,5 +1,7 @@
 """
 OpenAI computer-use-preview agent loop implementation using liteLLM
+Paper: https://arxiv.org/abs/2408.00203
+Code: https://github.com/microsoft/OmniParser
 """
 
 import asyncio

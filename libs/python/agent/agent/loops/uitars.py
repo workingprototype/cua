@@ -1,5 +1,7 @@
 """
 UITARS agent loop implementation using liteLLM for ByteDance-Seed/UI-TARS-1.5-7B
+Paper: https://arxiv.org/abs/2501.12326
+Code: https://github.com/bytedance/UI-TARS
 """
 
 import asyncio
@@ -79,6 +81,18 @@ Action: ...
 {instruction}
 """
 
+GROUNDING_UITARS_PROMPT_TEMPLATE = """You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
+
+## Output Format
+
+Action: ...
+
+
+## Action Space
+click(point='<|box_start|>(x1,y1)<|box_end|>')
+
+## User Instruction
+{instruction}"""
 
 def round_by_factor(number: float, factor: int) -> int:
     """Returns the closest integer to 'number' that is divisible by 'factor'."""
@@ -511,7 +525,7 @@ class UITARSConfig:
     
     async def predict_step(
         self,
-        messages: Messages,
+        messages: List[Dict[str, Any]],
         model: str,
         tools: Optional[List[Dict[str, Any]]] = None,
         max_retries: Optional[int] = None,
@@ -729,12 +743,14 @@ class UITARSConfig:
             Tuple with (x, y) coordinates or None
         """
         try:
-            # Create a simple click instruction for UITARS
-            user_prompt = UITARS_PROMPT_TEMPLATE.format(
-                instruction=f"Click on: {instruction}",
-                action_space=UITARS_ACTION_SPACE,
-                language="English"
+            # Create prompt using grounding template
+            user_prompt = GROUNDING_UITARS_PROMPT_TEMPLATE.format(
+                instruction=instruction
             )
+            
+            # Process image for UITARS
+            processed_image, original_width, original_height = process_image_for_uitars(image_b64)
+            encoded_image = pil_to_base64(processed_image)
             
             # Prepare messages for liteLLM
             litellm_messages = [
@@ -746,46 +762,47 @@ class UITARSConfig:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": user_prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded_image}"}}
                     ]
                 }
             ]
             
+            # Prepare API call kwargs
+            api_kwargs = {
+                "model": model,
+                "messages": litellm_messages,
+                "max_tokens": 100,
+                "temperature": 0.0,
+                "do_sample": False
+            }
+            
             # Call liteLLM with UITARS model
-            response = await litellm.acompletion(
-                model=model,
-                messages=litellm_messages,
-                max_tokens=100,
-                temperature=0.0
-            )
+            response = await litellm.acompletion(**api_kwargs)
             
             # Extract response content
             response_content = response.choices[0].message.content.strip() # type: ignore
             
-            # Parse UITARS response to extract click coordinates
-            parsed_responses = parse_uitars_response(response_content, 1024, 768)  # Default dimensions
+            # Parse the response to extract click coordinates
+            # Look for click action with coordinates
+            click_pattern = r"click\(point='<\|box_start\|>\((\d+),(\d+)\)<\|box_end\|>'\)"
+            match = re.search(click_pattern, response_content)
             
-            if parsed_responses and len(parsed_responses) > 0:
-                action_type = parsed_responses[0].get("action_type")
-                if action_type == "click":
-                    action_inputs = parsed_responses[0].get("action_inputs", {})
-                    start_box = action_inputs.get("start_box")
-                    if start_box:
-                        # Parse coordinates from start_box
-                        try:
-                            coords = eval(start_box)  # Parse the coordinate list
-                            if len(coords) >= 2:
-                                # Convert normalized coordinates back to pixel coordinates
-                                x = int(coords[0] * 1024)
-                                y = int(coords[1] * 768)
-                                return (x, y)
-                        except:
-                            pass
+            if match:
+                x, y = int(match.group(1)), int(match.group(2))
+                # Scale coordinates back to original image dimensions
+                scale_x = original_width / processed_image.width
+                scale_y = original_height / processed_image.height
+                
+                scaled_x = int(x * scale_x)
+                scaled_y = int(y * scale_y)
+                
+                return (scaled_x, scaled_y)
             
             return None
             
         except Exception as e:
-            print(f"Error in UITARS predict_click: {e}")
+            # Log error and return None
+            print(f"Error in predict_click: {e}")
             return None
     
     def get_capabilities(self) -> List[AgentCapability]:
