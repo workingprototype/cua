@@ -98,19 +98,13 @@ def get_available_models() -> List[Union[str, ModelProtocol]]:
 ### 1. Configure Models
 Edit `utils.py` to specify which models you want to test in `get_available_models()`.
 
-### 2. Set Sample Count
-Edit the benchmark script to change the number of samples:
-```python
-max_samples = 50  # Set to None to evaluate on full dataset
-```
-
-### 3. Run Benchmark
+### 2. Run Benchmark
 ```bash
 # ScreenSpot-v2 benchmark
-python ss-v2.py
+python ss-v2.py --samples 50
 
 # ScreenSpot-Pro benchmark  
-python ss-pro.py
+python ss-pro.py --samples 50
 
 # Interactive testing
 python interactive.py
@@ -121,14 +115,9 @@ python interactive.py
 ### Console Output
 ```
 Model Results:
-  Accuracy: 85.50%
-  Correct: 171/200
-  Errors: 5
-  Error Rate: 2.50%
-  Avg Time: 1.23s
-  Time Range: 0.89s - 2.45s
-  VRAM Max: 4.5GB
-  VRAM Avg: 3.4GB
+  Accuracy: 85.50% (171/200)
+  Avg Time: 1.23s (0.89s - 2.45s)
+  VRAM Usage: 4.5GB (max) / 3.4GB (avg)
 ```
 
 ### Generated Files
@@ -139,19 +128,9 @@ Model Results:
 ## Metrics Tracked
 
 - **Accuracy**: Percentage of clicks within bounding boxes
-- **Error Rate**: Percentage of failed predictions
 - **Timing**: Average, min, max prediction times
 - **VRAM Usage**: Maximum and average GPU memory usage
 - **Per-sample Results**: Detailed breakdown for debugging
-
-## Requirements
-
-- Python 3.8+
-- PyTorch (for VRAM tracking)
-- PIL/Pillow (for image processing)
-- datasets (for HuggingFace datasets)
-- tqdm (for progress bars)
-- Computer Agent SDK
 
 ## Architecture
 
@@ -160,13 +139,6 @@ The benchmark system is designed for:
 - **Flexibility**: Works with any iterator of dicts with `image`, `bbox`, `instruction` keys
 - **Performance**: VRAM tracking and timing analysis
 - **Visualization**: Automatic generation of prediction visualizations
-- **No Exception Handling**: Fails fast to surface real issues
-
-## Results Table
-
-| Model | Dataset | Accuracy | Error Rate | Avg Time | VRAM Max | VRAM Avg |
-|-------|---------|----------|------------|----------|----------|----------|
-| (coming soon) | | | | | | |
 
 ## Contributing
 

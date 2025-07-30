@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-ScreenSpot-Pro Benchmark Script
+ScreenSpot-v2 Benchmark Script
 
-Evaluates models on the ScreenSpot-Pro dataset for click prediction accuracy.
+Evaluates models on the ScreenSpot-v2 dataset for click prediction accuracy.
 Supports both ComputerAgent model strings and custom model classes.
 """
 
+import argparse
 import asyncio
+import random
+import statistics
 import time
 from typing import Optional
 
@@ -18,7 +21,8 @@ from utils import (
     is_click_in_bbox, 
     save_results_to_markdown, 
     save_visualizations,
-    get_available_models
+    get_available_models,
+    get_gpu_memory
 )
 
 
@@ -93,6 +97,7 @@ async def evaluate_model(model_wrapper: ModelWrapper, samples, max_samples: Opti
     # Calculate timing statistics
     successful_times = [r['prediction_time'] for r in results if not r['failed']]
     avg_prediction_time = sum(successful_times) / len(successful_times) if successful_times else 0.0
+    median_prediction_time = statistics.median(successful_times) if successful_times else 0.0
     min_prediction_time = min(successful_times) if successful_times else 0.0
     max_prediction_time = max(successful_times) if successful_times else 0.0
     
@@ -107,6 +112,7 @@ async def evaluate_model(model_wrapper: ModelWrapper, samples, max_samples: Opti
         'accuracy': accuracy,
         'failure_rate': error_rate,
         'avg_prediction_time': avg_prediction_time,
+        'median_prediction_time': median_prediction_time,
         'min_prediction_time': min_prediction_time,
         'max_prediction_time': max_prediction_time,
         'vram_max_mb': vram_stats['max_mb'],
@@ -119,6 +125,17 @@ async def main():
     """
     Main function to run the benchmark.
     """
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='ScreenSpot-v2 Benchmark Script')
+    parser.add_argument('--samples', type=int, default=500, 
+                       help='Number of samples to evaluate (default: 500)')
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Random seed for shuffling (default: 42)')
+    args = parser.parse_args()
+    
+    # Set random seed
+    random.seed(args.seed)
+    
     # Load dataset
     print("Loading ScreenSpot-v2 dataset...")
     ds = load_dataset("lmms-lab/ScreenSpot-v2")
@@ -141,11 +158,15 @@ async def main():
         })
     print(f"Dataset loaded: {len(samples)} samples")
     
+    # Shuffle samples with seed
+    random.shuffle(samples)
+    print(f"Samples shuffled with seed {args.seed}")
+    
     # Get available models
     models = get_available_models()
     
     # Evaluation settings
-    max_samples = 500  # Set to None to evaluate on full dataset
+    max_samples = args.samples  # Use command line argument
     
     # Run evaluations
     all_results = []
@@ -162,9 +183,15 @@ async def main():
         print(f"  Errors: {result['failed_predictions']}")
         print(f"  Error Rate: {result['failure_rate']*100:.2f}%")
         print(f"  Avg Time: {result['avg_prediction_time']:.2f}s")
+        print(f"  Median Time: {result['median_prediction_time']:.2f}s")
         print(f"  Time Range: {result['min_prediction_time']:.2f}s - {result['max_prediction_time']:.2f}s")
         print(f"  VRAM Max: {result['vram_max_mb']:.1f}MB")
         print(f"  VRAM Avg: {result['vram_avg_mb']:.1f}MB")
+        
+        # Print GPU memory info
+        gpu_memory = get_gpu_memory()
+        if gpu_memory and gpu_memory[0] > 0:
+            print(f"  GPU Free Memory: {gpu_memory[0]:.1f}MB")
     
     # Save results
     if all_results:

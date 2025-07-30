@@ -7,6 +7,8 @@ import asyncio
 import base64
 import os
 import sys
+import subprocess as sp
+import statistics
 from datetime import datetime
 from io import BytesIO
 from typing import List, Union, Tuple, Optional
@@ -21,6 +23,28 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agent.agent import ComputerAgent
 from models import GTA1Model
 from models.base import ModelProtocol
+
+def get_gpu_memory() -> List[int]:
+    """
+    Get GPU memory usage using nvidia-smi.
+    
+    Returns:
+        List of free memory values in MB for each GPU
+    """
+    try:
+        command = "nvidia-smi --query-gpu=memory.free --format=csv"
+        memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+        memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+        return memory_free_values
+    except (sp.CalledProcessError, FileNotFoundError, IndexError):
+        # Fallback to torch if nvidia-smi is not available
+        if torch.cuda.is_available():
+            device = torch.cuda.current_device()
+            total = torch.cuda.get_device_properties(device).total_memory / 1024 / 1024
+            reserved = torch.cuda.memory_reserved(device) / 1024 / 1024
+            return [int(total - reserved)]
+        return [0]
+
 
 def get_vram_usage() -> dict:
     """
@@ -61,11 +85,11 @@ def get_available_models() -> List[Union[str, ModelProtocol]]:
     models = [
         # === ComputerAgent model strings ===
         f"{local_provider}HelloKKMe/GTA1-7B",
-        f"{local_provider}HelloKKMe/GTA1-32B",
+        # f"{local_provider}HelloKKMe/GTA1-32B",
         
         # === Reference model classes ===
         GTA1Model("HelloKKMe/GTA1-7B"),
-        GTA1Model("HelloKKMe/GTA1-32B"), 
+        # GTA1Model("HelloKKMe/GTA1-32B"), 
     ]
     
     return models
@@ -203,8 +227,8 @@ def save_results_to_markdown(all_results: List[dict],output_file: str = "screens
         
         # Summary table
         f.write("## Summary\n\n")
-        f.write("| Model | Total Samples | Correct | Errors | Accuracy | Error Rate | Avg Time (s) | Time Range (s) | VRAM Max (GB) | VRAM Avg (GB) |\n")
-        f.write("|-------|---------------|---------|--------|----------|------------|--------------|----------------|---------------|---------------|\n")
+        f.write("| Model | Total Samples | Correct | Errors | Accuracy | Error Rate | Avg Time (s) | Median Time (s) | Time Range (s) | VRAM Max (GB) | VRAM Avg (GB) |\n")
+        f.write("|-------|---------------|---------|--------|----------|------------|--------------|-----------------|----------------|---------------|---------------|\n")
         
         for result in all_results:
             model_name = result['model_name']
@@ -214,13 +238,14 @@ def save_results_to_markdown(all_results: List[dict],output_file: str = "screens
             accuracy = result['accuracy'] * 100
             error_rate = result['failure_rate'] * 100
             avg_time = result.get('avg_prediction_time', 0.0)
+            median_time = result.get('median_prediction_time', 0.0)
             min_time = result.get('min_prediction_time', 0.0)
             max_time = result.get('max_prediction_time', 0.0)
             time_range = f"{min_time:.2f} - {max_time:.2f}"
             vram_max = result.get('vram_max_mb', 0.0) / 1024
             vram_avg = result.get('vram_avg_mb', 0.0) / 1024
             
-            f.write(f"| {model_name} | {total} | {correct} | {errors} | {accuracy:.2f}% | {error_rate:.2f}% | {avg_time:.2f} | {time_range} | {vram_max:.1f} | {vram_avg:.1f} |\n")
+            f.write(f"| {model_name} | {total} | {correct} | {errors} | {accuracy:.2f}% | {error_rate:.2f}% | {avg_time:.2f} | {median_time:.2f} | {time_range} | {vram_max:.1f} | {vram_avg:.1f} |\n")
         
         # Detailed results for each model
         for result in all_results:
