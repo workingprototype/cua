@@ -25,8 +25,8 @@ The benchmark system evaluates models on GUI grounding tasks, specifically click
 ### 3. Interactive Testing (`interactive.py`)
 - **Real-time testing**: Take screenshots and visualize model predictions
 - **Commands**: 
-  - Type instruction → screenshot + test all models
-  - `screenshot` → take screenshot without prediction
+  - Type instruction → test all models on last screenshot
+  - `screenshot` → take screenshot
   - `models` → list available models
   - `quit`/`exit` → exit tool
 - **Output**: Visual predictions with crosshairs for each model
@@ -62,21 +62,6 @@ Model Results:
 - **Markdown Report**: `*_results.md` with detailed results tables
 - **Visualizations**: `output/` directory with prediction visualizations
 - **Interactive Output**: `interactive_output/` for interactive session results
-
-## Metrics Tracked
-
-- **Accuracy**: Percentage of clicks within bounding boxes
-- **Timing**: Average, min, max prediction times
-- **VRAM Usage**: Maximum and average GPU memory usage
-- **Per-sample Results**: Detailed breakdown for debugging
-
-## Architecture
-
-The benchmark system is designed for:
-- **Modularity**: Easy to add new models and benchmarks
-- **Flexibility**: Works with any iterator of dicts with `image`, `bbox`, `instruction` keys
-- **Performance**: VRAM tracking and timing analysis
-- **Visualization**: Automatic generation of prediction visualizations
 
 ## Contributing
 
