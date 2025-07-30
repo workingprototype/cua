@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ slug?: string[] }> }
 ) {
   const { slug } = await params;
-  const page = source.getPage(['home', ...slug!]);
+  const page = source.getPage(['docs', ...slug!]);
   if (!page) notFound();
 
   return new NextResponse(await getLLMText(page));

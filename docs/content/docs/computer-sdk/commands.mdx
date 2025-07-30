@@ -106,14 +106,24 @@ Mouse wheel and scrolling control:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python # Scrolling await computer.interface.scroll(x, y) # Scroll the
-    mouse wheel await computer.interface.scroll_down(clicks) # Scroll down await
-    computer.interface.scroll_up(clicks) # Scroll up ```
+
+    ```python
+    # Scrolling
+    await computer.interface.scroll(x, y) # Scroll the mouse wheel
+    await computer.interface.scroll_down(clicks) # Scroll down await
+    computer.interface.scroll_up(clicks) # Scroll up
+
+    ```
+
   </Tab>
   <Tab value="TypeScript">
-    ```typescript // Scrolling await computer.interface.scroll(x, y); // Scroll
-    the mouse wheel await computer.interface.scrollDown(clicks); // Scroll down
-    await computer.interface.scrollUp(clicks); // Scroll up ```
+    ```typescript 
+    // Scrolling 
+    await computer.interface.scroll(x, y); // Scroll the mouse wheel 
+    await computer.interface.scrollDown(clicks); // Scroll down
+    await computer.interface.scrollUp(clicks); // Scroll up 
+    
+    ```
   </Tab>
 </Tabs>
 
@@ -123,14 +133,21 @@ Screen capture and display information:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python # Screen operations await computer.interface.screenshot() # Take a
-    screenshot await computer.interface.get_screen_size() # Get screen
-    dimensions ```
+    ```python 
+    # Screen operations 
+    await computer.interface.screenshot() # Take a screenshot 
+    await computer.interface.get_screen_size() # Get screen dimensions
+
+    ```
+
   </Tab>
   <Tab value="TypeScript">
-    ```typescript // Screen operations await computer.interface.screenshot(); //
-    Take a screenshot await computer.interface.getScreenSize(); // Get screen
-    dimensions ```
+    ```typescript 
+    // Screen operations 
+    await computer.interface.screenshot(); // Take a screenshot 
+    await computer.interface.getScreenSize(); // Get screen dimensions 
+    
+    ```
   </Tab>
 </Tabs>
 
@@ -140,14 +157,22 @@ System clipboard management:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python # Clipboard operations await
+    ```python 
+    # Clipboard operations await
     computer.interface.set_clipboard(text) # Set clipboard content await
-    computer.interface.copy_to_clipboard() # Get clipboard content ```
+    computer.interface.copy_to_clipboard() # Get clipboard content
+
+    ```
+
   </Tab>
   <Tab value="TypeScript">
-    ```typescript // Clipboard operations await
-    computer.interface.setClipboard(text); // Set clipboard content await
-    computer.interface.copyToClipboard(); // Get clipboard content ```
+    ```typescript 
+    // Clipboard operations 
+    await computer.interface.setClipboard(text); // Set clipboard content
+    await computer.interface.copyToClipboard(); // Get clipboard content
+
+    ```
+
   </Tab>
 </Tabs>
 
@@ -157,6 +182,7 @@ Direct file and directory manipulation:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
+
     ```python
     # File existence checks
     await computer.interface.file_exists(path)      # Check if file exists
@@ -204,11 +230,19 @@ Access system accessibility information:
 
 <Tabs items={['Python', 'TypeScript']}>
   <Tab value="Python">
-    ```python # Accessibility await computer.interface.get_accessibility_tree()
-    # Get accessibility tree ```
+    ```python 
+    # Get accessibility tree 
+    await computer.interface.get_accessibility_tree()
+
+    ```
+
   </Tab>
   <Tab value="TypeScript">
-    ```typescript // Accessibility await
-    computer.interface.getAccessibilityTree(); // Get accessibility tree ```
-  </Tab>
+    ```typescript 
+    // Get accessibility tree 
+   await computer.interface.getAccessibilityTree();
+
+```
+</Tab>
 </Tabs>
+```

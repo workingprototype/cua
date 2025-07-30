@@ -63,7 +63,7 @@ lume run macos-sequoia-cua:latest
 
 3.  Connect with Computer
 
-    <Tabs items={['Python']}>
+<Tabs items={['Python']}>
   <Tab value="Python">
     ```python
     computer = Computer(
@@ -73,9 +73,9 @@ lume run macos-sequoia-cua:latest
     )
 
         await computer.run() # Connect to the container
-        ```
+    ```
 
-      </Tab>
+  </Tab>
 </Tabs>
 
 ## Your host desktop
@@ -91,7 +91,12 @@ Connect with:
 
 <Tabs items={['Python']}>
   <Tab value="Python">
-    ```python computer = Computer(use_host_computer_server=True) await
-    computer.run() # Connect to the host desktop ```
+    ```python
+
+    computer = Computer(use_host_computer_server=True) await
+    computer.run() # Connect to the host desktop
+
+    ```
+
   </Tab>
 </Tabs>

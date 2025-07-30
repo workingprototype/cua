@@ -25,7 +25,7 @@ export default async function Page(props: {
   const params = await props.params;
   const slug = params.slug || [];
   const page = source.getPage(slug);
-  if (!page) redirect('/home');
+  if (!page) notFound(); //redirect('/docs');
 
   // Detect if this is an API reference page: /api/[section] or /api/[section]/[version]
   let apiSection: string | null = null;
