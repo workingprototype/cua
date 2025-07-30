@@ -117,7 +117,7 @@ Output the coordinate pair exactly:
             }
             
             # Process inputs
-            image_inputs, video_inputs = process_vision_info([system_message, user_message])
+            image_inputs, video_inputs = process_vision_info([system_message, user_message]) # type: ignore
             text = self.processor.apply_chat_template(
                 [system_message, user_message], 
                 tokenize=False, 

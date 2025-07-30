@@ -22,13 +22,13 @@ from utils import (
 )
 
 
-async def evaluate_model(model_wrapper: ModelWrapper, dataset, max_samples: Optional[int] = None) -> dict:
+async def evaluate_model(model_wrapper: ModelWrapper, samples, max_samples: Optional[int] = None) -> dict:
     """
-    Evaluate a model on the ScreenSpot-Pro dataset.
+    Evaluate a model on any iterable of samples.
     
     Args:
         model_wrapper: ModelWrapper instance
-        dataset: ScreenSpot-Pro dataset (list of samples)
+        samples: Iterable of dicts with keys: image, bbox, instruction
         max_samples: Maximum number of samples to evaluate (None for all)
         
     Returns:
@@ -39,22 +39,28 @@ async def evaluate_model(model_wrapper: ModelWrapper, dataset, max_samples: Opti
     # Load model
     await model_wrapper.load_model()
     
-    total_samples = len(dataset)
-    if max_samples is not None:
-        total_samples = min(max_samples, total_samples)
+    # Convert to list if needed and limit samples
+    if hasattr(samples, '__len__'):
+        total_samples = len(samples)
+        if max_samples is not None:
+            total_samples = min(max_samples, total_samples)
+        sample_list = list(samples)[:total_samples]
+    else:
+        # For iterators, take max_samples or all
+        sample_list = list(samples)
+        if max_samples is not None:
+            sample_list = sample_list[:max_samples]
+        total_samples = len(sample_list)
     
     correct_predictions = 0
     error_predictions = 0
     results = []
     
-    for i in tqdm(range(total_samples), desc=f"Evaluating {model_wrapper.model_name}"):
-        sample = dataset[i]
-        
-        # Extract sample data
+    for i, sample in enumerate(tqdm(sample_list, desc=f"Evaluating {model_wrapper.model_name}")):
+        # Extract required data (only these 3 keys matter)
         image = sample['image']
         instruction = sample['instruction']
         bbox = sample['bbox']  # [x1, y1, x2, y2]
-        sample_id = sample['img_filename']
         
         # Predict click coordinates with timing
         start_time = time.time()
@@ -68,7 +74,7 @@ async def evaluate_model(model_wrapper: ModelWrapper, dataset, max_samples: Opti
             correct_predictions += 1
         
         results.append({
-            'id': sample_id,
+            'sample_idx': i,
             'instruction': instruction,
             'bbox': bbox,
             'predicted_coords': click_coords,
@@ -114,25 +120,39 @@ async def main():
     Main function to run the benchmark.
     """
     # Load dataset
-    print("Loading ScreenSpot-Pro dataset...")
-    ds = load_dataset("lmms-lab/ScreenSpot-Pro")
+    print("Loading ScreenSpot-v2 dataset...")
+    ds = load_dataset("lmms-lab/ScreenSpot-v2")
     dataset = ds['train'] # type: ignore
-    # Convert to list to support indexing
-    dataset_list = list(dataset)
-    print(f"Dataset loaded: {len(dataset_list)} samples")
+    # Convert to simple list of dicts with only required keys
+    samples = []
+    for item in dataset:
+        # Convert dataset item to dict if needed
+        item_dict = dict(item) if hasattr(item, 'keys') else item
+        
+        # Convert ScreenSpot-v2 bbox format [x, y, w, h] to [x1, y1, x2, y2]
+        bbox_xywh = item_dict['bbox']  # type: ignore
+        x, y, w, h = bbox_xywh
+        bbox_xyxy = [x, y, x + w, y + h]
+        
+        samples.append({
+            'image': item_dict['image'],  # type: ignore
+            'instruction': item_dict['instruction'],  # type: ignore
+            'bbox': bbox_xyxy
+        })
+    print(f"Dataset loaded: {len(samples)} samples")
     
     # Get available models
     models = get_available_models()
     
     # Evaluation settings
-    max_samples = 300  # Set to None to evaluate on full dataset
+    max_samples = 500  # Set to None to evaluate on full dataset
     
     # Run evaluations
     all_results = []
     
     for model in models:
         model_wrapper = ModelWrapper(model)
-        result = await evaluate_model(model_wrapper, dataset_list, max_samples)
+        result = await evaluate_model(model_wrapper, samples, max_samples)
         all_results.append(result)
         
         # Print summary
@@ -148,8 +168,8 @@ async def main():
     
     # Save results
     if all_results:
-        save_results_to_markdown(all_results)
-        save_visualizations(all_results, dataset_list)
+        save_results_to_markdown(all_results, "screenspot_v2_results.md", title="ScreenSpot-v2 Benchmark Results")
+        save_visualizations(all_results, samples)
         print("\nBenchmark completed successfully!")
     else:
         print("\nNo successful evaluations completed.")

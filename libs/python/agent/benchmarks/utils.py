@@ -22,6 +22,33 @@ from agent.agent import ComputerAgent
 from models import GTA1Model
 from models.base import ModelProtocol
 
+def get_vram_usage() -> dict:
+    """
+    Get current VRAM usage statistics.
+    
+    Returns:
+        Dictionary with VRAM usage info (in MB)
+    """
+    if torch.cuda.is_available():
+        device = torch.cuda.current_device()
+        allocated = torch.cuda.memory_allocated(device) / 1024 / 1024  # Convert to MB
+        reserved = torch.cuda.memory_reserved(device) / 1024 / 1024   # Convert to MB
+        total = torch.cuda.get_device_properties(device).total_memory / 1024 / 1024
+        return {
+            'allocated_mb': allocated,
+            'reserved_mb': reserved,
+            'total_mb': total,
+            'free_mb': total - reserved
+        }
+    else:
+        return {
+            'allocated_mb': 0.0,
+            'reserved_mb': 0.0,
+            'total_mb': 0.0,
+            'free_mb': 0.0
+        }
+
+
 def get_available_models() -> List[Union[str, ModelProtocol]]:
     """
     Get list of available models for testing.
@@ -34,11 +61,11 @@ def get_available_models() -> List[Union[str, ModelProtocol]]:
     models = [
         # === ComputerAgent model strings ===
         f"{local_provider}HelloKKMe/GTA1-7B",
-        # f"{local_provider}HelloKKMe/GTA1-32B",  # Uncomment if you have this model
+        f"{local_provider}HelloKKMe/GTA1-32B",
         
         # === Reference model classes ===
         GTA1Model("HelloKKMe/GTA1-7B"),
-        # GTA1Model("HelloKKMe/GTA1-32B"),  # Uncomment if you have this model
+        GTA1Model("HelloKKMe/GTA1-32B"), 
     ]
     
     return models
@@ -88,11 +115,12 @@ class ModelWrapper:
         self.model = model
         self.is_computer_agent = isinstance(model, str)
         self.agent: Optional[ComputerAgent] = None
+        self.vram_usage_history: List[float] = []  # Track VRAM usage over time
         
         if self.is_computer_agent:
             self.model_name = str(model)
         else:
-            self.model_name = f"models.{model.__class__.__name__}"
+            self.model_name = f"{model.__class__.__name__}('{getattr(model, 'model_name', 'unknown')}')"
     
     async def load_model(self) -> None:
         """Load the model."""
@@ -100,6 +128,10 @@ class ModelWrapper:
             self.agent = ComputerAgent(model=str(self.model))
         else:
             await self.model.load_model() # type: ignore
+        
+        # Record initial VRAM usage after loading
+        vram_info = get_vram_usage()
+        self.vram_usage_history.append(vram_info['allocated_mb'])
     
     async def unload_model(self) -> None:
         """Unload the model."""
@@ -111,10 +143,28 @@ class ModelWrapper:
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+        
+        # Record VRAM usage after unloading
+        vram_info = get_vram_usage()
+        self.vram_usage_history.append(vram_info['allocated_mb'])
+    
+    def get_vram_stats(self) -> dict:
+        """Get VRAM usage statistics for this model."""
+        if not self.vram_usage_history:
+            return {'max_mb': 0.0, 'avg_mb': 0.0}
+        
+        return {
+            'max_mb': max(self.vram_usage_history),
+            'avg_mb': sum(self.vram_usage_history) / len(self.vram_usage_history)
+        }
 
     
     async def predict_click(self, image: Image.Image, instruction: str) -> Optional[Tuple[int, int]]:
         """Predict click coordinates."""
+        # Record VRAM usage before prediction
+        vram_info = get_vram_usage()
+        self.vram_usage_history.append(vram_info['allocated_mb'])
+        
         if self.is_computer_agent:
             if self.agent is None:
                 await self.load_model()
@@ -122,13 +172,24 @@ class ModelWrapper:
             if self.agent is not None:
                 image_b64 = image_to_base64(image)
                 result = await self.agent.predict_click(instruction=instruction, image_b64=image_b64)
+                
+                # Record VRAM usage after prediction
+                vram_info = get_vram_usage()
+                self.vram_usage_history.append(vram_info['allocated_mb'])
+                
                 return result
             return None
         else:
-            return await self.model.predict_click(image, instruction) # type: ignore
+            result = await self.model.predict_click(image, instruction) # type: ignore
+            
+            # Record VRAM usage after prediction
+            vram_info = get_vram_usage()
+            self.vram_usage_history.append(vram_info['allocated_mb'])
+            
+            return result
 
 
-def save_results_to_markdown(all_results: List[dict], output_file: str = "screenspot_pro_results.md") -> None:
+def save_results_to_markdown(all_results: List[dict],output_file: str = "screenspot_pro_results.md", title: str = "ScreenSpot-Pro Benchmark Results") -> None:
     """
     Save evaluation results to a markdown table.
     
@@ -137,39 +198,46 @@ def save_results_to_markdown(all_results: List[dict], output_file: str = "screen
         output_file: Output markdown file path
     """
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("# ScreenSpot-Pro Benchmark Results\n\n")
+        f.write(f"# {title}\n\n")
         f.write(f"**Evaluation Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         
         # Summary table
         f.write("## Summary\n\n")
-        f.write("| Model | Total Samples | Correct | Failed | Accuracy | Failure Rate |\n")
-        f.write("|-------|---------------|---------|--------|----------|--------------|\n")
+        f.write("| Model | Total Samples | Correct | Errors | Accuracy | Error Rate | Avg Time (s) | Time Range (s) | VRAM Max (GB) | VRAM Avg (GB) |\n")
+        f.write("|-------|---------------|---------|--------|----------|------------|--------------|----------------|---------------|---------------|\n")
         
         for result in all_results:
             model_name = result['model_name']
             total = result['total_samples']
             correct = result['correct_predictions']
-            failed = result['failed_predictions']
+            errors = result['failed_predictions']
             accuracy = result['accuracy'] * 100
-            failure_rate = result['failure_rate'] * 100
+            error_rate = result['failure_rate'] * 100
+            avg_time = result.get('avg_prediction_time', 0.0)
+            min_time = result.get('min_prediction_time', 0.0)
+            max_time = result.get('max_prediction_time', 0.0)
+            time_range = f"{min_time:.2f} - {max_time:.2f}"
+            vram_max = result.get('vram_max_mb', 0.0) / 1024
+            vram_avg = result.get('vram_avg_mb', 0.0) / 1024
             
-            f.write(f"| {model_name} | {total} | {correct} | {failed} | {accuracy:.2f}% | {failure_rate:.2f}% |\n")
+            f.write(f"| {model_name} | {total} | {correct} | {errors} | {accuracy:.2f}% | {error_rate:.2f}% | {avg_time:.2f} | {time_range} | {vram_max:.1f} | {vram_avg:.1f} |\n")
         
         # Detailed results for each model
         for result in all_results:
             f.write(f"\n## {result['model_name']} - Detailed Results\n\n")
-            f.write("| Sample ID | Instruction | BBox | Predicted | Correct | Failed |\n")
-            f.write("|-----------|-------------|------|-----------|---------|--------|\n")
+            f.write("| Sample Index | Instruction | BBox | Predicted | Correct | Error | Time (s) |\n")
+            f.write("|-----------|-------------|------|-----------|---------|-------|----------|\n")
             
             for sample_result in result['results'][:10]:  # Show first 10 samples
-                sample_id = sample_result['id']
+                sample_idx = sample_result['sample_idx']
                 instruction = sample_result['instruction'][:50] + "..." if len(sample_result['instruction']) > 50 else sample_result['instruction']
                 bbox = str(sample_result['bbox'])
                 predicted = str(sample_result['predicted_coords']) if sample_result['predicted_coords'] else "None"
                 correct = "PASS" if sample_result['is_correct'] else "FAIL"
-                failed = "YES" if sample_result['failed'] else "NO"
+                error = "YES" if sample_result['failed'] else "NO"
+                pred_time = sample_result.get('prediction_time', 0.0)
                 
-                f.write(f"| {sample_id} | {instruction} | {bbox} | {predicted} | {correct} | {failed} |\n")
+                f.write(f"| {sample_idx} | {instruction} | {bbox} | {predicted} | {correct} | {error} | {pred_time:.2f} |\n")
             
             if len(result['results']) > 10:
                 f.write(f"\n*Showing first 10 of {len(result['results'])} samples*\n")
@@ -177,76 +245,68 @@ def save_results_to_markdown(all_results: List[dict], output_file: str = "screen
     print(f"\nResults saved to: {output_file}")
 
 
-def save_visualizations(all_results: List[dict], dataset_list, output_dir: str = "output") -> None:
+def save_visualizations(all_results: List[dict], samples, output_dir: str = "output") -> None:
     """
     Save visualizations of predicted coordinates vs bboxes to an output folder.
     
     Args:
         all_results: List of evaluation results for each model
-        dataset_list: List of dataset samples
+        samples: List of sample dicts with image, bbox, instruction keys
         output_dir: Output directory path
     """
-    # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     
     for result in all_results:
-        model_name = result['model_name'].replace('/', '_').replace('.', '_')
+        model_name = result['model_name'].replace('/', '_').replace('\\', '_')
         model_dir = os.path.join(output_dir, model_name)
         os.makedirs(model_dir, exist_ok=True)
         
-        print(f"\nSaving visualizations for {result['model_name']}...")
+        print(f"Saving visualizations for {result['model_name']}...")
         
+        # Save first 10 samples for visualization
         for i, sample_result in enumerate(tqdm(result['results'][:10], desc=f"Saving {model_name} visualizations")):
-            try:
-                # Find the original sample
-                sample_id = sample_result['id']
-                sample = None
-                for s in dataset_list:
-                    if s['id'] == sample_id:
-                        sample = s
-                        break
-                
-                if sample is None:
-                    continue
-                
-                # Get image and data
-                image = sample['image'].copy()
-                bbox = sample_result['bbox']  # [x1, y1, x2, y2]
-                predicted_coords = sample_result['predicted_coords']
-                is_correct = sample_result['is_correct']
-                
-                # Draw on image
-                draw = ImageDraw.Draw(image)
-                
-                # Draw bounding box (ground truth) in green
-                x1, y1, x2, y2 = bbox
-                draw.rectangle([x1, y1, x2, y2], outline="green", width=3)
-                draw.text((x1, y1-20), "Ground Truth", fill="green")
-                
-                # Draw predicted click in red or blue
-                if predicted_coords is not None:
-                    px, py = predicted_coords
-                    color = "blue" if is_correct else "red"
-                    # Draw crosshair
-                    crosshair_size = 15
-                    draw.line([(px-crosshair_size, py), (px+crosshair_size, py)], fill=color, width=3)
-                    draw.line([(px, py-crosshair_size), (px, py+crosshair_size)], fill=color, width=3)
-                    draw.text((px+10, py-20), f"Predicted ({px},{py})", fill=color)
-                
-                # Add status text
-                status = "CORRECT" if is_correct else "INCORRECT"
-                status_color = "blue" if is_correct else "red"
-                draw.text((10, 10), f"Status: {status}", fill=status_color)
-                draw.text((10, 30), f"Instruction: {sample_result['instruction'][:50]}...", fill="black")
-                
-                # Save image
-                filename = f"sample_{i+1:02d}_{sample_id}_{status.lower()}.png"
-                filepath = os.path.join(model_dir, filename)
-                image.save(filepath)
-                
-            except Exception as e:
-                print(f"Error saving visualization for sample {sample_id}: {e}")
+            # Get sample data using index
+            sample_idx = sample_result['sample_idx']
+            
+            if sample_idx < len(samples):
+                sample = samples[sample_idx]
+                image = sample['image'].copy()  # Make a copy to avoid modifying original
+            else:
+                print(f"Warning: Could not find sample at index {sample_idx}")
                 continue
+            
+            bbox = sample_result['bbox']
+            predicted_coords = sample_result['predicted_coords']
+            is_correct = sample_result['is_correct']
+            
+            # Draw on image
+            draw = ImageDraw.Draw(image)
+            
+            # Draw bounding box (ground truth) in green
+            x1, y1, x2, y2 = bbox
+            draw.rectangle([x1, y1, x2, y2], outline="green", width=3)
+            draw.text((x1, y1-20), "Ground Truth", fill="green")
+            
+            # Draw predicted click in red or blue
+            if predicted_coords is not None:
+                px, py = predicted_coords
+                color = "blue" if is_correct else "red"
+                # Draw crosshair
+                crosshair_size = 15
+                draw.line([(px-crosshair_size, py), (px+crosshair_size, py)], fill=color, width=3)
+                draw.line([(px, py-crosshair_size), (px, py+crosshair_size)], fill=color, width=3)
+                draw.text((px+10, py-20), f"Predicted ({px},{py})", fill=color)
+            
+            # Add status text
+            status = "CORRECT" if is_correct else "INCORRECT"
+            status_color = "blue" if is_correct else "red"
+            draw.text((10, 10), f"Status: {status}", fill=status_color)
+            draw.text((10, 30), f"Instruction: {sample_result['instruction'][:50]}...", fill="black")
+            
+            # Save image
+            filename = f"sample_{i+1:02d}_idx{sample_idx}_{status.lower()}.png"
+            filepath = os.path.join(model_dir, filename)
+            image.save(filepath)
         
         print(f"Visualizations saved to: {model_dir}")
 
