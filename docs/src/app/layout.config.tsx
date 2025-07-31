@@ -45,6 +45,7 @@ export const baseOptions: BaseLayoutProps = {
       text: 'cua home',
       type: 'icon',
       icon: <HomeIcon />,
+      external: false,
     },
     {
       url: 'https://discord.com/invite/mVnXXpdE85',
