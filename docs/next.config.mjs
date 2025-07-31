@@ -7,6 +7,7 @@ const config = {
   reactStrictMode: true,
   trailingSlash: false,
   basePath: '/docs',
+  assetPrefix: '/docs',
   async rewrites() {
     return [
       {
