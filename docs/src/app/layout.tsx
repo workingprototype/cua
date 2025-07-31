@@ -10,6 +10,9 @@ const inter = Inter({
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/docs/favicon.ico" sizes="any" />
+      </head>
       <body className="flex min-h-screen flex-col">
         <RootProvider>{children}</RootProvider>
       </body>
