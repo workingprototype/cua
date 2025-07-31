@@ -28,7 +28,7 @@ class GenericComputerInterface(BaseComputerInterface):
         self._max_reconnect_delay = 30  # Maximum delay between reconnection attempts
         self._log_connection_attempts = True  # Flag to control connection attempt logging
         self._authenticated = False  # Track authentication status
-        self._command_lock = asyncio.Lock()  # Lock to ensure only one command at a time
+        self._recv_lock = asyncio.Lock()  # Lock to ensure only one recv at a time
 
         # Set logger name for the interface
         self.logger = Logger(logger_name, LogLevel.NORMAL)
@@ -245,7 +245,7 @@ class GenericComputerInterface(BaseComputerInterface):
         """
         result = await self._send_command("screenshot")
         if not result.get("image_data"):
-            raise RuntimeError("Failed to take screenshot")
+            raise RuntimeError("Failed to take screenshot, no image data received from server")
 
         screenshot = decode_base64_image(result["image_data"])
 
@@ -578,7 +578,8 @@ class GenericComputerInterface(BaseComputerInterface):
                             await self._ws.send(json.dumps(auth_message))
                             
                             # Wait for authentication response
-                            auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
+                            async with self._recv_lock:
+                                auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
                             auth_result = json.loads(auth_response)
                             
                             if not auth_result.get("success"):
@@ -696,38 +697,38 @@ class GenericComputerInterface(BaseComputerInterface):
         last_error = None
 
         # Acquire lock to ensure only one command is processed at a time
-        async with self._command_lock:
-            self.logger.debug(f"Acquired lock for command: {command}")
-            while retry_count < max_retries:
-                try:
-                    await self._ensure_connection()
-                    if not self._ws:
-                        raise ConnectionError("WebSocket connection is not established")
+        self.logger.debug(f"Acquired lock for command: {command}")
+        while retry_count < max_retries:
+            try:
+                await self._ensure_connection()
+                if not self._ws:
+                    raise ConnectionError("WebSocket connection is not established")
 
-                    message = {"command": command, "params": params or {}}
-                    await self._ws.send(json.dumps(message))
+                message = {"command": command, "params": params or {}}
+                await self._ws.send(json.dumps(message))
+                async with self._recv_lock:
                     response = await asyncio.wait_for(self._ws.recv(), timeout=120)
-                    self.logger.debug(f"Completed command: {command}")
-                    return json.loads(response)
-                except Exception as e:
-                    last_error = e
-                    retry_count += 1
-                    if retry_count < max_retries:
-                        # Only log at debug level for intermediate retries
-                        self.logger.debug(
-                            f"Command '{command}' failed (attempt {retry_count}/{max_retries}): {e}"
-                        )
-                        await asyncio.sleep(1)
-                        continue
-                    else:
-                        # Only log at error level for the final failure
-                        self.logger.error(
-                            f"Failed to send command '{command}' after {max_retries} retries"
-                        )
-                        self.logger.debug(f"Command failure details: {e}")
-                        raise
+                self.logger.debug(f"Completed command: {command}")
+                return json.loads(response)
+            except Exception as e:
+                last_error = e
+                retry_count += 1
+                if retry_count < max_retries:
+                    # Only log at debug level for intermediate retries
+                    self.logger.debug(
+                        f"Command '{command}' failed (attempt {retry_count}/{max_retries}): {e}"
+                    )
+                    await asyncio.sleep(1)
+                    continue
+                else:
+                    # Only log at error level for the final failure
+                    self.logger.error(
+                        f"Failed to send command '{command}' after {max_retries} retries"
+                    )
+                    self.logger.debug(f"Command failure details: {e}")
+                    raise
 
-            raise last_error if last_error else RuntimeError("Failed to send command")
+        raise last_error if last_error else RuntimeError("Failed to send command")
 
     async def _send_command_rest(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Send command through REST API without retries or connection management."""
@@ -789,11 +790,11 @@ class GenericComputerInterface(BaseComputerInterface):
         
         # If REST failed with "Request failed", try WebSocket as fallback
         if not result.get("success", True) and (result.get("error") == "Request failed" or result.get("error") == "Server returned malformed response"):
-            self.logger.debug(f"REST API failed for command '{command}', trying WebSocket fallback")
+            self.logger.warning(f"REST API failed for command '{command}', trying WebSocket fallback")
             try:
                 return await self._send_command_ws(command, params)
             except Exception as e:
-                self.logger.debug(f"WebSocket fallback also failed: {e}")
+                self.logger.error(f"WebSocket fallback also failed: {e}")
                 # Return the original REST error
                 return result
         

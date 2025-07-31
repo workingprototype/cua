@@ -50,7 +50,7 @@
 # 🚀 Quick Start
 
 Read our guide on getting started with a Computer-Use Agent:
-[Computer-Use Agent Quickstart](https://docs.trycua.com/home/guides/usage-guide)
+[Computer-Use Agent Quickstart](https://trycua.com/docs/guides/usage-guide)
 
 Get started using Cua services on your machine:
 [Cua Usage Guide](https://docs.trycua.com/home/guides/cua-usage-guide)

@@ -2,8 +2,8 @@
 <h1>
   <div class="image-wrapper" style="display: inline-block;">
     <picture>
-      <source media="(prefers-color-scheme: dark)" alt="logo" height="150" srcset="../../img/logo_white.png" style="display: block; margin: auto;">
-      <source media="(prefers-color-scheme: light)" alt="logo" height="150" srcset="../../img/logo_black.png" style="display: block; margin: auto;">
+      <source media="(prefers-color-scheme: dark)" alt="logo" height="150" srcset="../../../img/logo_white.png" style="display: block; margin: auto;">
+      <source media="(prefers-color-scheme: light)" alt="logo" height="150" srcset="../../../img/logo_black.png" style="display: block; margin: auto;">
       <img alt="Shows my svg">
     </picture>
   </div>
@@ -15,208 +15,367 @@
 </h1>
 </div>
 
-**cua-agent** is a general Computer-Use framework for running multi-app agentic workflows targeting macOS and Linux sandbox created with Cua, supporting local (Ollama) and cloud model providers (OpenAI, Anthropic, Groq, DeepSeek, Qwen).
+**cua-agent** is a general Computer-Use framework with liteLLM integration for running agentic workflows on macOS, Windows, and Linux sandboxes. It provides a unified interface for computer-use agents across multiple LLM providers with advanced callback system for extensibility.
 
-### Get started with Agent
+## Features
 
-<div align="center">
-    <img src="../../img/agent.png"/>
-</div>
+- **Safe Computer-Use/Tool-Use**: Using Computer SDK for sandboxed desktops
+- **Multi-Agent Support**: Anthropic Claude, OpenAI computer-use-preview, UI-TARS, Omniparser + any LLM
+- **Multi-API Support**: Take advantage of liteLLM supporting 100+ LLMs / model APIs, including local models (`huggingface-local/`, `ollama_chat/`, `mlx/`)
+- **Cross-Platform**: Works on Windows, macOS, and Linux with cloud and local computer instances
+- **Extensible Callbacks**: Built-in support for image retention, cache control, PII anonymization, budget limits, and trajectory tracking
 
 ## Install
 
 ```bash
 pip install "cua-agent[all]"
 
-# or install specific loop providers
-pip install "cua-agent[openai]" # OpenAI Cua Loop
-pip install "cua-agent[anthropic]" # Anthropic Cua Loop
-pip install "cua-agent[uitars]"    # UI-Tars support
-pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
-pip install "cua-agent[ui]" # Gradio UI for the agent
-pip install "cua-agent[uitars-mlx]" # MLX UI-Tars support
+# or install specific providers
+pip install "cua-agent[openai]"        # OpenAI computer-use-preview support
+pip install "cua-agent[anthropic]"     # Anthropic Claude support
+pip install "cua-agent[omni]"          # Omniparser + any LLM support
+pip install "cua-agent[uitars]"        # UI-TARS
+pip install "cua-agent[uitars-mlx]"    # UI-TARS + MLX support
+pip install "cua-agent[uitars-hf]"     # UI-TARS + Huggingface support
+pip install "cua-agent[ui]"            # Gradio UI support
 ```
 
-## Run
-
-```bash
-async with Computer() as macos_computer:
-  # Create agent with loop and provider
-  agent = ComputerAgent(
-      computer=macos_computer,
-      loop=AgentLoop.OPENAI,
-      model=LLM(provider=LLMProvider.OPENAI)
-      # or
-      # loop=AgentLoop.ANTHROPIC,
-      # model=LLM(provider=LLMProvider.ANTHROPIC)
-      # or
-      # loop=AgentLoop.OMNI,
-      # model=LLM(provider=LLMProvider.OLLAMA, name="gemma3")
-      # or
-      # loop=AgentLoop.UITARS,
-      # model=LLM(provider=LLMProvider.OAICOMPAT, name="ByteDance-Seed/UI-TARS-1.5-7B", provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
-  )
-
-  tasks = [
-      "Look for a repository named trycua/cua on GitHub.",
-      "Check the open issues, open the most recent one and read it.",
-      "Clone the repository in users/lume/projects if it doesn't exist yet.",
-      "Open the repository with an app named Cursor (on the dock, black background and white cube icon).",
-      "From Cursor, open Composer if not already open.",
-      "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
-  ]
-
-  for i, task in enumerate(tasks):
-      print(f"\nExecuting task {i}/{len(tasks)}: {task}")
-      async for result in agent.run(task):
-          print(result)
-
-      print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
-```
-
-Refer to these notebooks for step-by-step guides on how to use the Computer-Use Agent (CUA):
-
-- [Agent Notebook](../../notebooks/agent_nb.ipynb) - Complete examples and workflows
-
-## Using the Gradio UI
-
-The agent includes a Gradio-based user interface for easier interaction.
-
-<div align="center">
-    <img src="../../img/agent_gradio_ui.png"/>
-</div>
-
-To use it:
-
-```bash
-# Install with Gradio support
-pip install "cua-agent[ui]"
-```
-
-### Create a simple launcher script
+## Quick Start
 
 ```python
-# launch_ui.py
-from agent.ui.gradio.app import create_gradio_ui
+import asyncio
+import os
+from agent import ComputerAgent
+from computer import Computer
 
-app = create_gradio_ui()
-app.launch(share=False)
+async def main():
+    # Set up computer instance
+    async with Computer(
+        os_type="linux",
+        provider_type="cloud",
+        name=os.getenv("CUA_CONTAINER_NAME"),
+        api_key=os.getenv("CUA_API_KEY")
+    ) as computer:
+        
+        # Create agent
+        agent = ComputerAgent(
+            model="anthropic/claude-3-5-sonnet-20241022",
+            tools=[computer],
+            only_n_most_recent_images=3,
+            trajectory_dir="trajectories",
+            max_trajectory_budget=5.0  # $5 budget limit
+        )
+        
+        # Run agent
+        messages = [{"role": "user", "content": "Take a screenshot and tell me what you see"}]
+        
+        async for result in agent.run(messages):
+            for item in result["output"]:
+                if item["type"] == "message":
+                    print(item["content"][0]["text"])
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-### Setting up API Keys
+## Supported Models
 
-For the Gradio UI to show available models, you need to set API keys as environment variables:
-
-```bash
-# For OpenAI models
-export OPENAI_API_KEY=your_openai_key_here
-
-# For Anthropic models
-export ANTHROPIC_API_KEY=your_anthropic_key_here
-
-# Launch with both keys set
-OPENAI_API_KEY=your_key ANTHROPIC_API_KEY=your_key python launch_ui.py
+### Anthropic Claude (Computer Use API)
+```python
+model="anthropic/claude-3-5-sonnet-20241022"
+model="anthropic/claude-3-5-sonnet-20240620"
+model="anthropic/claude-opus-4-20250514"
+model="anthropic/claude-sonnet-4-20250514"
 ```
 
-Without these environment variables, the UI will show "No models available" for the corresponding providers, but you can still use local models with the OMNI loop provider.
+### OpenAI Computer Use Preview
+```python
+model="openai/computer-use-preview"
+```
 
-### Using Local Models
+### UI-TARS (Local or Huggingface Inference)
+```python
+model="huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B"
+model="ollama_chat/0000/ui-tars-1.5-7b"
+```
 
-You can use local models with the OMNI loop provider by selecting "Custom model..." from the dropdown. The default provider URL is set to `http://localhost:1234/v1` which works with LM Studio. 
+### Omniparser + Any LLM
+```python
+model="omniparser+ollama_chat/mistral-small3.2"
+model="omniparser+vertex_ai/gemini-pro"
+model="omniparser+anthropic/claude-3-5-sonnet-20241022"
+model="omniparser+openai/gpt-4o"
+```
 
-If you're using a different local model server:
-- vLLM: `http://localhost:8000/v1`
-- LocalAI: `http://localhost:8080/v1`
-- Ollama with OpenAI compat API: `http://localhost:11434/v1`
+## Custom Tools
 
-The Gradio UI provides:
-- Selection of different agent loops (OpenAI, Anthropic, OMNI)
-- Model selection for each provider
-- Configuration of agent parameters
-- Chat interface for interacting with the agent
-
-### Using UI-TARS
-
-The UI-TARS models are available in two forms:
-
-1. **MLX UI-TARS models** (Default): These models run locally using MLXVLM provider
-   - `mlx-community/UI-TARS-1.5-7B-4bit` (default) - 4-bit quantized version
-   - `mlx-community/UI-TARS-1.5-7B-6bit` - 6-bit quantized version for higher quality
-
-   ```python
-   agent = ComputerAgent(
-       computer=macos_computer,
-       loop=AgentLoop.UITARS,
-       model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-4bit")
-   )
-   ```
-
-2. **OpenAI-compatible UI-TARS**: For using the original ByteDance model
-   - If you want to use the original ByteDance UI-TARS model via an OpenAI-compatible API, follow the [deployment guide](https://github.com/bytedance/UI-TARS/blob/main/README_deploy.md)
-   - This will give you a provider URL like `https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1` which you can use in the code or Gradio UI:
-
-   ```python 
-   agent = ComputerAgent(
-       computer=macos_computer,
-       loop=AgentLoop.UITARS,
-       model=LLM(provider=LLMProvider.OAICOMPAT, name="tgi", 
-                provider_base_url="https://**************.us-east-1.aws.endpoints.huggingface.cloud/v1")
-   )
-   ```
-
-## Agent Loops
-
-The `cua-agent` package provides three agent loops variations, based on different CUA models providers and techniques:
-
-| Agent Loop | Supported Models | Description | Set-Of-Marks |
-|:-----------|:-----------------|:------------|:-------------|
-| `AgentLoop.OPENAI` | • `computer_use_preview` | Use OpenAI Operator CUA model | Not Required |
-| `AgentLoop.ANTHROPIC` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219` | Use Anthropic Computer-Use | Not Required |
-| `AgentLoop.UITARS` | • `mlx-community/UI-TARS-1.5-7B-4bit` (default)<br>• `mlx-community/UI-TARS-1.5-7B-6bit`<br>• `ByteDance-Seed/UI-TARS-1.5-7B` (via openAI-compatible endpoint) | Uses UI-TARS models with MLXVLM (default) or OAICOMPAT providers | Not Required |
-| `AgentLoop.OMNI` | • `claude-3-5-sonnet-20240620`<br>• `claude-3-7-sonnet-20250219`<br>• `gpt-4.5-preview`<br>• `gpt-4o`<br>• `gpt-4`<br>• `phi4`<br>• `phi4-mini`<br>• `gemma3`<br>• `...`<br>• `Any Ollama or OpenAI-compatible model` | Use OmniParser for element pixel-detection (SoM) and any VLMs for UI Grounding and Reasoning | OmniParser |
-
-## AgentResponse
-The `AgentResponse` class represents the structured output returned after each agent turn. It contains the agent's response, reasoning, tool usage, and other metadata. The response format aligns with the new [OpenAI Agent SDK specification](https://platform.openai.com/docs/api-reference/responses) for better consistency across different agent loops.
+Define custom tools using decorated functions:
 
 ```python
-async for result in agent.run(task):
-  print("Response ID: ", result.get("id"))
+from computer.helpers import sandboxed
 
-  # Print detailed usage information
-  usage = result.get("usage")
-  if usage:
-      print("\nUsage Details:")
-      print(f"  Input Tokens: {usage.get('input_tokens')}")
-      if "input_tokens_details" in usage:
-          print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
-      print(f"  Output Tokens: {usage.get('output_tokens')}")
-      if "output_tokens_details" in usage:
-          print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
-      print(f"  Total Tokens: {usage.get('total_tokens')}")
+@sandboxed()
+def read_file(location: str) -> str:
+    """Read contents of a file
+    
+    Parameters
+    ----------
+    location : str
+        Path to the file to read
+        
+    Returns
+    -------
+    str
+        Contents of the file or error message
+    """
+    try:
+        with open(location, 'r') as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
 
-  print("Response Text: ", result.get("text"))
+def calculate(a: int, b: int) -> int:
+    """Calculate the sum of two integers"""
+    return a + b
 
-  # Print tools information
-  tools = result.get("tools")
-  if tools:
-      print("\nTools:")
-      print(tools)
-
-  # Print reasoning and tool call outputs
-  outputs = result.get("output", [])
-  for output in outputs:
-      output_type = output.get("type")
-      if output_type == "reasoning":
-          print("\nReasoning Output:")
-          print(output)
-      elif output_type == "computer_call":
-          print("\nTool Call Output:")
-          print(output)
+# Use with agent
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[computer, read_file, calculate]
+)
 ```
 
-**Note on Settings Persistence:**
+## Callbacks System
 
-*   The Gradio UI automatically saves your configuration (Agent Loop, Model Choice, Custom Base URL, Save Trajectory state, Recent Images count) to a file named `.gradio_settings.json` in the project's root directory when you successfully run a task.
-*   This allows your preferences to persist between sessions.
-*   API keys entered into the custom provider field are **not** saved in this file for security reasons. Manage API keys using environment variables (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) or a `.env` file.
-*   It's recommended to add `.gradio_settings.json` to your `.gitignore` file.
+agent provides a comprehensive callback system for extending functionality:
+
+### Built-in Callbacks
+
+```python
+from agent.callbacks import (
+    ImageRetentionCallback,
+    TrajectorySaverCallback, 
+    BudgetManagerCallback,
+    LoggingCallback
+)
+
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    tools=[computer],
+    callbacks=[
+        ImageRetentionCallback(only_n_most_recent_images=3),
+        TrajectorySaverCallback(trajectory_dir="trajectories"),
+        BudgetManagerCallback(max_budget=10.0, raise_error=True),
+        LoggingCallback(level=logging.INFO)
+    ]
+)
+```
+
+### Custom Callbacks
+
+```python
+from agent.callbacks.base import AsyncCallbackHandler
+
+class CustomCallback(AsyncCallbackHandler):
+    async def on_llm_start(self, messages):
+        """Preprocess messages before LLM call"""
+        # Add custom preprocessing logic
+        return messages
+    
+    async def on_llm_end(self, messages):
+        """Postprocess messages after LLM call"""
+        # Add custom postprocessing logic
+        return messages
+    
+    async def on_usage(self, usage):
+        """Track usage information"""
+        print(f"Tokens used: {usage.total_tokens}")
+```
+
+## Budget Management
+
+Control costs with built-in budget management:
+
+```python
+# Simple budget limit
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    max_trajectory_budget=5.0  # $5 limit
+)
+
+# Advanced budget configuration
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    max_trajectory_budget={
+        "max_budget": 10.0,
+        "raise_error": True,  # Raise error when exceeded
+        "reset_after_each_run": False  # Persistent across runs
+    }
+)
+```
+
+## Trajectory Management
+
+Save and replay agent conversations:
+
+```python
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    trajectory_dir="trajectories",  # Auto-save trajectories
+    tools=[computer]
+)
+
+# Trajectories are saved with:
+# - Complete conversation history
+# - Usage statistics and costs
+# - Timestamps and metadata
+# - Screenshots and computer actions
+```
+
+## Configuration Options
+
+### ComputerAgent Parameters
+
+- `model`: Model identifier (required)
+- `tools`: List of computer objects and decorated functions
+- `callbacks`: List of callback handlers for extensibility
+- `only_n_most_recent_images`: Limit recent images to prevent context overflow
+- `verbosity`: Logging level (logging.INFO, logging.DEBUG, etc.)
+- `trajectory_dir`: Directory to save conversation trajectories
+- `max_retries`: Maximum API call retries (default: 3)
+- `screenshot_delay`: Delay between actions and screenshots (default: 0.5s)
+- `use_prompt_caching`: Enable prompt caching for supported models
+- `max_trajectory_budget`: Budget limit configuration
+
+### Environment Variables
+
+```bash
+# Computer instance (cloud)
+export CUA_CONTAINER_NAME="your-container-name"
+export CUA_API_KEY="your-cua-api-key"
+
+# LLM API keys
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export OPENAI_API_KEY="your-openai-key"
+```
+
+## Advanced Usage
+
+### Streaming Responses
+
+```python
+async for result in agent.run(messages, stream=True):
+    # Process streaming chunks
+    for item in result["output"]:
+        if item["type"] == "message":
+            print(item["content"][0]["text"], end="", flush=True)
+        elif item["type"] == "computer_call":
+            action = item["action"]
+            print(f"\n[Action: {action['type']}]")
+```
+
+### Interactive Chat Loop
+
+```python
+history = []
+while True:
+    user_input = input("> ")
+    if user_input.lower() in ['quit', 'exit']:
+        break
+        
+    history.append({"role": "user", "content": user_input})
+    
+    async for result in agent.run(history):
+        history += result["output"]
+        
+        # Display assistant responses
+        for item in result["output"]:
+            if item["type"] == "message":
+                print(item["content"][0]["text"])
+```
+
+### Error Handling
+
+```python
+try:
+    async for result in agent.run(messages):
+        # Process results
+        pass
+except BudgetExceededException:
+    print("Budget limit exceeded")
+except Exception as e:
+    print(f"Agent error: {e}")
+```
+
+## API Reference
+
+### ComputerAgent.run()
+
+```python
+async def run(
+    self,
+    messages: Messages,
+    stream: bool = False,
+    **kwargs
+) -> AsyncGenerator[Dict[str, Any], None]:
+    """
+    Run the agent with the given messages.
+    
+    Args:
+        messages: List of message dictionaries
+        stream: Whether to stream the response
+        **kwargs: Additional arguments
+        
+    Returns:
+        AsyncGenerator that yields response chunks
+    """
+```
+
+### Message Format
+
+```python
+messages = [
+    {
+        "role": "user",
+        "content": "Take a screenshot and describe what you see"
+    },
+    {
+        "role": "assistant", 
+        "content": "I'll take a screenshot for you."
+    }
+]
+```
+
+### Response Format
+
+```python
+{
+    "output": [
+        {
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": "I can see..."}]
+        },
+        {
+            "type": "computer_call",
+            "action": {"type": "screenshot"},
+            "call_id": "call_123"
+        },
+        {
+            "type": "computer_call_output",
+            "call_id": "call_123",
+            "output": {"image_url": "data:image/png;base64,..."}
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 150,
+        "completion_tokens": 75,
+        "total_tokens": 225,
+        "response_cost": 0.01,
+    }
+}
+```
+
+## License
+
+MIT License - see LICENSE file for details.

@@ -141,7 +141,11 @@ class PostHogTelemetryClient:
             return False
 
     def _identify(self) -> None:
-        """Identify the current installation with PostHog."""
+        """Set up user properties for the current installation with PostHog.
+        
+        Note: The Python PostHog SDK doesn't have an identify() method like the web SDK.
+        Instead, we capture an identification event with user properties.
+        """
         try:
             properties = {
                 "version": __version__,
@@ -151,14 +155,19 @@ class PostHogTelemetryClient:
             }
 
             logger.debug(
-                f"Identifying PostHog user: {self.installation_id} with properties: {properties}"
+                f"Setting up PostHog user properties for: {self.installation_id} with properties: {properties}"
             )
-            posthog.identify(
+            
+            # In the Python SDK, we capture an identification event instead of calling identify()
+            posthog.capture(
                 distinct_id=self.installation_id,
-                properties=properties,
+                event="$identify",
+                properties={"$set": properties}
             )
+            
+            logger.info(f"Set up PostHog user properties for installation: {self.installation_id}")
         except Exception as e:
-            logger.warning(f"Failed to identify with PostHog: {e}")
+            logger.warning(f"Failed to set up PostHog user properties: {e}")
 
     def _get_or_create_installation_id(self) -> str:
         """Get or create a unique installation ID that persists across runs.

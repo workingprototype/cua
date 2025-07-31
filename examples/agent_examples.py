@@ -8,7 +8,7 @@ import signal
 from computer import Computer, VMProviderType
 
 # Import the unified agent class and types
-from agent import ComputerAgent, LLMProvider, LLM, AgentLoop
+from agent import ComputerAgent
 
 # Import utility functions
 from utils import load_dotenv_files, handle_sigint
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 async def run_agent_example():
-    """Run example of using the ComputerAgent with OpenAI and Omni provider."""
-    print("\n=== Example: ComputerAgent with OpenAI and Omni provider ===")
+    """Run example of using the ComputerAgent with different models."""
+    print("\n=== Example: ComputerAgent with different models ===")
 
     try:
         # Create a local macOS computer
@@ -37,28 +37,37 @@ async def run_agent_example():
         #     provider_type=VMProviderType.CLOUD,
         # )
 
-        # Create Computer instance with async context manager
+        # Create ComputerAgent with new API
         agent = ComputerAgent(
-            computer=computer,
-            loop=AgentLoop.OPENAI,
-            # loop=AgentLoop.ANTHROPIC,
-            # loop=AgentLoop.UITARS,
-            # loop=AgentLoop.OMNI,
-            model=LLM(provider=LLMProvider.OPENAI),  # No model name for Operator CUA
-            # model=LLM(provider=LLMProvider.OPENAI, name="gpt-4o"),
-            # model=LLM(provider=LLMProvider.ANTHROPIC, name="claude-3-7-sonnet-20250219"),
-            # model=LLM(provider=LLMProvider.OLLAMA, name="gemma3:4b-it-q4_K_M"),
-            # model=LLM(provider=LLMProvider.MLXVLM, name="mlx-community/UI-TARS-1.5-7B-4bit"),
-            # model=LLM(
-            #     provider=LLMProvider.OAICOMPAT,
-            #     name="gemma-3-12b-it",
-            #     provider_base_url="http://localhost:1234/v1",  # LM Studio local endpoint
-            # ),
-            save_trajectory=True,
+            # Supported models:
+            
+            # == OpenAI CUA (computer-use-preview) ==
+            model="openai/computer-use-preview",
+
+            # == Anthropic CUA (Claude > 3.5) ==
+            # model="anthropic/claude-opus-4-20250514", 
+            # model="anthropic/claude-sonnet-4-20250514",
+            # model="anthropic/claude-3-7-sonnet-20250219",
+            # model="anthropic/claude-3-5-sonnet-20240620",
+
+            # == UI-TARS ==
+            # model="huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B",
+            # model="mlx/mlx-community/UI-TARS-1.5-7B-6bit",
+            # model="ollama_chat/0000/ui-tars-1.5-7b",
+
+            # == Omniparser + Any LLM ==
+            # model="omniparser+anthropic/claude-opus-4-20250514",
+            # model="omniparser+ollama_chat/gemma3:12b-it-q4_K_M",
+
+            tools=[computer],
             only_n_most_recent_images=3,
             verbosity=logging.DEBUG,
+            trajectory_dir="trajectories",
+            use_prompt_caching=True,
+            max_trajectory_budget=1.0,
         )
 
+        # Example tasks to demonstrate the agent
         tasks = [
             "Look for a repository named trycua/cua on GitHub.",
             "Check the open issues, open the most recent one and read it.",
@@ -68,43 +77,35 @@ async def run_agent_example():
             "Focus on the Composer text area, then write and submit a task to help resolve the GitHub issue.",
         ]
 
+        # Use message-based conversation history
+        history = []
+        
         for i, task in enumerate(tasks):
-            print(f"\nExecuting task {i}/{len(tasks)}: {task}")
-            async for result in agent.run(task):
-                print("Response ID: ", result.get("id"))
-
-                # Print detailed usage information
-                usage = result.get("usage")
-                if usage:
-                    print("\nUsage Details:")
-                    print(f"  Input Tokens: {usage.get('input_tokens')}")
-                    if "input_tokens_details" in usage:
-                        print(f"  Input Tokens Details: {usage.get('input_tokens_details')}")
-                    print(f"  Output Tokens: {usage.get('output_tokens')}")
-                    if "output_tokens_details" in usage:
-                        print(f"  Output Tokens Details: {usage.get('output_tokens_details')}")
-                    print(f"  Total Tokens: {usage.get('total_tokens')}")
-
-                print("Response Text: ", result.get("text"))
-
-                # Print tools information
-                tools = result.get("tools")
-                if tools:
-                    print("\nTools:")
-                    print(tools)
-
-                # Print reasoning and tool call outputs
-                outputs = result.get("output", [])
-                for output in outputs:
-                    output_type = output.get("type")
-                    if output_type == "reasoning":
-                        print("\nReasoning Output:")
-                        print(output)
-                    elif output_type == "computer_call":
-                        print("\nTool Call Output:")
-                        print(output)
-
-            print(f"\n✅ Task {i+1}/{len(tasks)} completed: {task}")
+            print(f"\nExecuting task {i+1}/{len(tasks)}: {task}")
+            
+            # Add user message to history
+            history.append({"role": "user", "content": task})
+            
+            # Run agent with conversation history
+            async for result in agent.run(history, stream=False):
+                # Add agent outputs to history
+                history += result.get("output", [])
+                
+                # Print output for debugging
+                for item in result.get("output", []):
+                    if item.get("type") == "message":
+                        content = item.get("content", [])
+                        for content_part in content:
+                            if content_part.get("text"):
+                                print(f"Agent: {content_part.get('text')}")
+                    elif item.get("type") == "computer_call":
+                        action = item.get("action", {})
+                        action_type = action.get("type", "")
+                        print(f"Computer Action: {action_type}({action})")
+                    elif item.get("type") == "computer_call_output":
+                        print("Computer Output: [Screenshot/Result]")
+                        
+            print(f"✅ Task {i+1}/{len(tasks)} completed: {task}")
 
     except Exception as e:
         logger.error(f"Error in run_agent_example: {e}")
