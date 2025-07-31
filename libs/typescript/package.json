@@ -1,9 +1,9 @@
 {
   "name": "cua-ts",
   "version": "1.0.0",
-  "description": "The c/ua typescript libs.",
+  "description": "The cua typescript libs.",
   "keywords": [],
-  "author": "c/ua",
+  "author": "cua",
   "license": "MIT",
   "scripts": {
     "lint": "biome check",

@@ -13,7 +13,7 @@
   <a href="https://trendshift.io/repositories/13685" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13685" alt="trycua%2Fcua | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </div>
 
-**c/ua** ("koo-ah") is Docker for [Computer-Use Agents](https://www.oneusefulthing.org/p/when-you-give-a-claude-a-mouse) - it enables AI agents to control full operating systems in virtual containers and deploy them locally or to the cloud.
+**cua** ("koo-ah") is Docker for [Computer-Use Agents](https://www.oneusefulthing.org/p/when-you-give-a-claude-a-mouse) - it enables AI agents to control full operating systems in virtual containers and deploy them locally or to the cloud.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/c619b4ea-bb8e-4382-860e-f3757e36af20" width="800" controls></video>
@@ -116,7 +116,7 @@ For detailed compatibility information including host OS support, VM emulation c
 
 # 🐍 Usage Guide
 
-Follow these steps to use C/ua in your own Python code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
+Follow these steps to use Cua in your own Python code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 1: Install Lume CLI
 
@@ -151,7 +151,7 @@ async def main():
     computer = Computer(os_type="macos")
     await computer.run()
 
-    # Or with C/ua Cloud Container
+    # Or with Cua Cloud Container
     computer = Computer(
       os_type="linux",
       api_key="your_cua_api_key_here",
@@ -228,10 +228,10 @@ docker run -it --rm \
 
 ## Resources
 
-- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/python/mcp-server/README.md) - One of the easiest ways to get started with C/ua
+- [How to use the MCP Server with Claude Desktop or other MCP clients](./libs/python/mcp-server/README.md) - One of the easiest ways to get started with Cua
 - [How to use OpenAI Computer-Use, Anthropic, OmniParser, or UI-TARS for your Computer-Use Agent](./libs/python/agent/README.md)
 - [How to use Lume CLI for managing desktops](./libs/lume/README.md)
-- [Training Computer-Use Models: Collecting Human Trajectories with C/ua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
+- [Training Computer-Use Models: Collecting Human Trajectories with Cua (Part 1)](https://www.trycua.com/blog/training-computer-use-models-trajectories-1)
 - [Build Your Own Operator on macOS (Part 1)](https://www.trycua.com/blog/build-your-own-operator-on-macos-1)
 
 ## Modules
@@ -317,7 +317,7 @@ await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install p
 await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
 await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
 
-# Example: Use sandboxed functions to execute code in a C/ua Container
+# Example: Use sandboxed functions to execute code in a Cua Container
 from computer.helpers import sandboxed
 
 @sandboxed("demo_venv")
@@ -330,8 +330,8 @@ def greet_and_print(name):
     return {"greeted": name, "safari_html": html}
 
 # When a @sandboxed function is called, it will execute in the container
-result = await greet_and_print("C/ua")
-# Result: {"greeted": "C/ua", "safari_html": "<html>...</html>"}
+result = await greet_and_print("Cua")
+# Result: {"greeted": "Cua", "safari_html": "<html>...</html>"}
 # stdout and stderr are also captured and printed / raised
 print("Result from sandboxed function:", result)
 ```

@@ -1,9 +1,9 @@
 """
 Virtual Environment Testing Module
-This module tests the ability to execute python code in a virtual environment within C/ua Containers.
+This module tests the ability to execute python code in a virtual environment within Cua Containers.
 
 Required environment variables:
-- CUA_API_KEY: API key for C/ua cloud provider
+- CUA_API_KEY: API key for Cua cloud provider
 - CUA_CONTAINER_NAME: Name of the container to use
 """
 
@@ -36,7 +36,7 @@ from computer.helpers import sandboxed, set_default_computer
 @pytest.fixture(scope="session")
 async def computer():
     """Shared Computer instance for all test cases."""
-    # Create a remote Linux computer with C/ua
+    # Create a remote Linux computer with Cua
     computer = Computer(
         os_type="linux",
         api_key=os.getenv("CUA_API_KEY"),
@@ -44,7 +44,7 @@ async def computer():
         provider_type=VMProviderType.CLOUD,
     )
     
-    # # Create a local macOS computer with C/ua
+    # # Create a local macOS computer with Cua
     # computer = Computer()
     
     try:

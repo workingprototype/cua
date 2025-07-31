@@ -26,13 +26,13 @@ print_warning() {
     echo -e "${YELLOW}==> $1${NC}"
 }
 
-echo "🚀 Launching C/ua Computer-Use Agent UI..."
+echo "🚀 Launching Cua Computer-Use Agent UI..."
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
     print_error "Docker is not installed!"
     echo ""
-    echo "To use C/ua with Docker containers, you need to install Docker first:"
+    echo "To use Cua with Docker containers, you need to install Docker first:"
     echo ""
     echo "📦 Install Docker:"
     echo "  • macOS: Download Docker Desktop from https://docker.com/products/docker-desktop"
@@ -63,7 +63,7 @@ mkdir -p "$DEMO_DIR"
 # Check if we're already in the cua repository
 # Look for the specific trycua identifier in pyproject.toml
 if [[ -f "pyproject.toml" ]] && grep -q "gh@trycua.com" "pyproject.toml"; then
-  print_success "Already in C/ua repository - using current directory"
+  print_success "Already in Cua repository - using current directory"
   REPO_DIR="$ORIGINAL_DIR"
   USE_EXISTING_REPO=true
 else
@@ -79,17 +79,17 @@ cleanup() {
 trap cleanup EXIT
 
 echo ""
-echo "Choose your C/ua setup:"
-echo "1) ☁️  C/ua Cloud Containers (works on any system)"
+echo "Choose your Cua setup:"
+echo "1) ☁️  Cua Cloud Containers (works on any system)"
 echo "2) 🖥️  Local macOS VMs (requires Apple Silicon Mac + macOS 15+)"
 echo "3) 🖥️  Local Windows VMs (requires Windows 10 / 11)"
 echo ""
 read -p "Enter your choice (1, 2, or 3): " CHOICE
 
 if [[ "$CHOICE" == "1" ]]; then
-  # C/ua Cloud Container setup
+  # Cua Cloud Container setup
   echo ""
-  print_info "Setting up C/ua Cloud Containers..."
+  print_info "Setting up Cua Cloud Containers..."
   echo ""
   
   # Check if existing .env.local already has CUA_API_KEY
@@ -116,15 +116,15 @@ if [[ "$CHOICE" == "1" ]]; then
   
   # If no valid API key found, prompt for one
   if [[ -z "$CUA_API_KEY" ]]; then
-    echo "To use C/ua Cloud Containers, you need to:"
+    echo "To use Cua Cloud Containers, you need to:"
     echo "1. Sign up at https://trycua.com"
     echo "2. Create a Cloud Container"
     echo "3. Generate an Api Key"
     echo ""
-    read -p "Enter your C/ua Api Key: " CUA_API_KEY
+    read -p "Enter your Cua Api Key: " CUA_API_KEY
     
     if [[ -z "$CUA_API_KEY" ]]; then
-      print_error "C/ua Api Key is required for Cloud Containers."
+      print_error "Cua Api Key is required for Cloud Containers."
       exit 1
     fi
   else
@@ -142,7 +142,7 @@ elif [[ "$CHOICE" == "2" ]]; then
   # Check for Apple Silicon Mac
   if [[ $(uname -s) != "Darwin" || $(uname -m) != "arm64" ]]; then
     print_error "Local macOS VMs require an Apple Silicon Mac (M1/M2/M3/M4)."
-    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    echo "💡 Consider using Cua Cloud Containers instead (option 1)."
     exit 1
   fi
 
@@ -150,7 +150,7 @@ elif [[ "$CHOICE" == "2" ]]; then
   OSVERSION=$(sw_vers -productVersion)
   if [[ $(echo "$OSVERSION 15.0" | tr " " "\n" | sort -V | head -n 1) != "15.0" ]]; then
     print_error "Local macOS VMs require macOS 15 (Sequoia) or newer. You have $OSVERSION."
-    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    echo "💡 Consider using Cua Cloud Containers instead (option 1)."
     exit 1
   fi
 
@@ -165,7 +165,7 @@ elif [[ "$CHOICE" == "3" ]]; then
   # Check if we're on Windows
   if [[ $(uname -s) != MINGW* && $(uname -s) != CYGWIN* && $(uname -s) != MSYS* ]]; then
     print_error "Local Windows VMs require Windows 10 or 11."
-    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    echo "💡 Consider using Cua Cloud Containers instead (option 1)."
     echo ""
     echo "🔗 If you are using WSL, refer to the blog post to get started: https://www.trycua.com/blog/windows-sandbox"
     exit 1
@@ -188,11 +188,11 @@ if [[ "$USE_EXISTING_REPO" == "true" ]]; then
 else  
   # Clone or update the repository
   if [[ ! -d "$REPO_DIR" ]]; then
-    print_info "Cloning C/ua repository..."
+    print_info "Cloning Cua repository..."
     cd "$DEMO_DIR"
     git clone https://github.com/trycua/cua.git
   else
-    print_info "Updating C/ua repository..."
+    print_info "Updating Cua repository..."
     cd "$REPO_DIR"
     git pull origin main
   fi
@@ -303,9 +303,9 @@ chmod +x "$DEMO_DIR/start_ui.sh"
 print_success "Setup complete!"
 
 if [[ "$USE_CLOUD" == "true" ]]; then
-  echo "☁️  C/ua Cloud Container setup complete!"
+  echo "☁️  Cua Cloud Container setup complete!"
 else
-  echo "🖥️  C/ua Local VM setup complete!"
+  echo "🖥️  Cua Local VM setup complete!"
 fi
 
 echo "📝 Edit $ENV_FILE to update your API keys"
@@ -313,10 +313,10 @@ echo "🖥️  Start the playground by running: $DEMO_DIR/start_ui.sh"
 
 # Start the demo automatically
 echo
-print_info "Starting the C/ua Computer-Use Agent UI..."
+print_info "Starting the Cua Computer-Use Agent UI..."
 echo ""
 
-print_success "C/ua Computer-Use Agent UI is now running at http://localhost:7860/"
+print_success "Cua Computer-Use Agent UI is now running at http://localhost:7860/"
 echo
 echo "🌐 Open your browser and go to: http://localhost:7860/"
 echo

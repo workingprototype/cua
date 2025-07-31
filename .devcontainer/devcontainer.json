@@ -1,5 +1,5 @@
 {
-	"name": "C/ua - OSS",
+	"name": "Cua - OSS",
 	"build": {
 		"dockerfile": "../Dockerfile"
 	},
@@ -10,7 +10,7 @@
 	"forwardPorts": [7860],
 	"portsAttributes": {
 		"7860": {
-			"label": "C/ua web client (Gradio)",
+			"label": "Cua web client (Gradio)",
 			"onAutoForward": "silent"
 		}
 	},

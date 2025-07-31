@@ -29,7 +29,7 @@ async def run_agent_example():
             verbosity=logging.DEBUG,
         )
 
-        # Create a remote Linux computer with C/ua
+        # Create a remote Linux computer with Cua
         # computer = Computer(
         #     os_type="linux",
         #     api_key=os.getenv("CUA_API_KEY"),

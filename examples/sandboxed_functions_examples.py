@@ -22,7 +22,7 @@ from computer.computer import Computer
 from computer.helpers import sandboxed
 
 async def main():
-    # Initialize the computer in a C/ua Container
+    # Initialize the computer in a Cua Container
     computer = Computer()
     await computer.run()
     
@@ -34,7 +34,7 @@ async def main():
     await asyncio.sleep(2)
 
     # Define a sandboxed function
-    # This function will run inside the C/ua Container
+    # This function will run inside the Cua Container
     @sandboxed("demo_venv")
     def greet_and_print(name):
         # get .html of the current Safari tab
@@ -47,7 +47,7 @@ async def main():
         return {"greeted": name, "safari_html_length": len(html), "safari_html_snippet": html[:200]}
 
     # Call with args and kwargs
-    result = await greet_and_print("C/ua")
+    result = await greet_and_print("Cua")
     print("Result from sandboxed function:", result)
 
 if __name__ == "__main__":
