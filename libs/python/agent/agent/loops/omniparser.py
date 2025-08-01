@@ -310,7 +310,6 @@ class OmniparsrConfig(AsyncAgentConfig):
             "input": messages,
             "tools": openai_tools if openai_tools else None,
             "stream": stream,
-            "reasoning": {"summary": "concise"},
             "truncation": "auto",
             "num_retries": max_retries,
             **kwargs
@@ -331,7 +330,7 @@ class OmniparsrConfig(AsyncAgentConfig):
 
         # Extract usage information
         usage = {
-            **response.usage.model_dump(),
+            **response.usage.model_dump(), # type: ignore
             "response_cost": response._hidden_params.get("response_cost", 0.0),
         }
         if _on_usage:
@@ -339,7 +338,7 @@ class OmniparsrConfig(AsyncAgentConfig):
 
         # handle som function calls -> xy computer calls
         new_output = []
-        for i in range(len(response.output)):
+        for i in range(len(response.output)): # type: ignore
           new_output += await replace_function_with_computer_call(response.output[i].model_dump(), id2xy)
         
         return {

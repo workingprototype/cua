@@ -120,7 +120,7 @@ async def ainput(prompt: str = ""):
 
 async def chat_loop(agent, model: str, container_name: str, initial_prompt: str = "", show_usage: bool = True):
     """Main chat loop with the agent."""
-    print_welcome(model, agent.agent_loop.__name__, container_name)
+    print_welcome(model, agent.agent_config_info.agent_class.__name__, container_name)
     
     history = []
     
@@ -130,7 +130,7 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
     total_cost = 0
 
     while True:
-        if history[-1].get("role") != "user":
+        if len(history) == 0 or history[-1].get("role") != "user":
             # Get user input with prompt
             print_colored("> ", end="")
             user_input = await ainput()

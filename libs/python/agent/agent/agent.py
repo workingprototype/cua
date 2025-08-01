@@ -117,6 +117,13 @@ def sanitize_message(msg: Any) -> Any:
             return sanitized
     return msg
 
+def get_output_call_ids(messages: List[Dict[str, Any]]) -> List[str]:
+    call_ids = []
+    for message in messages:
+        if message.get("type") == "computer_call_output" or message.get("type") == "function_call_output":
+            call_ids.append(message.get("call_id"))
+    return call_ids
+
 class ComputerAgent:
     """
     Main agent class that automatically selects the appropriate agent loop
@@ -207,6 +214,7 @@ class ComputerAgent:
         litellm.custom_provider_map = [
             {"provider": "huggingface-local", "custom_handler": hf_adapter}
         ]
+        litellm.suppress_debug_info = True
 
         # == Initialize computer agent ==
 
@@ -390,8 +398,10 @@ class ComputerAgent:
     # AGENT OUTPUT PROCESSING
     # ============================================================================
     
-    async def _handle_item(self, item: Any, computer: Optional[Computer] = None) -> List[Dict[str, Any]]:
+    async def _handle_item(self, item: Any, computer: Optional[Computer] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Handle each item; may cause a computer action + screenshot."""
+        if ignore_call_ids and item.get("call_id") and item.get("call_id") in ignore_call_ids:
+            return []
         
         item_type = item.get("type", None)
         
@@ -437,7 +447,7 @@ class ComputerAgent:
             acknowledged_checks = []
             for check in pending_checks:
                 check_message = check.get("message", str(check))
-                if acknowledge_safety_check_callback(check_message):
+                if acknowledge_safety_check_callback(check_message, allow_always=True): # TODO: implement a callback for safety checks
                     acknowledged_checks.append(check)
                 else:
                     raise ValueError(f"Safety check failed: {check_message}")
@@ -512,9 +522,12 @@ class ComputerAgent:
         Returns:
             AsyncGenerator that yields response chunks
         """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
         capabilities = self.get_capabilities()
         if "step" not in capabilities:
-            raise ValueError(f"Agent loop {self.agent_loop.__name__} does not support step predictions")
+            raise ValueError(f"Agent loop {self.agent_config_info.agent_class.__name__} does not support step predictions")
 
         await self._initialize_computers()
         
@@ -529,7 +542,7 @@ class ComputerAgent:
             "messages": messages,
             "stream": stream,
             "model": self.model,
-            "agent_loop": self.agent_loop.__name__,
+            "agent_loop": self.agent_config_info.agent_class.__name__,
             **merged_kwargs
         }
         await self._on_run_start(run_kwargs, old_items)
@@ -580,9 +593,12 @@ class ComputerAgent:
             # Add agent response to new_items
             new_items += result.get("output")
 
+            # Get output call ids
+            output_call_ids = get_output_call_ids(result.get("output", []))
+
             # Handle computer actions
             for item in result.get("output"):
-                partial_items = await self._handle_item(item, self.computer_handler)
+                partial_items = await self._handle_item(item, self.computer_handler, ignore_call_ids=output_call_ids)
                 new_items += partial_items
 
                 # Yield partial response
@@ -612,9 +628,12 @@ class ComputerAgent:
         Returns:
             None or tuple with (x, y) coordinates
         """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
         capabilities = self.get_capabilities()
         if "click" not in capabilities:
-            raise ValueError(f"Agent loop {self.agent_loop.__name__} does not support click predictions")
+            raise ValueError(f"Agent loop {self.agent_config_info.agent_class.__name__} does not support click predictions")
         if hasattr(self.agent_loop, 'predict_click'):
             if not image_b64:
                 if not self.computer_handler:
@@ -634,6 +653,9 @@ class ComputerAgent:
         Returns:
             List of capability strings (e.g., ["step", "click"])
         """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
         if hasattr(self.agent_loop, 'get_capabilities'):
             return self.agent_loop.get_capabilities()
         return ["step"]  # Default capability
