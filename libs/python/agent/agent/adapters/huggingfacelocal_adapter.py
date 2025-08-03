@@ -8,7 +8,7 @@ from litellm import completion, acompletion
 # Try to import HuggingFace dependencies
 try:
     import torch
-    from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+    from transformers import AutoModelForImageTextToText, AutoProcessor
     HF_AVAILABLE = True
 except ImportError:
     HF_AVAILABLE = False
@@ -40,7 +40,7 @@ class HuggingFaceLocalAdapter(CustomLLM):
         """
         if model_name not in self.models:
             # Load model
-            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model = AutoModelForImageTextToText.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16,
                 device_map=self.device,
