@@ -141,8 +141,7 @@ class HuggingFaceLocalAdapter(CustomLLM):
         )
         
         # Move inputs to the same device as model
-        if torch.cuda.is_available() and self.device != "cpu":
-            inputs = inputs.to("cuda")
+        inputs = inputs.to(model.device)
         
         # Generate response
         with torch.no_grad():
