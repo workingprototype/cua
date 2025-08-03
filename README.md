@@ -143,8 +143,9 @@ pip install "cua-computer[all]" "cua-agent[all]"
 ### Step 4: Use in Your Code
 
 ```python
+import asyncio
 from computer import Computer
-from agent import ComputerAgent, LLM
+from agent import ComputerAgent
 
 async def main():
     # Start a local macOS VM
