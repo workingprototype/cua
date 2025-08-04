@@ -1285,7 +1285,7 @@ def _merge_consecutive_text(content_list: List[Dict[str, Any]]) -> List[Dict[str
     
     return merged
 
-@register_agent(models=r".*claude-.*", priority=5)
+@register_agent(models=r".*claude-.*")
 class AnthropicHostedToolsConfig(AsyncAgentConfig):
     """Anthropic hosted tools agent configuration implementing AsyncAgentConfig protocol."""
     

@@ -8,5 +8,6 @@ from . import openai
 from . import uitars
 from . import omniparser
 from . import gta1
+from . import composed_grounded
 
-__all__ = ["anthropic", "openai", "uitars", "omniparser", "gta1"]
+__all__ = ["anthropic", "openai", "uitars", "omniparser", "gta1", "composed_grounded"]

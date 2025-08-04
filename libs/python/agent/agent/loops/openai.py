@@ -3,9 +3,12 @@ OpenAI computer-use-preview agent loop implementation using liteLLM
 """
 
 import asyncio
+import base64
 import json
+from io import BytesIO
 from typing import Dict, List, Any, AsyncGenerator, Union, Optional, Tuple
 import litellm
+from PIL import Image
 
 from ..decorators import register_agent
 from ..types import Messages, AgentResponse, Tools, AgentCapability
@@ -36,7 +39,7 @@ def _prepare_tools_for_openai(tool_schemas: List[Dict[str, Any]]) -> Tools:
     return openai_tools
 
 
-@register_agent(models=r".*computer-use-preview.*", priority=10)
+@register_agent(models=r".*computer-use-preview.*")
 class OpenAIComputerUseConfig:
     """
     OpenAI computer-use-preview agent configuration using liteLLM responses.
@@ -128,8 +131,8 @@ class OpenAIComputerUseConfig:
         """
         Predict click coordinates based on image and instruction.
         
-        Note: OpenAI computer-use-preview doesn't support direct click prediction,
-        so this returns None.
+        Uses OpenAI computer-use-preview with manually constructed input items
+        and a prompt that instructs the agent to only output clicks.
         
         Args:
             model: Model name to use
@@ -137,8 +140,94 @@ class OpenAIComputerUseConfig:
             instruction: Instruction for where to click
             
         Returns:
-            None (not supported by OpenAI computer-use-preview)
+            Tuple of (x, y) coordinates or None if prediction fails
         """
+        # TODO: implement this correctly
+        # Scale image to half size
+        try:
+            image_data = base64.b64decode(image_b64)
+            image = Image.open(BytesIO(image_data))
+            
+            # Scale to half size
+            new_width = image.width // 2
+            new_height = image.height // 2
+            scaled_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Convert back to base64
+            buffer = BytesIO()
+            scaled_image.save(buffer, format='PNG')
+            image_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        except Exception:
+            # If scaling fails, use original image
+            pass
+        
+        # Manually construct input items with image and click instruction
+        input_items = [
+            {
+                "role": "user", 
+                "content": f"You are a UI grounding expert. Look at the image and {instruction}. Output ONLY a click action on the target element. No explanations, confirmations, or additional text."
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:image/png;base64,{image_b64}"
+                    }
+                ]
+            }
+        ]
+        
+        # Get image dimensions from base64 data
+        try:
+            image_data = base64.b64decode(image_b64)
+            image = Image.open(BytesIO(image_data))
+            display_width, display_height = image.size
+        except Exception:
+            # Fallback to default dimensions if image parsing fails
+            display_width, display_height = 1024, 768
+        
+        # Prepare computer tool for click actions
+        computer_tool = {
+            "type": "computer_use_preview",
+            "display_width": display_width,
+            "display_height": display_height,
+            "environment": "linux"
+        }
+        
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "input": input_items,
+            "tools": [computer_tool],
+            "stream": False,
+            "reasoning": {"summary": "concise"},
+            "truncation": "auto",
+            "max_tokens": 100  # Keep response short for click prediction
+        }
+        
+        # Use liteLLM responses
+        response = await litellm.aresponses(**api_kwargs)
+        
+        # Extract click coordinates from response output
+        output_dict = response.model_dump()
+        output_items = output_dict.get("output", [])
+        
+        # print(output_items)
+        
+        # Look for computer_call with click action
+        for item in output_items:
+            if (isinstance(item, dict) and 
+                item.get("type") == "computer_call" and
+                isinstance(item.get("action"), dict)):
+                
+                action = item["action"]
+                if action.get("type") == "click":
+                    x = action.get("x")
+                    y = action.get("y")
+                    if x is not None and y is not None:
+                        return (int(x) * 2, int(y) * 2)
+        
         return None
     
     def get_capabilities(self) -> List[AgentCapability]:
@@ -148,4 +237,4 @@ class OpenAIComputerUseConfig:
         Returns:
             List of capability strings
         """
-        return ["step"]
+        return ["click", "step"]

@@ -249,7 +249,7 @@ async def replace_computer_call_with_function(item: Dict[str, Any], xy2id: Dict[
     return [item]
 
 
-@register_agent(models=r"omniparser\+.*|omni\+.*", priority=10)
+@register_agent(models=r"omniparser\+.*|omni\+.*")
 class OmniparsrConfig(AsyncAgentConfig):
     """Omniparser agent configuration implementing AsyncAgentConfig protocol."""
     

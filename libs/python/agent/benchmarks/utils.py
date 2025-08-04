@@ -21,7 +21,6 @@ import torch
 # Add parent directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agent.agent import ComputerAgent
-from models import GTA1Model
 from models.base import ModelProtocol
 
 def get_gpu_memory() -> List[int]:
@@ -82,13 +81,16 @@ def get_available_models() -> List[Union[str, ModelProtocol]]:
     """
     local_provider = "huggingface-local/"  # Options: huggingface-local/ or mlx/
     
+    # from models.gta1 import GTA1Model
+
     models = [
         # === ComputerAgent model strings ===
-        f"{local_provider}HelloKKMe/GTA1-7B",
+        # f"{local_provider}HelloKKMe/GTA1-7B",
         # f"{local_provider}HelloKKMe/GTA1-32B",
+        "openai/computer-use-preview+openai/gpt-4o-mini"
         
         # === Reference model classes ===
-        GTA1Model("HelloKKMe/GTA1-7B"),
+        # GTA1Model("HelloKKMe/GTA1-7B"),
         # GTA1Model("HelloKKMe/GTA1-32B"), 
     ]
     
