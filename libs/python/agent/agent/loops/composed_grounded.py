@@ -121,7 +121,7 @@ class ComposedGroundedConfig:
     Composed-grounded agent configuration that uses both grounding and thinking models.
     
     The model parameter should be in format: "grounding_model+thinking_model"
-    e.g., "gpt-4o+claude-3-5-sonnet-20241022"
+    e.g., "huggingface-local/HelloKKMe/GTA1-7B+gemini/gemini-1.5-pro"
     """
     
     def __init__(self):
