@@ -157,7 +157,7 @@ class OpenAIComputerUseConfig:
         Returns:
             Tuple of (x, y) coordinates or None if prediction fails
         """
-        # TODO: implement this correctly
+        # TODO: use computer tool to get dimensions + environment
         # Scale image to half size
         try:
             image_data = base64.b64decode(image_b64)
