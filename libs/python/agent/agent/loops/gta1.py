@@ -74,6 +74,23 @@ class GTA1Config(AsyncAgentConfig):
         self.current_model = None
         self.last_screenshot_b64 = None
     
+
+    async def predict_step(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_retries: Optional[int] = None,
+        stream: bool = False,
+        computer_handler=None,
+        _on_api_start=None,
+        _on_api_end=None,
+        _on_usage=None,
+        _on_screenshot=None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        raise NotImplementedError()
+
     async def predict_click(
         self,
         model: str,
