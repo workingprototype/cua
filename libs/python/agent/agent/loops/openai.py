@@ -158,24 +158,6 @@ class OpenAIComputerUseConfig:
             Tuple of (x, y) coordinates or None if prediction fails
         """
         # TODO: use computer tool to get dimensions + environment
-        # Scale image to half size
-        try:
-            image_data = base64.b64decode(image_b64)
-            image = Image.open(BytesIO(image_data))
-            
-            # Scale to half size
-            new_width = image.width // 2
-            new_height = image.height // 2
-            scaled_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
-            # Convert back to base64
-            buffer = BytesIO()
-            scaled_image.save(buffer, format='PNG')
-            image_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-        except Exception:
-            # If scaling fails, use original image
-            pass
-        
         # Manually construct input items with image and click instruction
         input_items = [
             {
@@ -207,7 +189,7 @@ class OpenAIComputerUseConfig:
             "type": "computer_use_preview",
             "display_width": display_width,
             "display_height": display_height,
-            "environment": "linux"
+            "environment": "windows"
         }
         
         # Prepare API call kwargs
@@ -226,9 +208,7 @@ class OpenAIComputerUseConfig:
         
         # Extract click coordinates from response output
         output_dict = response.model_dump()
-        output_items = output_dict.get("output", [])
-        
-        # print(output_items)
+        output_items = output_dict.get("output", [])        
         
         # Look for computer_call with click action
         for item in output_items:
@@ -241,7 +221,7 @@ class OpenAIComputerUseConfig:
                     x = action.get("x")
                     y = action.get("y")
                     if x is not None and y is not None:
-                        return (int(x) * 2, int(y) * 2)
+                        return (int(x), int(y))
         
         return None
     

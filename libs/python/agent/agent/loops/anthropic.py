@@ -65,21 +65,28 @@ def _get_tool_config_for_model(model: str) -> Dict[str, str]:
         "beta_flag": "computer-use-2024-10-22"
     }
 
-def _map_computer_tool_to_anthropic(computer_tool: Any, tool_version: str) -> Dict[str, Any]:
+async def _map_computer_tool_to_anthropic(computer_tool: Any, tool_version: str) -> Dict[str, Any]:
     """Map a computer tool to Anthropic's hosted tool schema."""
+    # Get dimensions from the computer handler
+    try:
+        width, height = await computer_tool.get_dimensions()
+    except Exception:
+        # Fallback to default dimensions if method fails
+        width, height = 1024, 768
+    
     return {
         "type": tool_version,
         "function": {
             "name": "computer",
             "parameters": {
-                "display_height_px": getattr(computer_tool, 'display_height', 768),
-                "display_width_px": getattr(computer_tool, 'display_width', 1024),
-                "display_number": getattr(computer_tool, 'display_number', 1),
+                "display_height_px": height,
+                "display_width_px": width,
+                "display_number": 1,
             },
         },
     }
 
-def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str) -> Tools:
+async def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str) -> Tools:
     """Prepare tools for Anthropic API format."""
     tool_config = _get_tool_config_for_model(model)
     anthropic_tools = []
@@ -87,7 +94,7 @@ def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str)
     for schema in tool_schemas:
         if schema["type"] == "computer":
             # Map computer tool to Anthropic format
-            anthropic_tools.append(_map_computer_tool_to_anthropic(
+            anthropic_tools.append(await _map_computer_tool_to_anthropic(
                 schema["computer"], 
                 tool_config["tool_version"]
             ))
@@ -1315,7 +1322,7 @@ class AnthropicHostedToolsConfig(AsyncAgentConfig):
         tool_config = _get_tool_config_for_model(model)
         
         # Prepare tools for Anthropic API
-        anthropic_tools = _prepare_tools_for_anthropic(tools, model)
+        anthropic_tools = await _prepare_tools_for_anthropic(tools, model)
         
         # Convert responses_items messages to completion format
         completion_messages = _convert_responses_items_to_completion_messages(messages)
@@ -1375,10 +1382,102 @@ class AnthropicHostedToolsConfig(AsyncAgentConfig):
         image_b64: str,
         instruction: str,
         **kwargs
-    ) -> Optional[Tuple[float, float]]:
-        """Anthropic hosted tools does not support click prediction."""
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Predict click coordinates based on image and instruction.
+        
+        Uses Anthropic's computer use models with a custom prompt that instructs
+        the agent to only output clicks.
+        
+        Args:
+            model: Model name to use
+            image_b64: Base64 encoded image
+            instruction: Instruction for where to click
+            
+        Returns:
+            Tuple of (x, y) coordinates or None if prediction fails
+        """
+        # Get image dimensions from base64 data
+        try:
+            import base64
+            from PIL import Image
+            from io import BytesIO
+            
+            image_data = base64.b64decode(image_b64)
+            image = Image.open(BytesIO(image_data))
+            display_width, display_height = image.size
+        except Exception:
+            # Fallback to default dimensions if image parsing fails
+            display_width, display_height = 1024, 768
+        
+        # Get tool configuration for this model
+        tool_config = _get_tool_config_for_model(model)
+        
+        # Prepare computer tool for Anthropic format
+        computer_tool = {
+            "type": tool_config["tool_version"],
+            "function": {
+                "name": "computer",
+                "parameters": {
+                    "display_height_px": display_height,
+                    "display_width_px": display_width,
+                    "display_number": 1,
+                },
+            },
+        }
+        
+        # Construct messages in OpenAI chat completion format for liteLLM
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"You are a UI grounding expert. Look at the image and {instruction}. Output ONLY a click action on the target element. No explanations, confirmations, or additional text."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_b64}"
+                        }
+                    }
+                ]
+            }
+        ]
+        
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "messages": messages,
+            "tools": [computer_tool],
+            "stream": False,
+            "max_tokens": 100,  # Keep response short for click prediction
+            "headers": {
+                "anthropic-beta": tool_config["beta_flag"]
+            }
+        }
+    
+        # Use liteLLM acompletion
+        response = await litellm.acompletion(**api_kwargs)
+        
+        # Convert response to responses_items format to extract click coordinates
+        responses_items = _convert_completion_to_responses_items(response)
+        
+        # Look for computer_call with click action
+        for item in responses_items:
+            if (isinstance(item, dict) and 
+                item.get("type") == "computer_call" and
+                isinstance(item.get("action"), dict)):
+                
+                action = item["action"]
+                if action.get("type") == "click":
+                    x = action.get("x")
+                    y = action.get("y")
+                    if x is not None and y is not None:
+                        return (int(x), int(y))
+        
         return None
     
     def get_capabilities(self) -> List[AgentCapability]:
         """Return the capabilities supported by this agent."""
-        return ["step"]
+        return ["click", "step"]
