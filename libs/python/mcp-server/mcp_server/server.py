@@ -3,6 +3,7 @@ import base64
 import logging
 import os
 import sys
+from tabnanny import verbose
 import traceback
 from typing import Any, Dict, List, Optional, Union, Tuple
 
@@ -28,7 +29,7 @@ except ImportError as e:
 
 try:
     from computer import Computer
-    from agent import ComputerAgent, LLMProvider, LLM, AgentLoop
+    from agent import ComputerAgent
 
     logger.debug("Successfully imported Computer and Agent modules")
 except ImportError as e:
@@ -92,49 +93,27 @@ def serve() -> FastMCP:
                 global_computer = Computer(verbosity=logging.INFO)
                 await global_computer.run()
 
-            # Determine which loop to use
-            loop_str = os.getenv("CUA_AGENT_LOOP", "OMNI")
-            loop = getattr(AgentLoop, loop_str)
+            # Get model name - this now determines the loop and provider
+            model_name = os.getenv("CUA_MODEL_NAME", "anthropic/claude-3-5-sonnet-20241022")
+            
+            logger.info(f"Using model: {model_name}")
 
-            # Determine provider
-            provider_str = os.getenv("CUA_MODEL_PROVIDER", "ANTHROPIC")
-            provider = getattr(LLMProvider, provider_str)
-
-            # Get model name (if specified)
-            model_name = os.getenv("CUA_MODEL_NAME", None)
-
-            # Get base URL for provider (if needed)
-            provider_base_url = os.getenv("CUA_PROVIDER_BASE_URL", None)
-
-            # Get api key for provider (if needed)
-            api_key = os.getenv("CUA_PROVIDER_API_KEY", None)
-
-            # Create agent with the specified configuration
+            # Create agent with the new v0.4.x API
             agent = ComputerAgent(
-                computer=global_computer,
-                loop=loop,
-                model=LLM(
-                    provider=provider,
-                    name=model_name,
-                    provider_base_url=provider_base_url,
-                ),
-                api_key=api_key,
-                save_trajectory=False,
+                model=model_name,
                 only_n_most_recent_images=int(os.getenv("CUA_MAX_IMAGES", "3")),
                 verbosity=logging.INFO,
+                tools=[global_computer]
             )
 
+            # Create messages in the new v0.4.x format
+            messages = [{"role": "user", "content": task}]
+            
             # Collect all results
             full_result = ""
-            async for result in agent.run(task):
-                logger.info(f"Agent step complete: {result.get('id', 'unknown')}")
-                ctx.info(f"Agent step complete: {result.get('id', 'unknown')}")
-
-                # Add response ID to output
-                full_result += f"\n[Response ID: {result.get('id', 'unknown')}]\n"
-                
-                if "content" in result:
-                    full_result += f"Response: {result.get('content', '')}\n"
+            async for result in agent.run(messages):
+                logger.info(f"Agent processing step")
+                ctx.info(f"Agent processing step")
 
                 # Process output if available
                 outputs = result.get("output", [])
@@ -145,25 +124,23 @@ def serve() -> FastMCP:
                         content = output.get("content", [])
                         for content_part in content:
                             if content_part.get("text"):
-                                full_result += f"\nMessage: {content_part.get('text', '')}\n"
-                    elif output_type == "reasoning":
-                        logger.debug(f"Reasoning: {output}")
-                        
-                        summary_content = output.get("summary", [])
-                        if summary_content:
-                            for summary_part in summary_content:
-                                if summary_part.get("text"):
-                                    full_result += f"\nReasoning: {summary_part.get('text', '')}\n"
+                                full_result += f"Message: {content_part.get('text', '')}\n"
+                    elif output_type == "tool_use":
+                        logger.debug(f"Tool use: {output}")
+                        tool_name = output.get("name", "")
+                        full_result += f"Tool: {tool_name}\n"
+                    elif output_type == "tool_result":
+                        logger.debug(f"Tool result: {output}")
+                        result_content = output.get("content", "")
+                        if isinstance(result_content, list):
+                            for item in result_content:
+                                if item.get("type") == "text":
+                                    full_result += f"Result: {item.get('text', '')}\n"
                         else:
-                            full_result += f"\nReasoning: {output.get('text', output.get('content', ''))}\n"
-                    elif output_type == "computer_call":
-                        logger.debug(f"Computer call: {output}")
-                        action = output.get("action", "")
-                        result_value = output.get("result", "")
-                        full_result += f"\nComputer Action: {action}\nResult: {result_value}\n"
+                            full_result += f"Result: {result_content}\n"
 
                 # Add separator between steps
-                full_result += "\n" + "-" * 40 + "\n"
+                full_result += "\n" + "-" * 20 + "\n"
 
             logger.info(f"CUA task completed successfully")
             ctx.info(f"CUA task completed successfully")
@@ -179,7 +156,21 @@ def serve() -> FastMCP:
             error_msg = f"Error running CUA task: {str(e)}\n{traceback.format_exc()}"
             logger.error(error_msg)
             ctx.error(error_msg)
-            return f"Error during task execution: {str(e)}"
+            # Return tuple with error message and a screenshot if possible
+            try:
+                if global_computer is not None:
+                    screenshot = await global_computer.interface.screenshot()
+                    return (
+                        f"Error during task execution: {str(e)}",
+                        Image(format="png", data=screenshot)
+                    )
+            except:
+                pass
+            # If we can't get a screenshot, return a placeholder
+            return (
+                f"Error during task execution: {str(e)}",
+                Image(format="png", data=b"")
+            )
 
     @server.tool()
     async def run_multi_cua_tasks(ctx: Context, tasks: List[str]) -> List:

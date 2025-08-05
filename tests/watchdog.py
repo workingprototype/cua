@@ -2,7 +2,7 @@
 Watchdog Recovery Tests
 Tests for the watchdog functionality to ensure server recovery after hanging commands.
 Required environment variables:
-- CUA_API_KEY: API key for C/ua cloud provider
+- CUA_API_KEY: API key for Cua cloud provider
 - CUA_CONTAINER_NAME: Name of the container to use
 """
 
@@ -34,7 +34,7 @@ from computer import Computer, VMProviderType
 @pytest.fixture(scope="session")
 async def computer():
     """Shared Computer instance for all test cases."""
-    # Create a remote Linux computer with C/ua
+    # Create a remote Linux computer with Cua
     computer = Computer(
         os_type="linux",
         api_key=os.getenv("CUA_API_KEY"),

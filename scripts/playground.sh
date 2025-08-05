@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Launching C/ua Computer-Use Agent UI..."
+echo "🚀 Launching Cua Computer-Use Agent UI..."
 
 # Save the original working directory
 ORIGINAL_DIR="$(pwd)"
@@ -22,18 +22,18 @@ TMP_DIR=$(mktemp -d)
 cd "$TMP_DIR"
 trap cleanup EXIT
 
-# Ask user to choose between local macOS VMs or C/ua Cloud Containers
+# Ask user to choose between local macOS VMs or Cua Cloud Containers
 echo ""
-echo "Choose your C/ua setup:"
-echo "1) ☁️  C/ua Cloud Containers (works on any system)"
+echo "Choose your Cua setup:"
+echo "1) ☁️  Cua Cloud Containers (works on any system)"
 echo "2) 🖥️  Local macOS VMs (requires Apple Silicon Mac + macOS 15+)"
 echo ""
 read -p "Enter your choice (1 or 2): " CHOICE
 
 if [[ "$CHOICE" == "1" ]]; then
-  # C/ua Cloud Container setup
+  # Cua Cloud Container setup
   echo ""
-  echo "☁️ Setting up C/ua Cloud Containers..."
+  echo "☁️ Setting up Cua Cloud Containers..."
   echo ""
   
   # Check if existing .env.local already has CUA_API_KEY (check current dir and demo dir)
@@ -61,15 +61,15 @@ if [[ "$CHOICE" == "1" ]]; then
   
   # If no valid API key found, prompt for one
   if [[ -z "$CUA_API_KEY" ]]; then
-    echo "To use C/ua Cloud Containers, you need to:"
+    echo "To use Cua Cloud Containers, you need to:"
     echo "1. Sign up at https://trycua.com"
     echo "2. Create a Cloud Container"
     echo "3. Generate an Api Key"
     echo ""
-    read -p "Enter your C/ua Api Key: " CUA_API_KEY
+    read -p "Enter your Cua Api Key: " CUA_API_KEY
     
     if [[ -z "$CUA_API_KEY" ]]; then
-      echo "❌ C/ua Api Key is required for Cloud Containers."
+      echo "❌ Cua Api Key is required for Cloud Containers."
       exit 1
     fi
   fi
@@ -84,7 +84,7 @@ elif [[ "$CHOICE" == "2" ]]; then
   # Check for Apple Silicon Mac
   if [[ $(uname -s) != "Darwin" || $(uname -m) != "arm64" ]]; then
     echo "❌ Local macOS VMs require an Apple Silicon Mac (M1/M2/M3/M4)."
-    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    echo "💡 Consider using Cua Cloud Containers instead (option 1)."
     exit 1
   fi
 
@@ -92,7 +92,7 @@ elif [[ "$CHOICE" == "2" ]]; then
   OSVERSION=$(sw_vers -productVersion)
   if [[ $(echo "$OSVERSION 15.0" | tr " " "\n" | sort -V | head -n 1) != "15.0" ]]; then
     echo "❌ Local macOS VMs require macOS 15 (Sequoia) or newer. You have $OSVERSION."
-    echo "💡 Consider using C/ua Cloud Containers instead (option 1)."
+    echo "💡 Consider using Cua Cloud Containers instead (option 1)."
     exit 1
   fi
 
@@ -205,7 +205,7 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Install required packages
-echo "📦 Updating C/ua packages..."
+echo "📦 Updating Cua packages..."
 pip install -U pip setuptools wheel Cmake
 pip install -U cua-computer "cua-agent[all]"
 
@@ -257,7 +257,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from computer import Computer
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
-from agent.ui.gradio.app import create_gradio_ui
+from agent.ui.gradio.ui_components import create_gradio_ui
 
 # Load environment variables from .env.local
 load_dotenv(Path(__file__).parent / ".env.local")
@@ -292,7 +292,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from computer import Computer
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
-from agent.ui.gradio.app import create_gradio_ui
+from agent.ui.gradio.ui_components import create_gradio_ui
 
 # Load environment variables from .env.local
 load_dotenv(Path(__file__).parent / ".env.local")
@@ -336,10 +336,10 @@ fi
 
 # Ask if the user wants to start the demo now
 echo
-read -p "Would you like to start the C/ua Computer-Use Agent UI now? (y/n) " -n 1 -r
+read -p "Would you like to start the Cua Computer-Use Agent UI now? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo "🚀 Starting the C/ua Computer-Use Agent UI..."
+  echo "🚀 Starting the Cua Computer-Use Agent UI..."
   echo ""
   "$DEMO_DIR/start_ui.sh"
 fi

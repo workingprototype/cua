@@ -422,6 +422,9 @@ class ComputerAgent:
             # Perform computer actions
             action = item.get("action")
             action_type = action.get("type")
+            if action_type is None:
+                print(f"Action type cannot be `None`: action={action}, action_type={action_type}")
+                return []
             
             # Extract action arguments (all fields except 'type')
             action_args = {k: v for k, v in action.items() if k != "type"}

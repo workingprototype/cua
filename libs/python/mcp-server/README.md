@@ -16,6 +16,21 @@
 </div>
 
 **cua-mcp-server** is a MCP server for the Computer-Use Agent (CUA), allowing you to run CUA through Claude Desktop or other MCP clients.
+
+## LiteLLM Integration
+
+This MCP server features comprehensive liteLLM integration, allowing you to use any supported LLM provider with a simple model string configuration.
+
+- **Unified Configuration**: Use a single `CUA_MODEL_NAME` environment variable with a model string
+- **Automatic Provider Detection**: The agent automatically detects the provider and capabilities from the model string
+- **Extensive Provider Support**: Works with Anthropic, OpenAI, local models, and any liteLLM-compatible provider
+
+### Model String Examples:
+- **Anthropic**: `"anthropic/claude-3-5-sonnet-20241022"`
+- **OpenAI**: `"openai/computer-use-preview"`
+- **UI-TARS**: `"huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B"`
+- **Omni + Any LiteLLM**: `"omniparser+litellm/gpt-4o"`, `"omniparser+litellm/claude-3-haiku"`, `"omniparser+ollama_chat/gemma3"`
+
 ### Get started with Agent
 
 ## Prerequisites
@@ -65,10 +80,7 @@ You can then use the script in your MCP configuration like this:
       "command": "/bin/bash",
       "args": ["~/.cua/start_mcp_server.sh"],
       "env": {
-        "CUA_AGENT_LOOP": "OMNI",
-        "CUA_MODEL_PROVIDER": "ANTHROPIC",
-        "CUA_MODEL_NAME": "claude-3-7-sonnet-20250219",
-        "CUA_PROVIDER_API_KEY": "your-api-key"
+        "CUA_MODEL_NAME": "anthropic/claude-3-5-sonnet-20241022"
       }
     }
   }
@@ -86,11 +98,7 @@ If you want to develop with the cua-mcp-server directly without installation, yo
       "command": "/bin/bash",
       "args": ["~/cua/libs/python/mcp-server/scripts/start_mcp_server.sh"],
       "env": {
-        "CUA_AGENT_LOOP": "UITARS",
-        "CUA_MODEL_PROVIDER": "OAICOMPAT",
-        "CUA_MODEL_NAME": "ByteDance-Seed/UI-TARS-1.5-7B",
-        "CUA_PROVIDER_BASE_URL": "https://****************.us-east-1.aws.endpoints.huggingface.cloud/v1",
-        "CUA_PROVIDER_API_KEY": "your-api-key"
+        "CUA_MODEL_NAME": "huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B"
       }
     }
   }
@@ -142,10 +150,7 @@ The server is configured using environment variables (can be set in the Claude D
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CUA_AGENT_LOOP` | Agent loop to use (OPENAI, ANTHROPIC, UITARS, OMNI) | OMNI |
-| `CUA_MODEL_PROVIDER` | Model provider (ANTHROPIC, OPENAI, OLLAMA, OAICOMPAT) | ANTHROPIC |
-| `CUA_MODEL_NAME` | Model name to use | None (provider default) |
-| `CUA_PROVIDER_BASE_URL` | Base URL for provider API | None |
+| `CUA_MODEL_NAME` | Model string (e.g., "anthropic/claude-3-5-sonnet-20241022", "openai/computer-use-preview", "huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B", "omniparser+litellm/gpt-4o", "omniparser+ollama_chat/gemma3") | anthropic/claude-3-5-sonnet-20241022 |
 | `CUA_MAX_IMAGES` | Maximum number of images to keep in context | 3 |
 
 ## Available Tools
