@@ -13,24 +13,39 @@ from PIL import Image
 from ..decorators import register_agent
 from ..types import Messages, AgentResponse, Tools, AgentCapability
 
-def _map_computer_tool_to_openai(computer_tool: Any) -> Dict[str, Any]:
+async def _map_computer_tool_to_openai(computer_handler: Any) -> Dict[str, Any]:
     """Map a computer tool to OpenAI's computer-use-preview tool schema"""
+    # Get dimensions from the computer handler
+    try:
+        width, height = await computer_handler.get_dimensions()
+    except Exception:
+        # Fallback to default dimensions if method fails
+        width, height = 1024, 768
+    
+    # Get environment from the computer handler
+    try:
+        environment = await computer_handler.get_environment()
+    except Exception:
+        # Fallback to default environment if method fails
+        environment = "linux"
+    
     return {
         "type": "computer_use_preview",
-        "display_width": getattr(computer_tool, 'display_width', 1024),
-        "display_height": getattr(computer_tool, 'display_height', 768),
-        "environment": getattr(computer_tool, 'environment', "linux")  # mac, windows, linux, browser
+        "display_width": width,
+        "display_height": height,
+        "environment": environment  # mac, windows, linux, browser
     }
 
 
-def _prepare_tools_for_openai(tool_schemas: List[Dict[str, Any]]) -> Tools:
+async def _prepare_tools_for_openai(tool_schemas: List[Dict[str, Any]]) -> Tools:
     """Prepare tools for OpenAI API format"""
     openai_tools = []
     
     for schema in tool_schemas:
         if schema["type"] == "computer":
             # Map computer tool to OpenAI format
-            openai_tools.append(_map_computer_tool_to_openai(schema["computer"]))
+            computer_tool = await _map_computer_tool_to_openai(schema["computer"])
+            openai_tools.append(computer_tool)
         elif schema["type"] == "function":
             # Function tools use OpenAI-compatible schema directly (liteLLM expects this format)
             # Schema should be: {type, name, description, parameters}
@@ -84,7 +99,7 @@ class OpenAIComputerUseConfig:
         tools = tools or []
         
         # Prepare tools for OpenAI API
-        openai_tools = _prepare_tools_for_openai(tools)
+        openai_tools = await _prepare_tools_for_openai(tools)
 
         # Prepare API call kwargs
         api_kwargs = {
