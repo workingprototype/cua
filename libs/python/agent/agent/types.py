@@ -14,16 +14,18 @@ Tools = Optional[Iterable[ToolParam]]
 
 # Agent output types
 AgentResponse = ResponsesAPIResponse 
+AgentCapability = Literal["step", "click"]
 
-# Agent loop registration
-class AgentLoopInfo(BaseModel):
-    """Information about a registered agent loop"""
-    func: Callable
+
+# Agent config registration
+class AgentConfigInfo(BaseModel):
+    """Information about a registered agent config"""
+    agent_class: type
     models_regex: str
     priority: int = 0
     
     def matches_model(self, model: str) -> bool:
-        """Check if this loop matches the given model"""
+        """Check if this agent config matches the given model"""
         return bool(re.match(self.models_regex, model))
 
 # Computer tool interface

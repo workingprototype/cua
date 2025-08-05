@@ -4,12 +4,13 @@ Anthropic hosted tools agent loop implementation using liteLLM
 
 import asyncio
 import json
-from typing import Dict, List, Any, AsyncGenerator, Union, Optional
+from typing import Dict, List, Any, AsyncGenerator, Union, Optional, Tuple
 import litellm
 from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
 
-from ..decorators import agent_loop
-from ..types import Messages, AgentResponse, Tools
+from ..decorators import register_agent
+from ..types import Messages, AgentResponse, Tools, AgentCapability
+from ..loops.base import AsyncAgentConfig
 from ..responses import (
     make_reasoning_item,
     make_output_text_item,
@@ -64,21 +65,28 @@ def _get_tool_config_for_model(model: str) -> Dict[str, str]:
         "beta_flag": "computer-use-2024-10-22"
     }
 
-def _map_computer_tool_to_anthropic(computer_tool: Any, tool_version: str) -> Dict[str, Any]:
+async def _map_computer_tool_to_anthropic(computer_tool: Any, tool_version: str) -> Dict[str, Any]:
     """Map a computer tool to Anthropic's hosted tool schema."""
+    # Get dimensions from the computer handler
+    try:
+        width, height = await computer_tool.get_dimensions()
+    except Exception:
+        # Fallback to default dimensions if method fails
+        width, height = 1024, 768
+    
     return {
         "type": tool_version,
         "function": {
             "name": "computer",
             "parameters": {
-                "display_height_px": getattr(computer_tool, 'display_height', 768),
-                "display_width_px": getattr(computer_tool, 'display_width', 1024),
-                "display_number": getattr(computer_tool, 'display_number', 1),
+                "display_height_px": height,
+                "display_width_px": width,
+                "display_number": 1,
             },
         },
     }
 
-def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str) -> Tools:
+async def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str) -> Tools:
     """Prepare tools for Anthropic API format."""
     tool_config = _get_tool_config_for_model(model)
     anthropic_tools = []
@@ -86,7 +94,7 @@ def _prepare_tools_for_anthropic(tool_schemas: List[Dict[str, Any]], model: str)
     for schema in tool_schemas:
         if schema["type"] == "computer":
             # Map computer tool to Anthropic format
-            anthropic_tools.append(_map_computer_tool_to_anthropic(
+            anthropic_tools.append(await _map_computer_tool_to_anthropic(
                 schema["computer"], 
                 tool_config["tool_version"]
             ))
@@ -1284,84 +1292,192 @@ def _merge_consecutive_text(content_list: List[Dict[str, Any]]) -> List[Dict[str
     
     return merged
 
-@agent_loop(models=r".*claude-.*", priority=5)
-async def anthropic_hosted_tools_loop(
-    messages: Messages,
-    model: str,
-    tools: Optional[List[Dict[str, Any]]] = None,
-    max_retries: Optional[int] = None,
-    stream: bool = False,
-    computer_handler=None,
-    use_prompt_caching: Optional[bool] = False,
-    _on_api_start=None,
-    _on_api_end=None,
-    _on_usage=None,
-    _on_screenshot=None,
-    **kwargs
-) -> Union[AgentResponse, AsyncGenerator[Dict[str, Any], None]]:
-    """
-    Anthropic hosted tools agent loop using liteLLM acompletion.
+@register_agent(models=r".*claude-.*")
+class AnthropicHostedToolsConfig(AsyncAgentConfig):
+    """Anthropic hosted tools agent configuration implementing AsyncAgentConfig protocol."""
     
-    Supports Anthropic's computer use models with hosted tools.
-    """
-    tools = tools or []
-    
-    # Get tool configuration for this model
-    tool_config = _get_tool_config_for_model(model)
-    
-    # Prepare tools for Anthropic API
-    anthropic_tools = _prepare_tools_for_anthropic(tools, model)
-    
-    # Convert responses_items messages to completion format
-    completion_messages = _convert_responses_items_to_completion_messages(messages)
-    if use_prompt_caching:
-        # First combine messages to reduce number of blocks
-        completion_messages = _combine_completion_messages(completion_messages)
-        # Then add cache control, anthropic requires explicit "cache_control" dicts
-        completion_messages = _add_cache_control(completion_messages)
-    
-    # Prepare API call kwargs
-    api_kwargs = {
-        "model": model,
-        "messages": completion_messages,
-        "tools": anthropic_tools if anthropic_tools else None,
-        "stream": stream,
-        "num_retries": max_retries,
+    async def predict_step(
+        self,
+        messages: Messages,
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_retries: Optional[int] = None,
+        stream: bool = False,
+        computer_handler=None,
+        use_prompt_caching: Optional[bool] = False,
+        _on_api_start=None,
+        _on_api_end=None,
+        _on_usage=None,
+        _on_screenshot=None,
         **kwargs
-    }
-    
-    # Add beta header for computer use
-    if anthropic_tools:
-        api_kwargs["headers"] = {
-            "anthropic-beta": tool_config["beta_flag"]
+    ) -> Dict[str, Any]:
+        """
+        Anthropic hosted tools agent loop using liteLLM acompletion.
+        
+        Supports Anthropic's computer use models with hosted tools.
+        """
+        tools = tools or []
+        
+        # Get tool configuration for this model
+        tool_config = _get_tool_config_for_model(model)
+        
+        # Prepare tools for Anthropic API
+        anthropic_tools = await _prepare_tools_for_anthropic(tools, model)
+        
+        # Convert responses_items messages to completion format
+        completion_messages = _convert_responses_items_to_completion_messages(messages)
+        if use_prompt_caching:
+            # First combine messages to reduce number of blocks
+            completion_messages = _combine_completion_messages(completion_messages)
+            # Then add cache control, anthropic requires explicit "cache_control" dicts
+            completion_messages = _add_cache_control(completion_messages)
+        
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "messages": completion_messages,
+            "tools": anthropic_tools if anthropic_tools else None,
+            "stream": stream,
+            "num_retries": max_retries,
+            **kwargs
+        }
+        
+        # Add beta header for computer use
+        if anthropic_tools:
+            api_kwargs["headers"] = {
+                "anthropic-beta": tool_config["beta_flag"]
+            }
+        
+        # Call API start hook
+        if _on_api_start:
+            await _on_api_start(api_kwargs)
+        
+        # Use liteLLM acompletion
+        response = await litellm.acompletion(**api_kwargs)
+        
+        # Call API end hook
+        if _on_api_end:
+            await _on_api_end(api_kwargs, response)
+        
+        # Convert response to responses_items format
+        responses_items = _convert_completion_to_responses_items(response)
+
+        # Extract usage information
+        responses_usage = { 
+            **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
+            "response_cost": response._hidden_params.get("response_cost", 0.0),
+        }
+        if _on_usage:
+            await _on_usage(responses_usage)
+
+        # Return in AsyncAgentConfig format
+        return {
+            "output": responses_items,
+            "usage": responses_usage
         }
     
-    # Call API start hook
-    if _on_api_start:
-        await _on_api_start(api_kwargs)
+    async def predict_click(
+        self,
+        model: str,
+        image_b64: str,
+        instruction: str,
+        **kwargs
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Predict click coordinates based on image and instruction.
+        
+        Uses Anthropic's computer use models with a custom prompt that instructs
+        the agent to only output clicks.
+        
+        Args:
+            model: Model name to use
+            image_b64: Base64 encoded image
+            instruction: Instruction for where to click
+            
+        Returns:
+            Tuple of (x, y) coordinates or None if prediction fails
+        """
+        # Get image dimensions from base64 data
+        try:
+            import base64
+            from PIL import Image
+            from io import BytesIO
+            
+            image_data = base64.b64decode(image_b64)
+            image = Image.open(BytesIO(image_data))
+            display_width, display_height = image.size
+        except Exception:
+            # Fallback to default dimensions if image parsing fails
+            display_width, display_height = 1024, 768
+        
+        # Get tool configuration for this model
+        tool_config = _get_tool_config_for_model(model)
+        
+        # Prepare computer tool for Anthropic format
+        computer_tool = {
+            "type": tool_config["tool_version"],
+            "function": {
+                "name": "computer",
+                "parameters": {
+                    "display_height_px": display_height,
+                    "display_width_px": display_width,
+                    "display_number": 1,
+                },
+            },
+        }
+        
+        # Construct messages in OpenAI chat completion format for liteLLM
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"You are a UI grounding expert. Look at the image and {instruction}. Output ONLY a click action on the target element. No explanations, confirmations, or additional text."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_b64}"
+                        }
+                    }
+                ]
+            }
+        ]
+        
+        # Prepare API call kwargs
+        api_kwargs = {
+            "model": model,
+            "messages": messages,
+            "tools": [computer_tool],
+            "stream": False,
+            "max_tokens": 100,  # Keep response short for click prediction
+            "headers": {
+                "anthropic-beta": tool_config["beta_flag"]
+            }
+        }
     
-    # Use liteLLM acompletion
-    response = await litellm.acompletion(**api_kwargs)
+        # Use liteLLM acompletion
+        response = await litellm.acompletion(**api_kwargs)
+        
+        # Convert response to responses_items format to extract click coordinates
+        responses_items = _convert_completion_to_responses_items(response)
+        
+        # Look for computer_call with click action
+        for item in responses_items:
+            if (isinstance(item, dict) and 
+                item.get("type") == "computer_call" and
+                isinstance(item.get("action"), dict)):
+                
+                action = item["action"]
+                if action.get("type") == "click":
+                    x = action.get("x")
+                    y = action.get("y")
+                    if x is not None and y is not None:
+                        return (int(x), int(y))
+        
+        return None
     
-    # Call API end hook
-    if _on_api_end:
-        await _on_api_end(api_kwargs, response)
-    
-    # Convert response to responses_items format
-    responses_items = _convert_completion_to_responses_items(response)
-
-    # Extract usage information
-    responses_usage = { 
-        **LiteLLMCompletionResponsesConfig._transform_chat_completion_usage_to_responses_usage(response.usage).model_dump(),
-        "response_cost": response._hidden_params.get("response_cost", 0.0),
-    }
-    if _on_usage:
-        await _on_usage(responses_usage)
-
-    # Create agent response
-    agent_response = {
-        "output": responses_items,
-        "usage": responses_usage
-    }
-    
-    return agent_response
+    def get_capabilities(self) -> List[AgentCapability]:
+        """Return the capabilities supported by this agent."""
+        return ["click", "step"]

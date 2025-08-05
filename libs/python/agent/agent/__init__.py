@@ -5,7 +5,7 @@ agent - Decorator-based Computer Use Agent with liteLLM integration
 import logging
 import sys
 
-from .decorators import agent_loop
+from .decorators import register_agent
 from .agent import ComputerAgent
 from .types import Messages, AgentResponse
 
@@ -13,7 +13,7 @@ from .types import Messages, AgentResponse
 from . import loops
 
 __all__ = [
-    "agent_loop",
+    "register_agent",
     "ComputerAgent",
     "Messages",
     "AgentResponse"

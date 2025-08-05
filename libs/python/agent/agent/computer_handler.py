@@ -93,8 +93,10 @@ class OpenAIComputerHandler:
         return ""
 
 
-def acknowledge_safety_check_callback(message: str) -> bool:
+def acknowledge_safety_check_callback(message: str, allow_always: bool = False) -> bool:
     """Safety check callback for user acknowledgment."""
+    if allow_always:
+        return True
     response = input(
         f"Safety Check Warning: {message}\nDo you want to acknowledge and proceed? (y/n): "
     ).lower()

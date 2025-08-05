@@ -48,7 +48,11 @@ class HuggingFaceLocalAdapter(CustomLLM):
             )
             
             # Load processor
-            processor = AutoProcessor.from_pretrained(model_name)
+            processor = AutoProcessor.from_pretrained(
+                model_name,
+                min_pixels=3136,
+                max_pixels=4096 * 2160
+            )
             
             # Cache them
             self.models[model_name] = model
