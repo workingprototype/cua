@@ -3,6 +3,9 @@
 Shared utilities for ScreenSpot-Pro benchmarking and interactive testing.
 """
 
+import dotenv
+dotenv.load_dotenv()
+
 import asyncio
 import base64
 import os
@@ -85,9 +88,12 @@ def get_available_models() -> List[Union[str, ModelProtocol]]:
 
     models = [
         # === ComputerAgent model strings ===
+        "openai/computer-use-preview",
+        "anthropic/claude-opus-4-20250514",
         # f"{local_provider}HelloKKMe/GTA1-7B",
         # f"{local_provider}HelloKKMe/GTA1-32B",
-        "openai/computer-use-preview+openai/gpt-4o-mini"
+        "openai/computer-use-preview+openai/gpt-4o-mini",
+        "anthropic/claude-opus-4-20250514+openai/gpt-4o-mini",
         
         # === Reference model classes ===
         # GTA1Model("HelloKKMe/GTA1-7B"),
