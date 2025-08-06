@@ -1,6 +1,6 @@
 # Kasm Cua Container
 
-Containerized virtual desktop for Computer-Using Agents (CUA).
+Containerized virtual desktop for Computer-Using Agents (CUA). Utilizes Kasm's MIT-licensed Ubuntu XFCE container as a base.
 
 ## Usage
 
