@@ -29,11 +29,47 @@ All models that support `ComputerAgent.run()` also support `ComputerAgent.predic
 
 These models are optimized specifically for click prediction and UI element grounding:
 
+### OmniParser
+
+OCR-focused set-of-marks model that requires an LLM for click prediction:
+
+- `omniparser` (requires combination with any LiteLLM vision model)
+
 ### GTA1-7B
 
 State-of-the-art grounding model from the [GUI Agent Grounding Leaderboard](https://gui-agent.github.io/grounding-leaderboard/):
 
 - `huggingface-local/HelloKKMe/GTA1-7B`
+
+## Usage Examples
+
+```python
+# Using any grounding model for click prediction
+agent = ComputerAgent("claude-3-5-sonnet-20241022", tools=[computer])
+
+# Predict coordinates for specific elements
+login_coords = agent.predict_click("find the login button")
+search_coords = agent.predict_click("locate the search text field")
+menu_coords = agent.predict_click("find the hamburger menu icon")
+
+print(f"Login button: {login_coords}")
+print(f"Search field: {search_coords}")
+print(f"Menu icon: {menu_coords}")
+```
+
+```python
+# OmniParser is just for OCR, so it requires an LLM for predict_click
+agent = ComputerAgent("omniparser+anthropic/claude-3-5-sonnet-20241022", tools=[computer])
+
+# Predict click coordinates using composed agent
+coords = agent.predict_click("find the submit button")
+print(f"Click coordinates: {coords}")  # (450, 320)
+
+# Note: Cannot use omniparser alone for click prediction
+# This will raise an error:
+# agent = ComputerAgent("omniparser", tools=[computer])
+# coords = agent.predict_click("find button")  # Error!
+```
 
 ```python
 agent = ComputerAgent("huggingface-local/HelloKKMe/GTA1-7B", tools=[computer])
@@ -47,24 +83,6 @@ print(f"Click coordinates: {coords}")  # (450, 320)
 # agent.run("Fill out the form and submit it")
 ```
 
-## Usage Examples
-
-```python
-# Using any grounding model for click prediction
-agent = ComputerAgent("claude-3-5-sonnet-20241022", tools=[computer])
-
-# Take a screenshot first
-screenshot = agent.computer.screenshot()
-
-# Predict coordinates for specific elements
-login_coords = agent.predict_click("find the login button")
-search_coords = agent.predict_click("locate the search text field")
-menu_coords = agent.predict_click("find the hamburger menu icon")
-
-print(f"Login button: {login_coords}")
-print(f"Search field: {search_coords}")
-print(f"Menu icon: {menu_coords}")
-```
 
 ---
 
