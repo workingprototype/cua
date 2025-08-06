@@ -64,7 +64,7 @@ class OpenAIComputerHandler:
     async def keypress(self, keys: Union[List[str], str]) -> None:
         """Press key combination."""
         if isinstance(keys, str):
-            keys = [keys]
+            keys = keys.replace("-", "+").split("+")
         if len(keys) == 1:
             await self.interface.press_key(keys[0])
         else:
