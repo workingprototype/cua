@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Try to import pyautogui
 try:
     import pyautogui
+    pyautogui.FAILSAFE = False
     logger.info("pyautogui successfully imported, GUI automation available")
 except Exception as e:
     logger.error(f"pyautogui import failed: {str(e)}. GUI operations will not work.")
