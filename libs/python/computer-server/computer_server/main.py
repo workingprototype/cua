@@ -33,10 +33,15 @@ app = FastAPI(
 
 protocol_version = 1
 try:
-    import pkg_resources
-    package_version = pkg_resources.get_distribution("cua-computer-server").version
-except pkg_resources.DistributionNotFound:
-    package_version = "unknown"
+    from importlib.metadata import version
+    package_version = version("cua-computer-server")
+except Exception:
+    # Fallback for cases where package is not installed or importlib.metadata is not available
+    try:
+        import pkg_resources
+        package_version = pkg_resources.get_distribution("cua-computer-server").version
+    except Exception:
+        package_version = "unknown"
 
 accessibility_handler, automation_handler, diorama_handler, file_handler = HandlerFactory.create_handlers()
 handlers = {

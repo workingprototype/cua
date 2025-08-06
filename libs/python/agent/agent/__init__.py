@@ -1,12 +1,27 @@
-"""CUA (Computer Use) Agent for AI-driven computer interaction."""
+"""
+agent - Decorator-based Computer Use Agent with liteLLM integration
+"""
 
-import sys
 import logging
+import sys
 
-__version__ = "0.1.0"
+from .decorators import register_agent
+from .agent import ComputerAgent
+from .types import Messages, AgentResponse
 
-# Initialize logging
-logger = logging.getLogger("agent")
+# Import loops to register them
+from . import loops
+
+__all__ = [
+    "register_agent",
+    "ComputerAgent",
+    "Messages",
+    "AgentResponse"
+]
+
+__version__ = "0.4.0"
+
+logger = logging.getLogger(__name__)
 
 # Initialize telemetry when the package is imported
 try:
@@ -18,7 +33,7 @@ try:
     )
 
     # Import set_dimension from our own telemetry module
-    from .core.telemetry import set_dimension
+    from .telemetry import set_dimension
 
     # Check if telemetry is enabled
     if is_telemetry_enabled():
@@ -47,9 +62,3 @@ except ImportError as e:
 except Exception as e:
     # Other issues with telemetry
     logger.warning(f"Error initializing telemetry: {e}")
-
-from .core.types import LLMProvider, LLM
-from .core.factory import AgentLoop
-from .core.agent import ComputerAgent
-
-__all__ = ["AgentLoop", "LLMProvider", "LLM", "ComputerAgent"]

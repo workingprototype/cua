@@ -1,6 +1,6 @@
-# C/ua Core TypeScript Library
+# Cua Core TypeScript Library
 
-The core c/ua library with support for telemetry and other utilities.
+The core cua library with support for telemetry and other utilities.
 
 ## Development
 
@@ -24,4 +24,4 @@ pnpm build
 
 ## License
 
-[MIT](./LICENSE) License 2025 [C/UA](https://github.com/trycua)
+[MIT](./LICENSE) License 2025 [CUA](https://github.com/trycua)
