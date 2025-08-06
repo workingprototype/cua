@@ -801,7 +801,7 @@ class Computer:
         result = await self.interface.run_command(check_cmd)
         
         if result.stderr or "test:" in result.stdout:  # venv doesn't exist
-            return "", f"Virtual environment '{venv_name}' does not exist. Create it first using venv_install."
+            await self.venv_install(venv_name, [])
         
         # Activate virtual environment and run command
         full_command = f". {venv_path}/bin/activate && {command}"
@@ -930,3 +930,92 @@ print(f"<<<VENV_EXEC_START>>>{{output_json}}<<<VENV_EXEC_END>>>")
         else:
             # Fallback: return stdout/stderr if no payload markers found
             raise Exception(f"No output payload found. stdout: {result.stdout}, stderr: {result.stderr}")
+    
+    async def launch_gradio_ui(self, **gradio_kwargs):
+        """Launch the Gradio UI for this computer instance in a separate process.
+        
+        Args:
+            **gradio_kwargs: Additional keyword arguments to pass to app.launch()
+                           (e.g., share=True, inbrowser=True, server_port=7860, etc.)
+        
+        Returns:
+            Tuple of (dataset_path, dataset) where dataset is loaded if available, None otherwise
+        """
+        import sys
+        import asyncio
+        import json
+        import tempfile
+        import os
+        
+        # Get the current Python executable
+        python_executable = sys.executable
+        
+        # Prepare computer kwargs
+        computer_kwargs = {
+            'os_type': self.os_type,
+            'provider_type': self.provider_type,
+            'name': self.config.name,
+        }
+        
+        # Add API key if available
+        if hasattr(self, 'api_key') and self.api_key:
+            computer_kwargs['api_key'] = self.api_key
+        
+        # Create a temporary file to pass arguments
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config = {
+                'computer_kwargs': computer_kwargs,
+                'gradio_kwargs': gradio_kwargs
+            }
+            json.dump(config, f)
+            config_file = f.name
+        
+        try:
+            # Build the command to launch the UI
+            cmd = [
+                python_executable,
+                '-m', 'computer.ui',
+                '--config', config_file
+            ]
+            
+            print(f"Launching Gradio UI in separate process: {' '.join(cmd)}")
+            
+            # Start the async process
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            dataset_path = None
+            
+            # Wait for process to complete and get any output
+            stdout, stderr = await process.communicate()
+            
+            if stdout:
+                stdout_str = stdout.decode('utf-8')
+                # Check for any additional auto-save messages
+                for line in stdout_str.split('\n'):
+                    if "Successfully auto-saved to:" in line:
+                        dataset_path = line.split("Successfully auto-saved to: ")[-1].strip()
+            
+            # if stderr:
+            #     stderr_str = stderr.decode('utf-8')
+            #     print(f"Stderr: {stderr_str}")
+            
+            # Try to load and return the dataset if datasets is available
+            if dataset_path:
+                try:
+                    from datasets import load_from_disk
+                    dataset = load_from_disk(dataset_path)
+                    return dataset_path, dataset
+                except ImportError:
+                    return dataset_path, None
+            
+            return None, None
+            
+        finally:
+            # Clean up the temporary config file
+            try:
+                os.unlink(config_file)
+            except OSError:
+                pass
