@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # This allows the server to run in headless environments
 try:
     import pyautogui
+    pyautogui.FAILSAFE = False
 
     logger.info("pyautogui successfully imported, GUI automation available")
 except Exception as e:

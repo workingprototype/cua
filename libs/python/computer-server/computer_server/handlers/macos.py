@@ -1,4 +1,5 @@
 import pyautogui
+pyautogui.FAILSAFE = False
 from pynput.mouse import Button, Controller as MouseController
 from pynput.keyboard import Key, Controller as KeyboardController
 import time
