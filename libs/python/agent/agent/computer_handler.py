@@ -3,7 +3,7 @@ Computer handler implementation for OpenAI computer-use-preview protocol.
 """
 
 import base64
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Union
 from .types import Computer
 
 
@@ -61,8 +61,10 @@ class OpenAIComputerHandler:
         """Move cursor to coordinates."""
         await self.interface.move_cursor(x, y)
     
-    async def keypress(self, keys: List[str]) -> None:
+    async def keypress(self, keys: Union[List[str], str]) -> None:
         """Press key combination."""
+        if isinstance(keys, str):
+            keys = [keys]
         if len(keys) == 1:
             await self.interface.press_key(keys[0])
         else:
