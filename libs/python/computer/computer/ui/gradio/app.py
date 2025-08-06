@@ -94,12 +94,17 @@ session_id = str(uuid.uuid4())
 
 # Global computer instance, tool call logs, memory, and chatbot messages
 computer = None
+_computer_kwargs = {}
 tool_call_logs = []
 memory = ""
 last_action = {"name": "", "action": "", "arguments": {}}
 last_screenshot = None  # Store the most recent screenshot
 last_screenshot_before = None  # Store the most [-2]th recent screenshot
 screenshot_images = []  # Array to store all screenshot images
+
+# Demo mode variables
+demo_mode = False
+demo_auto_save_path = None
 
 # Define a constant for the output directory
 OUTPUT_DIR = "examples/output"
@@ -314,22 +319,40 @@ def upload_to_huggingface(dataset_name, visibility, filter_tags=None):
     except Exception as e:
         return f"Error uploading to HuggingFace: {str(e)}"
 
-def save_demonstration(log_data, demo_name=None, demo_tags=None):
+from pathlib import Path
+def save_demonstration(log_data, demo_name=None, demo_tags=None, demo_dir=None):
     """Save the current tool call logs as a demonstration file using HuggingFace datasets"""
     global tool_call_logs, session_id
     
     if not tool_call_logs:
         return "No data to save", None
     
-    # Create output directories if they don't exist
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
-    if not os.path.exists(SESSION_DIR):
-        os.makedirs(SESSION_DIR)
+    # Handle Path instance for demo_name
+    if isinstance(demo_name, Path):
+        session_folder = str(demo_name.resolve())
+        # Create the directory if it doesn't exist
+        if not os.path.exists(session_folder):
+            os.makedirs(session_folder)
+    else:
+        if not demo_dir:
+            # Create output directories if they don't exist
+            if not os.path.exists(OUTPUT_DIR):
+                os.makedirs(OUTPUT_DIR)
+            if not os.path.exists(SESSION_DIR):
+                os.makedirs(SESSION_DIR)
+            
+        # Use default name if none provided
+        if not demo_name or demo_name.strip() == "":
+            demo_name = generate_random_demo_name()
         
-    # Use default name if none provided
-    if not demo_name or demo_name.strip() == "":
-        demo_name = generate_random_demo_name()
+        # Create a unique folder name with demonstration name, session ID and timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = demo_name.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+        session_folder = os.path.join(SESSION_DIR, f"{safe_name}_{session_id}_{timestamp}")
+        
+        # Create the directory if it doesn't exist
+        if not os.path.exists(session_folder):
+            os.makedirs(session_folder)
     
     # Process tags
     tags = []
@@ -353,7 +376,7 @@ def save_demonstration(log_data, demo_name=None, demo_tags=None):
     demonstration_dataset = [{
         "timestamp": str(log_time),
         "session_id": str(session_id),
-        "name": str(demo_name),
+        "name": str(demo_name) if not isinstance(demo_name, Path) else demo_name.name,
         "tool_calls": json.dumps(tool_call_logs),
         "messages": json.dumps([msg_to_dict(msg) for msg in get_chatbot_messages(tool_call_logs)]),
         "tags": list(tags),
@@ -374,15 +397,6 @@ def save_demonstration(log_data, demo_name=None, demo_tags=None):
                 'images': Sequence(datasets.Image()),
             })
         )
-        
-        # Create a unique folder name with demonstration name, session ID and timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_name = demo_name.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
-        session_folder = os.path.join(SESSION_DIR, f"{safe_name}_{session_id}_{timestamp}")
-        
-        # Create the directory if it doesn't exist
-        if not os.path.exists(session_folder):
-            os.makedirs(session_folder)
         
         # Save the dataset to the unique folder
         new_session_ds.save_to_disk(session_folder)
@@ -434,7 +448,7 @@ def log_tool_call(name, action, arguments, result=None):
 
 async def execute(name, action, arguments):
     """Execute a tool call, log it, and return any results"""
-    global computer, last_action, last_screenshot, last_screenshot_before
+    global computer, last_action, last_screenshot, last_screenshot_before, demo_mode, demo_auto_save_path
     
     last_screenshot_before = last_screenshot
     
@@ -526,6 +540,29 @@ async def execute(name, action, arguments):
         # Update last_screenshot with the new screenshot
         last_screenshot = screenshot_img
     
+    # Auto-save in demo mode
+    if demo_mode and tool_call_logs:
+        try:
+            # Generate a unique demo name for auto-save
+            auto_demo_name = f"auto_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{len(tool_call_logs)}"
+            
+            # Create a temporary directory path
+            import tempfile
+            tmp_dir = Path(tempfile.gettempdir())
+            demo_path = tmp_dir / auto_demo_name
+            
+            # Save the demonstration
+            save_path = save_demonstration(
+                tool_call_logs, 
+                demo_name=demo_path, 
+                demo_tags=["auto_saved", "demo_mode"]
+            )
+            
+            if save_path:
+                print(f"Successfully auto-saved to: {demo_path.resolve()}", flush=True)
+        except Exception as e:
+            print(f"Auto-save failed: {str(e)}")
+    
     return results
 
 async def handle_init_computer(os_choice: str, app_list=None, provider="lume", container_name=None, api_key=None):
@@ -538,8 +575,38 @@ async def handle_init_computer(os_choice: str, app_list=None, provider="lume", c
         container_name: The container name to use for cloud provider
         api_key: The API key to use for cloud provider
     """
-    global computer, tool_call_logs, tools
+    global computer, tool_call_logs, _computer_kwargs
     
+    # If computer is already initialized (passed to create_gradio_ui), skip initialization
+    if computer is not None:
+        # Log computer initialization as a tool call
+        init_params = {
+            "os": getattr(computer, 'os_type', 'unknown'),
+            "provider": getattr(computer, 'provider_type', 'unknown'),
+            "status": "already_initialized"
+        }
+        result = await execute("computer", "initialize", init_params)
+        return result["screenshot"], json.dumps(tool_call_logs, indent=2)
+    
+    print("Initializing computer...")
+    print(f"_computer_kwargs: {_computer_kwargs}")
+    print(f"computer: {computer}")
+
+    # If computer kwargs were provided to create_gradio_ui, use them
+    if _computer_kwargs:
+        computer = Computer(**_computer_kwargs)
+        await computer.run()
+        
+        # Log computer initialization as a tool call
+        init_params = {
+            "os": getattr(computer, 'os_type', 'unknown'),
+            "provider": getattr(computer, 'provider_type', 'unknown'),
+            "status": "initialized_from_kwargs"
+        }
+        result = await execute("computer", "initialize", init_params)
+        return result["screenshot"], json.dumps(tool_call_logs, indent=2)
+    
+    # Otherwise, use UI inputs to create computer instance
     # Check if we should enable app-use experiment
     use_app_experiment = app_list and len(app_list) > 0
     experiments = ["app-use"] if use_app_experiment else None
@@ -898,9 +965,24 @@ async def submit_message(message_text, role, screenshot_after=False):
         # Return last screenshot if available
         return f"Message submitted as {role}", get_chatbot_messages(), json.dumps(tool_call_logs, indent=2), last_screenshot
 
-def create_gradio_ui():
+def create_gradio_ui(computer_instance=None, demo_mode_enabled=False, **computer_kwargs):
+    # Set global variables for computer instance and kwargs
+    global computer, _computer_kwargs, demo_mode
+    
+    # Set demo mode
+    demo_mode = demo_mode_enabled
+    
+    if computer_instance is not None:
+        computer = computer_instance
+    elif computer_kwargs:
+        _computer_kwargs = computer_kwargs
+    
     with gr.Blocks() as app:
-        gr.Markdown("# Computer Interface Tool")
+        title = "# Computer Interface Tool"
+        if demo_mode:
+            computer_name = "Computer" if not _computer_kwargs.get("name") else _computer_kwargs["name"]
+            title = f"# Demonstration Tool ({computer_name})"
+        gr.Markdown(title)
         
         with gr.Row():
             with gr.Column(scale=3):
@@ -945,7 +1027,7 @@ def create_gradio_ui():
                                 every=0.2
                             )
                             clear_log_btn = gr.Button("Clear Log")
-                    with gr.TabItem("Save/Share Demonstrations"):
+                    with gr.TabItem("Save/Share Demonstrations", visible=(not demo_mode)):
                         with gr.Row():
                             with gr.Column(scale=3):
                                 # Dataset viewer - automatically loads sessions with selection column
@@ -1059,7 +1141,7 @@ def create_gradio_ui():
                                 )
                         
             with gr.Column(scale=1):
-                with gr.Accordion("Memory / Scratchpad", open=False):
+                with gr.Accordion("Memory / Scratchpad", open=False, visible=(not demo_mode)):
                     with gr.Group():
                         memory_display = gr.Textbox(
                             label="Current Memory",
@@ -1071,7 +1153,7 @@ def create_gradio_ui():
                             memory_refine_btn = gr.Button("Refine")
                     memory_status = gr.Textbox(label="Status", value="")
                 
-                with gr.Accordion("Tasks", open=True):
+                with gr.Accordion("Tasks", open=True, visible=False):
                     # Add current task display and controls
                     with gr.Group():
                         current_task = gr.Textbox(
@@ -1086,7 +1168,8 @@ def create_gradio_ui():
                     setup_status = gr.Textbox(label="Setup Status", value="")
                 
                 with gr.Group():
-                    with gr.Accordion("Computer Configuration", open=False):
+                    has_computer = computer is not None or computer_kwargs is not None
+                    with gr.Accordion("Computer Configuration", open=False, visible=(not has_computer)):
                         with gr.Row():
                             os_choice = gr.Radio(
                                 label="OS",
@@ -1146,7 +1229,13 @@ def create_gradio_ui():
                             outputs=[container_name, api_key_field]
                         )
                     
-                    start_btn = gr.Button("Initialize Computer")
+                    if not demo_mode:
+                        start_btn = gr.Button("Initialize Computer")
+                    else:
+                        with gr.Row():
+                            start_btn = gr.Button("🟢 START", variant="secondary")
+                            stop_btn = gr.Button("🔴 STOP", variant="stop")
+
                 
                 with gr.Group():
                     input_text = gr.Textbox(label="Type Text")
@@ -1311,6 +1400,21 @@ def create_gradio_ui():
                 
         img.select(handle_click, inputs=[img, click_type], outputs=[img, action_log])
         start_btn.click(handle_init_computer, inputs=[os_choice, app_filter, provider_choice, container_name, api_key_field], outputs=[img, action_log])
+        
+        # Add stop button handler for demo mode
+        if demo_mode:
+            def handle_stop():
+                """Stop the Gradio app gracefully"""
+                # Use Gradio's close method to stop just the UI
+                print("Exiting computer control...", flush=True)
+                # Close the Gradio app
+                os._exit(0)
+                # app.close()
+                # exit()
+                
+                return "Application stopped"
+            
+            stop_btn.click(handle_stop)
         wait_btn.click(handle_wait, outputs=[img, action_log])
         
         # DONE and FAIL buttons just do a placeholder action
@@ -1642,6 +1746,35 @@ Provide ONLY the refined text, with no additional commentary or markdown."""
             inputs=[message_text, message_role, screenshot_after_msg], 
             outputs=[message_status, chat_log, action_log, img]
         )
+        
+        # Auto-initialize computer if kwargs were provided
+        async def auto_init_computer():
+            print("Auto-initializing computer...")
+            if computer_kwargs and computer is None:
+                # Extract default values from kwargs for handle_init_computer
+                os_choice = computer_kwargs.get('os_type', 'linux')
+                provider = computer_kwargs.get('provider_type', 'lume')
+                container_name = computer_kwargs.get('name', '')
+                api_key = computer_kwargs.get('api_key', '')
+                
+                # Call handle_init_computer to initialize
+                screenshot, logs = await handle_init_computer(
+                    os_choice=os_choice,
+                    provider=provider,
+                    container_name=container_name,
+                    api_key=api_key
+                )
+                
+                # Update the UI components
+                return screenshot, logs
+            return None, None
+        
+        # # Set up auto-initialization on app load if computer_kwargs provided
+        # if computer_kwargs and computer is None:
+        #     app.load(
+        #         auto_init_computer,
+        #         outputs=[img, action_log]
+        #     )
 
     return app
 
