@@ -94,14 +94,14 @@ def print_action(action_type: str, details: Dict[str, Any], total_cost: float):
     # Format action details
     args_str = ""
     if action_type == "click" and "x" in details and "y" in details:
-        args_str = f"({details['x']}, {details['y']})"
+        args_str = f"_{details['button']}({details['x']}, {details['y']})"
     elif action_type == "type" and "text" in details:
         text = details["text"]
         if len(text) > 50:
             text = text[:47] + "..."
-        args_str = f'"{text}"'
-    elif action_type == "key" and "key" in details:
-        args_str = f"'{details['key']}'"
+        args_str = f'("{text}")'
+    elif action_type == "key" and "text" in details:
+        args_str = f"('{details['text']}')"
     elif action_type == "scroll" and "x" in details and "y" in details:
         args_str = f"({details['x']}, {details['y']})"
     

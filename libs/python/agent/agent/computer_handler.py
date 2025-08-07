@@ -3,7 +3,7 @@ Computer handler implementation for OpenAI computer-use-preview protocol.
 """
 
 import base64
-from typing import Dict, List, Any, Literal, Union
+from typing import Dict, List, Any, Literal, Union, Optional
 from .types import Computer
 
 
@@ -14,11 +14,13 @@ class OpenAIComputerHandler:
         """Initialize with a computer interface (from tool schema)."""
         self.interface = computer_interface
     
+    # ==== Computer-Use-Preview Action Space ==== 
+
     async def get_environment(self) -> Literal["windows", "mac", "linux", "browser"]:
         """Get the current environment type."""
         # For now, return a default - this could be enhanced to detect actual environment
         return "windows"
-    
+
     async def get_dimensions(self) -> tuple[int, int]:
         """Get screen dimensions as (width, height)."""
         screen_size = await self.interface.get_screen_size()
@@ -94,6 +96,14 @@ class OpenAIComputerHandler:
         # For now, return empty string
         return ""
 
+    # ==== Anthropic Computer Action Space ==== 
+    async def left_mouse_down(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
+        """Left mouse down at coordinates."""
+        await self.interface.mouse_down(x, y, button="left")
+    
+    async def left_mouse_up(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
+        """Left mouse up at coordinates."""
+        await self.interface.mouse_up(x, y, button="left")
 
 def acknowledge_safety_check_callback(message: str, allow_always: bool = False) -> bool:
     """Safety check callback for user acknowledgment."""
