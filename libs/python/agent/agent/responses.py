@@ -207,7 +207,7 @@ def make_wait_item(call_id: Optional[str] = None) -> ResponseComputerToolCallPar
     )
 
 # Extra anthropic computer calls
-def make_left_mouse_down_item(x: int, y: int, call_id: Optional[str] = None) -> Dict[str, Any]:
+def make_left_mouse_down_item(x: Optional[int] = None, y: Optional[int] = None, call_id: Optional[str] = None) -> Dict[str, Any]:
     return {
         "id": random_id(),
         "call_id": call_id if call_id else random_id(),
@@ -221,7 +221,7 @@ def make_left_mouse_down_item(x: int, y: int, call_id: Optional[str] = None) -> 
         "type": "computer_call"
     }
 
-def make_left_mouse_up_item(x: int, y: int, call_id: Optional[str] = None) -> Dict[str, Any]:
+def make_left_mouse_up_item(x: Optional[int] = None, y: Optional[int] = None, call_id: Optional[str] = None) -> Dict[str, Any]:
     return {
         "id": random_id(),
         "call_id": call_id if call_id else random_id(),

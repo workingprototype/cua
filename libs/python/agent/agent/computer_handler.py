@@ -3,7 +3,7 @@ Computer handler implementation for OpenAI computer-use-preview protocol.
 """
 
 import base64
-from typing import Dict, List, Any, Literal, Union
+from typing import Dict, List, Any, Literal, Union, Optional
 from .types import Computer
 
 
@@ -97,11 +97,11 @@ class OpenAIComputerHandler:
         return ""
 
     # ==== Anthropic Computer Action Space ==== 
-    async def left_mouse_down(self, x: int, y: int) -> None:
+    async def left_mouse_down(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         """Left mouse down at coordinates."""
         await self.interface.mouse_down(x, y, button="left")
     
-    async def left_mouse_up(self, x: int, y: int) -> None:
+    async def left_mouse_up(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         """Left mouse up at coordinates."""
         await self.interface.mouse_up(x, y, button="left")
 

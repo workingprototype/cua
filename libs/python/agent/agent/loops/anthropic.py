@@ -568,6 +568,26 @@ def _convert_responses_items_to_completion_messages(messages: Messages) -> List[
                         "action": "screenshot"
                     }
                 })
+            elif action_type == "left_mouse_down":
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "left_mouse_down",
+                        "coordinate": [action.get("x", None), action.get("y", None)]
+                    }
+                })
+            elif action_type == "left_mouse_up":
+                tool_use_content.append({
+                    "type": "tool_use",
+                    "id": call_id,
+                    "name": "computer",
+                    "input": {
+                        "action": "left_mouse_up",
+                        "coordinate": [action.get("x", None), action.get("y", None)]
+                    }
+                })
             
             # Convert tool_use_content to OpenAI tool_calls format
             openai_tool_calls = []
@@ -762,10 +782,10 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                                 #         "y": coordinate[1] if len(coordinate) > 1 else 0
                                 #     }
                                 # })
-                                coordinate = tool_input.get("coordinate", [0, 0])
+                                coordinate = tool_input.get("coordinate", [None, None])
                                 responses_items.append(make_left_mouse_down_item(
-                                    x=coordinate[0] if len(coordinate) > 0 else 0,
-                                    y=coordinate[1] if len(coordinate) > 1 else 0,
+                                    x=coordinate[0] if len(coordinate) > 0 else None,
+                                    y=coordinate[1] if len(coordinate) > 1 else None,
                                     call_id=call_id
                                 ))
                             elif action_type == "left_mouse_up":
@@ -780,10 +800,10 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                                 #         "y": coordinate[1] if len(coordinate) > 1 else 0
                                 #     }
                                 # })
-                                coordinate = tool_input.get("coordinate", [0, 0])
+                                coordinate = tool_input.get("coordinate", [None, None])
                                 responses_items.append(make_left_mouse_up_item(
-                                    x=coordinate[0] if len(coordinate) > 0 else 0,
-                                    y=coordinate[1] if len(coordinate) > 1 else 0,
+                                    x=coordinate[0] if len(coordinate) > 0 else None,
+                                    y=coordinate[1] if len(coordinate) > 1 else None,
                                     call_id=call_id
                                 ))
                             elif action_type == "hold_key":
@@ -1189,10 +1209,10 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             #         "y": 280
                             #     }
                             # }
-                            coordinate = args.get("coordinate", [0, 0])
+                            coordinate = args.get("coordinate", [None, None])
                             responses_items.append(make_left_mouse_down_item(
-                                x=coordinate[0] if len(coordinate) > 0 else 0,
-                                y=coordinate[1] if len(coordinate) > 1 else 0,
+                                x=coordinate[0] if len(coordinate) > 0 else None,
+                                y=coordinate[1] if len(coordinate) > 1 else None,
                                 call_id=call_id
                             ))
                         elif action_type == "left_mouse_up":
@@ -1220,10 +1240,10 @@ def _convert_completion_to_responses_items(response: Any) -> List[Dict[str, Any]
                             #         "y": 300
                             #     }
                             # }
-                            coordinate = args.get("coordinate", [0, 0])
+                            coordinate = args.get("coordinate", [None, None])
                             responses_items.append(make_left_mouse_up_item(
-                                x=coordinate[0] if len(coordinate) > 0 else 0,
-                                y=coordinate[1] if len(coordinate) > 1 else 0,
+                                x=coordinate[0] if len(coordinate) > 0 else None,
+                                y=coordinate[1] if len(coordinate) > 1 else None,
                                 call_id=call_id
                             ))
                         elif action_type == "hold_key":
