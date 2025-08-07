@@ -206,6 +206,51 @@ def make_wait_item(call_id: Optional[str] = None) -> ResponseComputerToolCallPar
         type="computer_call"
     )
 
+# Extra anthropic computer calls
+def make_left_mouse_down_item(x: int, y: int, call_id: Optional[str] = None) -> Dict[str, Any]:
+    return {
+        "id": random_id(),
+        "call_id": call_id if call_id else random_id(),
+        "action": {
+            "type": "left_mouse_down",
+            "x": x,
+            "y": y
+        },
+        "pending_safety_checks": [],
+        "status": "completed",
+        "type": "computer_call"
+    }
+
+def make_left_mouse_up_item(x: int, y: int, call_id: Optional[str] = None) -> Dict[str, Any]:
+    return {
+        "id": random_id(),
+        "call_id": call_id if call_id else random_id(),
+        "action": {
+            "type": "left_mouse_up",
+            "x": x,
+            "y": y
+        },
+        "pending_safety_checks": [],
+        "status": "completed",
+        "type": "computer_call"
+    }
+
+def make_failed_tool_call_items(tool_name: str, tool_kwargs: Dict[str, Any], error_message: str, call_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    call_id = call_id if call_id else random_id()
+    return [
+        {
+            "type": "function_call",
+            "id": random_id(),
+            "call_id": call_id,
+            "name": tool_name,
+            "arguments": json.dumps(tool_kwargs),
+        },
+        {
+            "type": "function_call_output",
+            "call_id": call_id,
+            "output": json.dumps({"error": error_message}),
+        }
+    ]
 
 # Conversion functions between element descriptions and coordinates
 def convert_computer_calls_desc2xy(responses_items: List[Dict[str, Any]], desc2xy: Dict[str, tuple]) -> List[Dict[str, Any]]:
