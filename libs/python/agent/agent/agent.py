@@ -468,12 +468,12 @@ class ComputerAgent:
                 },
             }
             
-            # Additional URL safety checks for browser environments
-            if await computer.get_environment() == "browser":
-                current_url = await computer.get_current_url()
-                call_output["output"]["current_url"] = current_url
-                # TODO: implement a callback for URL safety checks
-                # check_blocklisted_url(current_url)
+            # # Additional URL safety checks for browser environments
+            # if await computer.get_environment() == "browser":
+            #     current_url = await computer.get_current_url()
+            #     call_output["output"]["current_url"] = current_url
+            #     # TODO: implement a callback for URL safety checks
+            #     # check_blocklisted_url(current_url)
             
             result = [call_output]
             await self._on_computer_call_end(item, result)
