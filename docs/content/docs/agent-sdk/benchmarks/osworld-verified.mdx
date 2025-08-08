@@ -65,11 +65,12 @@ Run all tasks in parallel using `run_job`:
 ```python
 from agent.integrations.hud import run_job
 from hud import load_taskset
+from hud.taskset import TaskSet
 import logging
 
 # Load taskset
 taskset = await load_taskset("OSWorld-Verified")
-taskset = taskset[:10] # limit to 10 tasks instead of all 370
+taskset = TaskSet(tasks=taskset[:10]) # limit to 10 tasks instead of all 370
 
 # Run benchmark job
 job = await run_job(
