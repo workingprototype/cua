@@ -217,6 +217,35 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
 
                     self.conversation_history.append({"role": "user", "content": input_content})                  
 
+                # If the last message is a reasoning message, change it to output_text
+                if (self.conversation_history and 
+                    self.conversation_history[-1].get("type") == "reasoning" and 
+                    self.conversation_history[-1].get("summary")):
+                    
+                    reasoning_msg = self.conversation_history[-1]
+                    summary_texts = []
+                    
+                    # Extract all summary_text entries
+                    for summary_item in reasoning_msg["summary"]:
+                        if summary_item.get("type") == "summary_text":
+                            summary_texts.append(summary_item.get("text", ""))
+                    
+                    # Convert to message format with output_text
+                    if summary_texts:
+                        converted_message = {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "text": " ".join(summary_texts),
+                                    "type": "output_text"
+                                }
+                            ]
+                        }
+                        
+                        # Replace the reasoning message with the converted message
+                        self.conversation_history[-1] = converted_message
+
             # Run ComputerAgent
             try:
                 # ComputerAgent.run returns an async generator
