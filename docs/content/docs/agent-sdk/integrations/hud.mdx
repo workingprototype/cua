@@ -21,6 +21,7 @@ from hud import load_taskset
 
 # Load taskset
 taskset = await load_taskset("OSWorld-Verified")
+taskset = taskset[:10] # limit to 10 tasks instead of all 370
 
 # Run benchmark job
 job = await run_job(

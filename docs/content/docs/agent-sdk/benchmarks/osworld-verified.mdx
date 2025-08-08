@@ -65,17 +65,20 @@ Run all tasks in parallel using `run_job`:
 ```python
 from agent.integrations.hud import run_job
 from hud import load_taskset
+import logging
 
 # Load taskset
-taskset = await load_taskset("SheetBench-V2")
+taskset = await load_taskset("OSWorld-Verified")
+taskset = taskset[:10] # limit to 10 tasks instead of all 370
 
 # Run benchmark job
 job = await run_job(
-    model="anthropic/claude-3-5-sonnet-20241022",
+    model="openai/computer-use-preview",
     task_or_taskset=taskset,
     job_name="test-computeragent-job",
-    # Any extra ComputerAgent kwargs:
-    # verbosity=logging.INFO,  # Enable logging
+    max_concurrent_tasks=5,
+    # add any extra ComputerAgent kwargs:
+    verbosity=logging.INFO,  # Enable logging
     # trajectory_dir=".."       # Save trajectories locally
 )
 
