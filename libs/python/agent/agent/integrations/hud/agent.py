@@ -175,7 +175,8 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                         # Stop at the last user message
                         break
                 
-                if last_computer_calls and observation.screenshot:
+                if last_computer_calls:
+                    screenshot_b64 = await self.hud_computer.screenshot()
                     # Add computer_call_output for each unresponded computer_call
                     for call_id in reversed(last_computer_calls):  # Maintain order
                         self.conversation_history.append({
@@ -183,7 +184,7 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                             "call_id": call_id,
                             "output": {
                                 "type": "input_image",
-                                "image_url": f"data:image/png;base64,{observation.screenshot}"
+                                "image_url": f"data:image/png;base64,{screenshot_b64}"
                             }
                         })
                 else:
