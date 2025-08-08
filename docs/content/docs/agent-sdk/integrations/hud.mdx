@@ -28,6 +28,8 @@ taskset = TaskSet(tasks=taskset[:10]) # limit to 10 tasks instead of all 370
 # Run benchmark job
 job = await run_job(
     model="openai/computer-use-preview",
+    # model="anthropic/claude-3-5-sonnet-20241022",
+    # model="huggingface-local/HelloKKMe/GTA1-7B+openai/gpt-5",
     task_or_taskset=taskset,
     job_name="test-computeragent-job",
     max_concurrent_tasks=5,
