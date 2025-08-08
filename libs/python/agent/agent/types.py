@@ -9,7 +9,7 @@ from litellm import ResponseInputParam, ResponsesAPIResponse, ToolParam
 from collections.abc import Iterable
 
 # Agent input types
-Messages = str | ResponseInputParam
+Messages = str | ResponseInputParam | List[Dict[str, Any]]
 Tools = Optional[Iterable[ToolParam]]
 
 # Agent output types

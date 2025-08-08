@@ -23,6 +23,7 @@ from .callbacks import (
 )
 from .computers import (
     ComputerHandler,
+    is_agent_computer,
     make_computer_handler
 )
 
@@ -239,10 +240,6 @@ class ComputerAgent:
     async def _initialize_computers(self):
         """Initialize computer objects"""
         if not self.tool_schemas:
-            for tool in self.tools:
-                if hasattr(tool, '_initialized') and not tool._initialized:
-                    await tool.run()
-                
             # Process tools and create tool schemas
             self.tool_schemas = self._process_tools()
             
@@ -250,7 +247,7 @@ class ComputerAgent:
             computer_handler = None
             for schema in self.tool_schemas:
                 if schema["type"] == "computer":
-                    computer_handler = make_computer_handler(schema["computer"])
+                    computer_handler = await make_computer_handler(schema["computer"])
                     break
             self.computer_handler = computer_handler
     
@@ -266,7 +263,7 @@ class ComputerAgent:
         
         for tool in self.tools:
             # Check if it's a computer object (has interface attribute)
-            if hasattr(tool, 'interface'):
+            if is_agent_computer(tool):
                 # This is a computer tool - will be handled by agent loop
                 schemas.append({
                     "type": "computer",

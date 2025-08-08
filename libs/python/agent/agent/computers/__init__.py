@@ -8,14 +8,21 @@ Computer library interface.
 
 from .base import ComputerHandler
 from .cua import cuaComputerHandler
-from computer import Computer
+from .custom import CustomComputerHandler
+from computer import Computer as cuaComputer
 
-def make_computer_handler(computer):
+def is_agent_computer(computer):
+    """Check if the given computer is a ComputerHandler or CUA Computer."""
+    return isinstance(computer, ComputerHandler) or \
+        isinstance(computer, cuaComputer) or \
+        (isinstance(computer, dict)) #and "screenshot" in computer)
+
+async def make_computer_handler(computer):
     """
     Create a computer handler from a computer interface.
     
     Args:
-        computer: Either a ComputerHandler instance or a Computer instance
+        computer: Either a ComputerHandler instance, Computer instance, or dict of functions
         
     Returns:
         ComputerHandler: A computer handler instance
@@ -25,6 +32,10 @@ def make_computer_handler(computer):
     """
     if isinstance(computer, ComputerHandler):
         return computer
-    if isinstance(computer, Computer):
-        return cuaComputerHandler(computer)
+    if isinstance(computer, cuaComputer):
+        computer_handler = cuaComputerHandler(computer)
+        await computer_handler._initialize()
+        return computer_handler
+    if isinstance(computer, dict):
+        return CustomComputerHandler(computer)
     raise ValueError(f"Unsupported computer type: {type(computer)}")
