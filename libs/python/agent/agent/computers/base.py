@@ -6,7 +6,7 @@ from typing import Protocol, Literal, List, Dict, Any, Union, Optional, runtime_
 
 
 @runtime_checkable
-class ComputerHandler(Protocol):
+class AsyncComputerHandler(Protocol):
     """Protocol defining the interface for computer interactions."""
     
     # ==== Computer-Use-Preview Action Space ==== 

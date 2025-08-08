@@ -4,10 +4,10 @@ Computer handler implementation for OpenAI computer-use-preview protocol.
 
 import base64
 from typing import Dict, List, Any, Literal, Union, Optional
-from .base import ComputerHandler
+from .base import AsyncComputerHandler
 from computer import Computer
 
-class cuaComputerHandler(ComputerHandler):
+class cuaComputerHandler(AsyncComputerHandler):
     """Computer handler that implements the Computer protocol using the computer interface."""
     
     def __init__(self, cua_computer: Computer):

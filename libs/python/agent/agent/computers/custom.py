@@ -6,10 +6,10 @@ import base64
 from typing import Dict, List, Any, Literal, Union, Optional, Callable
 from PIL import Image
 import io
-from .base import ComputerHandler
+from .base import AsyncComputerHandler
 
 
-class CustomComputerHandler(ComputerHandler):
+class CustomComputerHandler(AsyncComputerHandler):
     """Computer handler that implements the Computer protocol using a dictionary of custom functions."""
     
     def __init__(self, functions: Dict[str, Callable]):

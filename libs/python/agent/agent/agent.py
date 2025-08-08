@@ -22,7 +22,7 @@ from .callbacks import (
     TelemetryCallback,
 )
 from .computers import (
-    ComputerHandler,
+    AsyncComputerHandler,
     is_agent_computer,
     make_computer_handler
 )
@@ -398,7 +398,7 @@ class ComputerAgent:
     # AGENT OUTPUT PROCESSING
     # ============================================================================
     
-    async def _handle_item(self, item: Any, computer: Optional[ComputerHandler] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    async def _handle_item(self, item: Any, computer: Optional[AsyncComputerHandler] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Handle each item; may cause a computer action + screenshot."""
         if ignore_call_ids and item.get("call_id") and item.get("call_id") in ignore_call_ids:
             return []

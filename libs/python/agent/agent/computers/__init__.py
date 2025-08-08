@@ -6,14 +6,14 @@ computer interface types, supporting both the ComputerHandler protocol and the
 Computer library interface.
 """
 
-from .base import ComputerHandler
+from .base import AsyncComputerHandler
 from .cua import cuaComputerHandler
 from .custom import CustomComputerHandler
 from computer import Computer as cuaComputer
 
 def is_agent_computer(computer):
     """Check if the given computer is a ComputerHandler or CUA Computer."""
-    return isinstance(computer, ComputerHandler) or \
+    return isinstance(computer, AsyncComputerHandler) or \
         isinstance(computer, cuaComputer) or \
         (isinstance(computer, dict)) #and "screenshot" in computer)
 
@@ -30,7 +30,7 @@ async def make_computer_handler(computer):
     Raises:
         ValueError: If the computer type is not supported
     """
-    if isinstance(computer, ComputerHandler):
+    if isinstance(computer, AsyncComputerHandler):
         return computer
     if isinstance(computer, cuaComputer):
         computer_handler = cuaComputerHandler(computer)
