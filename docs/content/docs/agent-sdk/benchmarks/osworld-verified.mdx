@@ -63,26 +63,23 @@ print(f"Success: {result.get('success', False)}")
 Run all tasks in parallel using `run_job`:
 
 ```python
-from hud import run_job
-from agent.integrations.hud import ComputerAgent
-import logging
+from agent.integrations.hud import run_job
+from hud import load_taskset
 
-logging.basicConfig(level=logging.INFO)
+# Load taskset
+taskset = await load_taskset("SheetBench-V2")
 
-# Load full taskset
-taskset = await load_taskset("OSWorld-Verified")
-
-# Run parallel job
+# Run benchmark job
 job = await run_job(
-    ComputerAgent,
-    taskset,
-    "osworld-computeragent",
-    max_steps_per_task=100,
-    max_concurrent_tasks=20,
-    auto_reply_question=True,
-    agent_kwargs={"model": "anthropic/claude-3-5-sonnet-20241022"}
+    model="anthropic/claude-3-5-sonnet-20241022",
+    task_or_taskset=taskset,
+    job_name="test-computeragent-job",
+    # Any extra ComputerAgent kwargs:
+    # verbosity=logging.INFO,  # Enable logging
+    # trajectory_dir=".."       # Save trajectories locally
 )
 
-# Get analytics
-analytics = await job.get_analytics()
+# Get results OR view them at app.hud.so
+print(await job.get_analytics())
+print(f"View results at: https://app.hud.so/jobs/{job.id}")
 ```

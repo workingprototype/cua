@@ -16,28 +16,28 @@ pip install "cua-agent[hud]"
 ## Usage
 
 ```python
-from agent.integrations.hud import ComputerAgent
+from agent.integrations.hud import run_job
+from hud import load_taskset
 
-# Create agent with any ComputerAgent model
-agent = ComputerAgent(
-    model="anthropic/claude-3-5-sonnet-20241022",  # or any model string
-    environment="linux"
+# Load taskset
+taskset = await load_taskset("OSWorld-Verified")
+
+# Run benchmark job
+job = await run_job(
+    model="anthropic/claude-3-5-sonnet-20241022",
+    task_or_taskset=taskset,
+    job_name="test-computeragent-job",
+    # Any extra ComputerAgent kwargs:
+    # verbosity=logging.INFO,  # Enable logging
+    # trajectory_dir=".."       # Save trajectories locally
 )
 
-# Use exactly like other HUD agents
-action, done = await agent.predict(observation)
+# Get results OR view them at app.hud.so
+print(await job.get_analytics())
+print(f"View results at: https://app.hud.so/jobs/{job.id}")
 ```
 
-## Environment Variables
-
-Set these environment variables:
-
-- `HUD_API_KEY` - Your HUD API key
-- `ANTHROPIC_API_KEY` - For Claude models
-- `OPENAI_API_KEY` - For OpenAI models
-
-## Example Benchmarks
-
-1. [OSWorld-Verified](/agent-sdk/benchmarks/osworld-verified) - Benchmark on OSWorld tasks with parallel execution
+**Available Benchmarks:**
+1. [OSWorld-Verified](/agent-sdk/benchmarks/osworld-verified) - Benchmark on OSWorld tasks
 
 See the [HUD docs](https://docs.hud.so/environment-creation) for more eval environments.

@@ -16,6 +16,19 @@ from .computer_handler import HUDComputerHandler
 
 logger = logging.getLogger(__name__)
 
+BASE_SYSTEM_PROMPT = """
+You are an autonomous computer-using agent. Follow these guidelines:
+
+1. Be decisive and complete tasks without asking for confirmation unless absolutely necessary.
+2. If you need user confirmation for safety-critical actions, use the formal safety check mechanism.
+3. Do NOT ask questions like "Should I proceed?" or "Would you like me to continue?" - just proceed with the task.
+4. When you find what you're looking for (e.g., a file to upload), proceed with the action directly.
+5. Only stop when the task is fully complete or if you encounter an error that prevents completion.
+6. Trust that the user wants you to complete the entire task they've requested.
+7. You must say "Task completed" when the task is complete.
+
+Remember: You have been given permission to complete the requested task autonomously.
+""".strip()
 
 class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
     """
@@ -88,25 +101,16 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
         self.initial_prompt: Optional[str] = None
 
         # System prompt for computer use tasks
-        self.base_system_prompt = """
-        You are an autonomous computer-using agent. Follow these guidelines:
-
-        1. Be decisive and complete tasks without asking for confirmation unless absolutely necessary.
-        2. If you need user confirmation for safety-critical actions, use the formal safety check mechanism.
-        3. Do NOT ask questions like "Should I proceed?" or "Would you like me to continue?" - just proceed with the task.
-        4. When you find what you're looking for (e.g., a file to upload), proceed with the action directly.
-        5. Only stop when the task is fully complete or if you encounter an error that prevents completion.
-        6. Trust that the user wants you to complete the entire task they've requested.
-
-        Remember: You have been given permission to complete the requested task autonomously.
-        """
+        self.base_system_prompt = BASE_SYSTEM_PROMPT
 
     async def fetch_response(self, observation: Observation) -> tuple[list[dict[str, Any]], bool]:
         """
         Fetch a response from ComputerAgent based on the observation.
 
         Args:
-            observation: The preprocessed observation
+            observation: The preprocessed observation, attributes: 
+                screenshot: Base64 encoded PNG string of the screen
+                text: Text observation, if available
 
         Returns:
             tuple[list[dict[str, Any]], bool, list[LogType] | None]: A tuple containing the list of raw actions,
@@ -140,9 +144,39 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 
                 self.conversation_history.append({"role": "user", "content": message})
             else:
-                # Subsequent interactions - add context about the current state
-                message = "Continue with the task based on the current screen state."
-                self.conversation_history.append({"role": "user", "content": message})
+                # Subsequent interactions - check if last action was computer_call
+                # If so, add computer_call_output with screenshot instead of user message
+                last_computer_calls = []
+                for msg in reversed(self.conversation_history):
+                    if msg.get("type") == "computer_call" and msg.get("status") == "completed":
+                        call_id = msg.get("call_id")
+                        if call_id:
+                            # Check if this call_id already has a computer_call_output
+                            has_output = any(
+                                m.get("type") == "computer_call_output" and m.get("call_id") == call_id
+                                for m in self.conversation_history
+                            )
+                            if not has_output:
+                                last_computer_calls.append(call_id)
+                    elif msg.get("role") == "user":
+                        # Stop at the last user message
+                        break
+                
+                if last_computer_calls and observation.screenshot:
+                    # Add computer_call_output for each unresponded computer_call
+                    for call_id in reversed(last_computer_calls):  # Maintain order
+                        self.conversation_history.append({
+                            "type": "computer_call_output",
+                            "call_id": call_id,
+                            "output": {
+                                "type": "input_image",
+                                "image_url": f"data:image/png;base64,{observation.screenshot}"
+                            }
+                        })
+                else:
+                    # No computer_call found, add regular user message
+                    message = "Continue with the task based on the current screen state."
+                    self.conversation_history.append({"role": "user", "content": message})
 
             # Run ComputerAgent
             try:
@@ -150,7 +184,8 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 async for result in self.computer_agent.run(self.conversation_history, stream=False):
                     # Update conversation history with the output
                     self.conversation_history += result["output"]
-                
+                    break
+
                 # Check if we captured any actions
                 if captured_actions:
                     # Extract reasoning from the conversation history
@@ -171,44 +206,34 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                         action["reasoning"] = reasoning
                         action["logs"] = {"conversation_length": len(self.conversation_history)}
                     
-                    # Check if task is done by looking for assistant message indicating completion
-                    done = False
-                    for msg in reversed(self.conversation_history):
-                        if msg.get("type") == "message" and msg.get("role") == "assistant":
-                            content = msg.get("content", [])
-                            for c in content:
-                                if c.get("type") == "output_text" and "task completed" in c.get("text", "").lower():
-                                    done = True
-                                    break
-                            break
+                    return captured_actions, False
                     
-                    return captured_actions, done
-                else:
-                    # No actions captured, task is likely complete
-                    response_text = "Task completed."
-                    for msg in reversed(self.conversation_history):
-                        if msg.get("type") == "message" and msg.get("role") == "assistant":
-                            content = msg.get("content", [])
-                            for c in content:
-                                if c.get("type") == "output_text":
-                                    response_text = c.get("text", response_text)
-                                    break
-                            break
-                    
-                    response_action = {
-                        "type": "response",
-                        "text": response_text,
-                        "reasoning": response_text,
-                        "logs": {"conversation_length": len(self.conversation_history)}
-                    }
-                    
-                    # Check if this indicates task completion or failure
+                # Check if the last message is "Task completed"
+                response_text = ""
+                for msg in reversed(self.conversation_history):
+                    if msg.get("type") == "message" and msg.get("role") == "assistant":
+                        content = msg.get("content", [])
+                        for c in content:
+                            if c.get("type") == "output_text":
+                                response_text = c.get("text", response_text)
+                                break
+                        break
+                
+                done = "task completed" in response_text.lower()
+                
+                response_action = {
+                    "type": "response",
+                    "text": response_text,
+                    "reasoning": response_text,
+                    "logs": {"conversation_length": len(self.conversation_history)}
+                }
+                
+                # Check if this indicates task completion or failure
+                if "task is infeasible" in response_text.lower():
+                    response_action = {"type": "custom", "action": "FAIL"}
                     done = True
-                    if "task is infeasible" in response_text.lower():
-                        response_action = {"type": "custom", "action": "FAIL"}
-                    
-                    return [response_action], done
-
+                
+                return [response_action], done
             except Exception as e:
                 logger.error(f"Error running ComputerAgent: {e}")
                 # Return an error response
