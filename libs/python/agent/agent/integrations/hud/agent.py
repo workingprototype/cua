@@ -86,6 +86,16 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
             dimensions=(self.width, self.height)
         )
 
+        # Handle trajectory_dir by adding TrajectorySaverCallback
+        trajectory_dir = kwargs.pop("trajectory_dir", None)
+        callbacks = kwargs.get("callbacks", [])
+        
+        if trajectory_dir:
+            from agent.callbacks.trajectory_saver import TrajectorySaverCallback
+            trajectory_callback = TrajectorySaverCallback(trajectory_dir, reset_on_run=False)
+            callbacks = callbacks + [trajectory_callback]
+            kwargs["callbacks"] = callbacks
+
         # Initialize ComputerAgent with HUD computer handler
         self.computer_agent = BaseComputerAgent(
             model=model,
@@ -212,7 +222,7 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 # ComputerAgent.run returns an async generator
                 async for result in self.computer_agent.run(self.conversation_history, stream=False):
                     # if the result has computer_call_output, immediately exit
-                    if result.get("output", [])[-1].get("type") == "computer_call_output":
+                    if result.get("output", []) and result.get("output", [])[-1].get("type") == "computer_call_output":
                         break
                     # otherwise add agent output to conversation history
                     self.conversation_history += result["output"]

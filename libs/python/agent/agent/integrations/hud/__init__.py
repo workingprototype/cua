@@ -7,7 +7,6 @@ from hud import run_job as hud_run_job
 from .agent import ComputerAgent
 from .adapter import ComputerAgentAdapter
 from .computer_handler import HUDComputerHandler
-from agent.callbacks.trajectory_saver import TrajectorySaverCallback
 
 
 async def run_job(
@@ -49,15 +48,6 @@ async def run_job(
     Returns:
         Job instance from HUD
     """
-    # Handle trajectory_dir by adding TrajectorySaverCallback
-    trajectory_dir = agent_kwargs.pop("trajectory_dir", None)
-    callbacks = agent_kwargs.get("callbacks", [])
-    
-    if trajectory_dir:
-        trajectory_callback = TrajectorySaverCallback(trajectory_dir, reset_on_run=False)
-        callbacks = callbacks + [trajectory_callback]
-        agent_kwargs["callbacks"] = callbacks
-    
     # combine verbose and verbosity kwargs
     if "verbose" in agent_kwargs:
         agent_kwargs["verbosity"] = logging.INFO
