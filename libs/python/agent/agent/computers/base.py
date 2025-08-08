@@ -59,6 +59,8 @@ class AsyncComputerHandler(Protocol):
         """Get current URL (for browser environments)."""
         ...
     
+    # ==== Anthropic Action Space ==== 
+
     async def left_mouse_down(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         """Left mouse down at coordinates."""
         ...
