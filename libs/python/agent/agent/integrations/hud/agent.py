@@ -142,7 +142,20 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 else:
                     message = f"{self.base_system_prompt}\n\nPlease analyze the current screen and determine what action to take."
                 
-                self.conversation_history.append({"role": "user", "content": message})
+                input_content = [
+                    {"type": "input_text", "text": message}
+                ]
+
+                # Add screenshot if present
+                if observation.screenshot:
+                    input_content.append(
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{observation.screenshot}",
+                        }
+                    )
+
+                self.conversation_history.append({"role": "user", "content": input_content})                    
             else:
                 # Subsequent interactions - check if last action was computer_call
                 # If so, add computer_call_output with screenshot instead of user message
@@ -176,7 +189,20 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 else:
                     # No computer_call found, add regular user message
                     message = "Continue with the task based on the current screen state."
-                    self.conversation_history.append({"role": "user", "content": message})
+                    input_content = [
+                        {"type": "input_text", "text": message}
+                    ]
+
+                    # Add screenshot if present
+                    if observation.screenshot:
+                        input_content.append(
+                            {
+                                "type": "input_image",
+                                "image_url": f"data:image/png;base64,{observation.screenshot}",
+                            }
+                        )
+
+                    self.conversation_history.append({"role": "user", "content": input_content})                  
 
             # Run ComputerAgent
             try:
