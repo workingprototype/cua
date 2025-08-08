@@ -12,6 +12,7 @@
         "prompt-caching",
 		"usage-tracking",
 		"benchmarks",
-        "migration-guide"
+        "migration-guide",
+		"integrations"
 	]
 }

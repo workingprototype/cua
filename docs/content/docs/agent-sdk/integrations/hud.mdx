@@ -1,0 +1,43 @@
+---
+title: HUD Evals
+description: Use ComputerAgent with HUD for benchmarking and evaluation
+---
+
+The HUD integration allows you to use ComputerAgent with the [HUD benchmarking framework](https://www.hud.so/), providing the same interface as existing HUD agents while leveraging ComputerAgent's capabilities.
+
+## Installation
+
+```bash
+pip install "cua-agent[hud]"
+## or install hud-python directly
+# pip install hud-python==0.2.10
+```
+
+## Usage
+
+```python
+from agent.integrations.hud import ComputerAgent
+
+# Create agent with any ComputerAgent model
+agent = ComputerAgent(
+    model="anthropic/claude-3-5-sonnet-20241022",  # or any model string
+    environment="linux"
+)
+
+# Use exactly like other HUD agents
+action, done = await agent.predict(observation)
+```
+
+## Environment Variables
+
+Set these environment variables:
+
+- `HUD_API_KEY` - Your HUD API key
+- `ANTHROPIC_API_KEY` - For Claude models
+- `OPENAI_API_KEY` - For OpenAI models
+
+## Example Benchmarks
+
+1. [OSWorld-Verified](/agent-sdk/benchmarks/osworld-verified) - Benchmark on OSWorld tasks with parallel execution
+
+See the [HUD docs](https://docs.hud.so/environment-creation) for more eval environments.
