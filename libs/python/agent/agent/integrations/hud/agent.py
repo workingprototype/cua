@@ -211,9 +211,11 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
             try:
                 # ComputerAgent.run returns an async generator
                 async for result in self.computer_agent.run(self.conversation_history, stream=False):
-                    # Update conversation history with the output
+                    # if the result has computer_call_output, immediately exit
+                    if result.get("output", [])[-1].get("type") == "computer_call_output":
+                        break
+                    # otherwise add agent output to conversation history
                     self.conversation_history += result["output"]
-                    break
 
                 # Check if we captured any actions
                 if captured_actions:
