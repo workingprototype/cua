@@ -13,7 +13,7 @@ class HUDComputerHandler(AsyncComputerHandler):
     
     def __init__(
         self,
-        environment: Literal["windows", "mac", "linux", "browser"] = "browser",
+        environment: Literal["windows", "mac", "linux", "browser"] = "linux",
         dimensions: tuple[int, int] = (1024, 768),
         screenshot_callback: Optional[Callable] = None,
         action_callback: Optional[Callable] = None,

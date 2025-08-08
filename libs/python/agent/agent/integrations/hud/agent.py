@@ -20,7 +20,7 @@ BASE_SYSTEM_PROMPT = """
 You are an autonomous computer-using agent. Follow these guidelines:
 
 1. Be decisive and complete tasks without asking for confirmation unless absolutely necessary.
-2. If you need user confirmation for safety-critical actions, use the formal safety check mechanism.
+2. Use the computer tools to complete the task and do not stop until the task is complete.
 3. Do NOT ask questions like "Should I proceed?" or "Would you like me to continue?" - just proceed with the task.
 4. When you find what you're looking for (e.g., a file to upload), proceed with the action directly.
 5. Only stop when the task is fully complete or if you encounter an error that prevents completion.
@@ -43,7 +43,7 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
     def __init__(
         self,
         model: str = "anthropic/claude-3-5-sonnet-20241022",
-        environment: Literal["windows", "mac", "linux", "browser"] = "browser",
+        environment: Literal["windows", "mac", "linux", "browser"] = "linux",
         adapter: Optional[Adapter] = None,
         name: Optional[str] = None,
         **kwargs: Any,
@@ -176,6 +176,8 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                         break
                 
                 if last_computer_calls:
+                    if not observation.screenshot:
+                        print("No screenshot found, taking screenshot")
                     screenshot_b64 = await self.hud_computer.screenshot()
                     # Add computer_call_output for each unresponded computer_call
                     for call_id in reversed(last_computer_calls):  # Maintain order
