@@ -7,6 +7,7 @@
 		"chat-history",
 		"callbacks",
         "sandboxed-tools",
+		"custom-computer-handlers",
     	"local-models",
         "prompt-caching",
 		"usage-tracking",
