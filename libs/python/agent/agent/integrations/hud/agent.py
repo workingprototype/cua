@@ -248,20 +248,47 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
 
             # Run ComputerAgent
             try:
+                new_items = []
+
                 # ComputerAgent.run returns an async generator
-                async for result in self.computer_agent.run(self.conversation_history, stream=False):
-                    # if the result has computer_call_output, immediately exit
-                    if result.get("output", []) and result.get("output", [])[-1].get("type") == "computer_call_output":
-                        break
-                    # otherwise add agent output to conversation history
-                    self.conversation_history += result["output"]
+                try:
+                    async for result in self.computer_agent.run(self.conversation_history, stream=False):
+                        # if the result has computer_call_output, immediately exit
+                        if result.get("output", []) and result.get("output", [])[-1].get("type") == "computer_call_output":
+                            break
+                        # otherwise add agent output to conversation history
+                        new_items += result["output"]
+                        self.conversation_history += result["output"]
+                except Exception as e:
+                    # if the last message is reasoning, change it to output_text
+                    if new_items and new_items[-1].get("type") == "reasoning":
+                        new_items[-1] = {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "text": new_items[-1].get("summary", [{}])[0].get("text", ""),
+                                    "type": "output_text"
+                                }
+                            ]
+                        }
+                    # add error message to conversation history
+                    new_items.append({
+                        "type": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": f"Error during previous attempted action: {repr(e)}"
+                            }
+                        ]
+                    })
 
                 # Check if we captured any actions
                 if captured_actions:
                     # Extract reasoning from the conversation history
                     reasoning = ""
                     # Look for the latest reasoning message
-                    for msg in reversed(self.conversation_history):
+                    for msg in reversed(new_items):
                         if msg.get("type") == "reasoning" and msg.get("summary"):
                             reasoning = " ".join([s.get("text", "") for s in msg["summary"] if s.get("type") == "summary_text"])
                             break
@@ -271,6 +298,9 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                                 reasoning = " ".join([c.get("text", "") for c in content if c.get("type") == "output_text"])
                             break
                     
+                    # update conversation history
+                    self.conversation_history += new_items
+
                     # Add reasoning and logs to each action
                     for action in captured_actions:
                         action["reasoning"] = reasoning
@@ -280,7 +310,7 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                     
                 # Check if the last message is "Task completed"
                 response_text = ""
-                for msg in reversed(self.conversation_history):
+                for msg in reversed(new_items):
                     if msg.get("type") == "message" and msg.get("role") == "assistant":
                         content = msg.get("content", [])
                         for c in content:
@@ -290,6 +320,9 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                         break
                 
                 done = "task completed" in response_text.lower()
+                
+                # update conversation history
+                self.conversation_history += new_items
                 
                 response_action = {
                     "type": "response",
