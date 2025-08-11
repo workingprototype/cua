@@ -13,7 +13,10 @@ import json
 import litellm
 import litellm.utils
 import inspect
-from .adapters import HuggingFaceLocalAdapter
+from .adapters import (
+    HuggingFaceLocalAdapter,
+    HumanAdapter,
+)
 from .callbacks import (
     ImageRetentionCallback, 
     LoggingCallback, 
@@ -215,8 +218,10 @@ class ComputerAgent:
         hf_adapter = HuggingFaceLocalAdapter(
             device="auto"
         )
+        human_adapter = HumanAdapter()
         litellm.custom_provider_map = [
-            {"provider": "huggingface-local", "custom_handler": hf_adapter}
+            {"provider": "huggingface-local", "custom_handler": hf_adapter},
+            {"provider": "human", "custom_handler": human_adapter}
         ]
         litellm.suppress_debug_info = True
 
