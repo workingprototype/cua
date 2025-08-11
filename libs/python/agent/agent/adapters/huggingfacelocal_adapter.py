@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from typing import Iterator, AsyncIterator, Dict, List, Any, Optional
@@ -189,7 +190,10 @@ class HuggingFaceLocalAdapter(CustomLLM):
         """
         # Run _generate in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
-        generated_text = await loop.run_in_executor(self._executor, self._generate, **kwargs)
+        generated_text = await loop.run_in_executor(
+            self._executor, 
+            functools.partial(self._generate, **kwargs)
+        )
         
         return await acompletion(
             model=f"huggingface-local/{kwargs['model']}",
@@ -223,7 +227,10 @@ class HuggingFaceLocalAdapter(CustomLLM):
         """
         # Run _generate in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
-        generated_text = await loop.run_in_executor(self._executor, self._generate, **kwargs)
+        generated_text = await loop.run_in_executor(
+            self._executor, 
+            functools.partial(self._generate, **kwargs)
+        )
         
         generic_streaming_chunk: GenericStreamingChunk = {
             "finish_reason": "stop",
