@@ -34,6 +34,7 @@ With the Agent SDK, you can:
   - `huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B`
   - `omniparser+any LLM`
   - `huggingface-local/HelloKKMe/GTA1-7B+any LLM` (using [Composed Agents](https://docs.trycua.com/docs/agent-sdk/supported-agents/composed-agents))
+  - `human/human` (using [Human-in-the-Loop](https://docs.trycua.com/docs/agent-sdk/supported-agents/human-in-the-loop))
 
 Missing a model? [Raise a feature request](https://github.com/trycua/cua/issues/new?assignees=&labels=enhancement&projects=&title=%5BAgent%5D%3A+Add+model+support+for+) or [contribute](https://github.com/trycua/cua/blob/main/CONTRIBUTING.md)!
 
