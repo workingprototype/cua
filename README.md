@@ -25,7 +25,8 @@ With the Computer SDK, you can:
 
 With the Agent SDK, you can:
 - run computer-use models with a [consistent output](https://docs.trycua.com/docs/agent-sdk/chat-history#message-array-structure)
-- run composed agents using UI grounding models and any liteLLM compatible vision model
+- run composed agents using UI grounding models and any LLM
+- use any liteLLM provider (`openai/`, `openrouter/`, etc.) or our included local providers (`huggingface-local/`, `mlx/`)
 - quickly evaluate new UI agent models and UI grounding models
   - `anthropic/claude-opus-4-1-20250805`
   - `openai/computer-use-preview`
@@ -33,6 +34,8 @@ With the Agent SDK, you can:
   - `huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B`
   - `omniparser+any LLM`
   - `huggingface-local/HelloKKMe/GTA1-7B+any LLM` (using [Composed Agents](https://docs.trycua.com/docs/agent-sdk/supported-agents/composed-agents))
+
+Missing a model? [Raise a feature request](https://github.com/trycua/cua/issues/new?assignees=&labels=enhancement&projects=&title=%5BAgent%5D%3A+Add+model+support+for+) or [contribute](https://github.com/trycua/cua/blob/main/CONTRIBUTING.md)!
 
 <br/>
 
