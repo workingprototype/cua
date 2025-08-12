@@ -172,7 +172,7 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                 # If so, add computer_call_output with screenshot instead of user message
                 last_computer_calls = []
                 for msg in reversed(self.conversation_history):
-                    if msg.get("type") == "computer_call" and msg.get("status") == "completed":
+                    if msg.get("type") == "computer_call":
                         call_id = msg.get("call_id")
                         if call_id:
                             # Check if this call_id already has a computer_call_output
@@ -182,9 +182,6 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                             )
                             if not has_output:
                                 last_computer_calls.append(call_id)
-                    elif msg.get("role") == "user":
-                        # Stop at the last user message
-                        break
                 
                 if last_computer_calls:
                     if not observation.screenshot:
@@ -259,7 +256,6 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                             break
                         # otherwise add agent output to conversation history
                         new_items += result["output"]
-                        self.conversation_history += result["output"]
                 except Exception as e:
                     # if the last message is reasoning, change it to output_text
                     if new_items and new_items[-1].get("type") == "reasoning":
