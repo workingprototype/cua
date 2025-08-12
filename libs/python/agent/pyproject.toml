@@ -38,7 +38,14 @@ uitars-mlx = [
     "mlx-vlm>=0.1.27; sys_platform == 'darwin'"
 ]
 uitars-hf = [
+    "accelerate",
+    "torch",
     "transformers>=4.54.0"
+]
+glm45v-hf = [
+    "accelerate",
+    "torch",
+    "transformers-v4.55.0-GLM-4.5V-preview"
 ]
 ui = [
     "gradio>=5.23.3",
@@ -56,6 +63,8 @@ all = [
     "cua-som>=0.1.0,<0.2.0",
     # uitars requirements
     "mlx-vlm>=0.1.27; sys_platform == 'darwin'",
+    "accelerate",
+    "torch",
     "transformers>=4.54.0",
     # ui requirements
     "gradio>=5.23.3",
