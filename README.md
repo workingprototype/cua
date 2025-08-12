@@ -20,7 +20,7 @@
 </div>
 
 With the Computer SDK, you can:
-- automate Windows, Linux, and macOS VMs with a consistent, pyautogui-like API
+- automate Windows, Linux, and macOS VMs with a consistent, [pyautogui-like API](https://docs.trycua.com/docs/libraries/computer#interface-actions)
 - create & manage VMs [locally](https://docs.trycua.com/docs/computer-sdk/computers#cua-local-containers) or using the [c/ua cloud](https://www.trycua.com/)
 
 With the Agent SDK, you can:
