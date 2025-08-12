@@ -128,6 +128,10 @@ async for result in agent.run(messages):
 ```
 
 # Computer ([Docs](https://docs.trycua.com/docs/computer-sdk/computers))
+
+```bash
+pip install cua-computer[all]
+```
 ```python
 from computer import Computer
 
