@@ -28,13 +28,16 @@ With the Agent SDK, you can:
 - run composed agents using UI grounding models and any LLM
 - use any liteLLM provider (`openai/`, `openrouter/`, etc.) or our included local providers (`huggingface-local/`, `mlx/`)
 - quickly evaluate new UI agent models and UI grounding models
-  - `anthropic/claude-opus-4-1-20250805`
+  - `anthropic/claude-opus-4-1-20250805` (using [Computer-Use Models](https://docs.trycua.com/docs/agent-sdk/supported-agents/computer-use-agents))
   - `openai/computer-use-preview`
   - `openrouter/z-ai/glm-4.5v`
   - `huggingface-local/ByteDance-Seed/UI-TARS-1.5-7B`
-  - `omniparser+any LLM`
-  - `huggingface-local/HelloKKMe/GTA1-7B+any LLM` (using [Composed Agents](https://docs.trycua.com/docs/agent-sdk/supported-agents/composed-agents))
+  - `omniparser+{any LLM}` (using [Composed Agents](https://docs.trycua.com/docs/agent-sdk/supported-agents/composed-agents))
+  - `huggingface-local/HelloKKMe/GTA1-7B+{any LLM}`
+  - `huggingface/HelloKKMe/GTA1-32B+{any LLM}`
+  - `vllm_hosted/HelloKKMe/GTA1-72B+{any LLM}`
   - `human/human` (using [Human-in-the-Loop](https://docs.trycua.com/docs/agent-sdk/supported-agents/human-in-the-loop))
+- benchmark on OSWorld-Verified, SheetBench-V2, and more [with a single line of code using HUD](https://docs.trycua.com/docs/agent-sdk/integrations/hud) ([Notebook](https://github.com/trycua/cua/blob/main/notebooks/eval_osworld.ipynb))
 
 Missing a model? [Raise a feature request](https://github.com/trycua/cua/issues/new?assignees=&labels=enhancement&projects=&title=%5BAgent%5D%3A+Add+model+support+for+) or [contribute](https://github.com/trycua/cua/blob/main/CONTRIBUTING.md)!
 
