@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional, Union, List, Dict
 import asyncio
 
 from agent import ComputerAgent as BaseComputerAgent
+from agent.responses import make_failed_tool_call_items
 from hud.adapters import Adapter
 from hud.agent.base import Agent
 from hud.utils.common import Observation
@@ -272,16 +273,33 @@ class ComputerAgent(Agent[BaseComputerAgent, dict[str, Any]]):
                                 }
                             ]
                         }
-                    # add error message to conversation history
-                    new_items.append({
-                        "type": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": f"Error during previous attempted action: {repr(e)}"
-                            }
-                        ]
-                    })
+                    # Check if there are any computer_call items in new_items
+                    computer_calls = [item for item in new_items if item.get("type") == "computer_call"]
+                    if computer_calls:
+                        # Remove computer_call items from new_items
+                        new_items = [item for item in new_items if item.get("type") != "computer_call"]
+                        
+                        # Add failed tool call items for each computer call
+                        for computer_call in computer_calls:
+                            tool_input = computer_call.get("action", {})
+                            call_id = computer_call.get("call_id")
+                            new_items.extend(make_failed_tool_call_items(
+                                tool_name="computer",
+                                tool_kwargs=tool_input,
+                                error_message=repr(e),
+                                call_id=call_id
+                            ))
+                    else:
+                        # add error message to conversation history (fallback for non-computer-call errors)
+                        new_items.append({
+                            "type": "user",
+                            "content": [
+                                {
+                                    "type": "input_text",
+                                    "text": f"Error during previous attempted action: {repr(e)}"
+                                }
+                            ]
+                        })
 
                 # Check if we captured any actions
                 if captured_actions:
