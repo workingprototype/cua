@@ -251,29 +251,6 @@ Call rule: `FAIL()`
     }
 }"""
 
-GLM_PROMPT_TEMPLATE = """You are a GUI Agent, and your primary task is to respond accurately to user requests or questions. In addition to directly answering the user's queries, you can also use tools or perform GUI operations directly until you fulfill the user's request or provide a correct answer. You should carefully read and understand the images and questions provided by the user, and engage in thinking and reflection when appropriate. The coordinates involved are all represented in thousandths (0-999).
-
-# Task:
-{task}
-
-# Task Platform
-Desktop
-
-# Action Space
-{action_space}
-
-# Output Format
-Plain text explanation with action(param='...')
-Memory:
-[{{"key": "value"}}, ...]
-
-# Some Additional Notes
-- You should put the key information you *have to remember* in a separated memory part and I'll give it to you in the next round. The content in this part should be a dict list. If you no longer need some given information, you should remove it from the memory. Even if you don't need to remember anything, you should also output an empty list.
-- My computer's password is "password", feel free to use it when you need sudo rights.
-
-Current Screenshot:
-"""
-
 def encode_image_to_base64(image_path: str) -> str:
     """Encode image file to base64 string with data URI."""
     with open(image_path, "rb") as image_file:
@@ -321,22 +298,201 @@ def parse_glm_response(response: str) -> Dict[str, Any]:
 def get_last_image_from_messages(messages: Messages) -> Optional[str]:
     """Extract the last image from messages for processing."""
     for message in reversed(messages):
-        if message.get("type") == "computer_call_output":
-            output = message.get("output", {})
-            if output.get("type") == "input_image":
-                image_url = output.get("image_url", "")
-                if image_url.startswith("data:image/"):
-                    # Extract base64 part
-                    return image_url.split(",", 1)[1]
-        elif message.get("role") == "user":
-            content = message.get("content", [])
-            if isinstance(content, list):
-                for item in reversed(content):
-                    if item.get("type") == "image_url":
-                        image_url = item.get("image_url", {}).get("url", "")
-                        if image_url.startswith("data:image/"):
-                            return image_url.split(",", 1)[1]
+        if isinstance(message, dict):
+            if message.get("type") == "computer_call_output":
+                output = message.get("output", {})
+                if isinstance(output, dict) and output.get("type") == "input_image":
+                    image_url = output.get("image_url", "")
+                    if isinstance(image_url, str) and image_url.startswith("data:image/"):
+                        # Extract base64 part
+                        return image_url.split(",", 1)[1]
+            elif message.get("role") == "user":
+                content = message.get("content", [])
+                if isinstance(content, list):
+                    for item in reversed(content):
+                        if isinstance(item, dict) and item.get("type") == "image_url":
+                            image_url_obj = item.get("image_url", {})
+                            if isinstance(image_url_obj, dict):
+                                image_url = image_url_obj.get("url", "")
+                                if isinstance(image_url, str) and image_url.startswith("data:image/"):
+                                    return image_url.split(",", 1)[1]
     return None
+
+def convert_responses_items_to_glm45v_pc_prompt(messages: Messages, task: str, memory: str = "") -> List[Dict[str, Any]]:
+    """Convert responses items to GLM-4.5V PC prompt format with historical actions.
+    
+    Args:
+        messages: List of message items from the conversation
+        task: The task description
+        memory: Current memory state
+        
+    Returns:
+        List of content items for the prompt (text and image_url items)
+    """
+    action_space = GLM_ACTION_SPACE
+    
+    # Template head
+    head_text = f"""You are a GUI Agent, and your primary task is to respond accurately to user requests or questions. In addition to directly answering the user's queries, you can also use tools or perform GUI operations directly until you fulfill the user's request or provide a correct answer. You should carefully read and understand the images and questions provided by the user, and engage in thinking and reflection when appropriate. The coordinates involved are all represented in thousandths (0-999).
+
+# Task:
+{task}
+
+# Task Platform
+Ubuntu
+
+# Action Space
+{action_space}
+
+# Historical Actions and Current Memory
+History:"""
+    
+    # Template tail
+    tail_text = f"""
+Memory:
+{memory}
+# Output Format
+Plain text explanation with action(param='...')
+Memory:
+[{{"key": "value"}}, ...]
+
+# Some Additional Notes
+- I'll give you the most recent 4 history screenshots(shrunked to 50%*50%) along with the historical action steps.
+- You should put the key information you *have to remember* in a seperated memory part and I'll give it to you in the next round. The content in this part should be a dict list. If you no longer need some given information, you should remove it from the memory. Even if you don't need to remember anything, you should also output an empty list.
+- My computer's password is "password", feel free to use it when you need sudo rights.
+- For the thunderbird account "anonym-x2024@outlook.com", the password is "gTCI";=@y7|QJ0nDa_kN3Sb&>".
+
+Current Screenshot:
+"""
+    
+    # Build history from messages
+    history = []
+    history_images = []
+    
+    # Group messages into steps
+    current_step = []
+    step_num = 0
+    
+    for message in messages:
+        msg_type = message.get("type")
+        
+        if msg_type == "reasoning":
+            current_step.append(message)
+        elif msg_type == "message" and message.get("role") == "assistant":
+            current_step.append(message)
+        elif msg_type == "computer_call":
+            current_step.append(message)
+        elif msg_type == "computer_call_output":
+            current_step.append(message)
+            # End of step - process it
+            if current_step:
+                step_num += 1
+                
+                # Extract bot thought from message content
+                bot_thought = ""
+                for item in current_step:
+                    if item.get("type") == "message" and item.get("role") == "assistant":
+                        content = item.get("content", [])
+                        for content_item in content:
+                            if content_item.get("type") == "output_text":
+                                bot_thought = content_item.get("text", "")
+                                break
+                        break
+                
+                # Extract action from computer_call
+                action_text = ""
+                for item in current_step:
+                    if item.get("type") == "computer_call":
+                        action = item.get("action", {})
+                        action_type = action.get("type", "")
+                        
+                        if action_type == "click":
+                            x, y = action.get("x", 0), action.get("y", 0)
+                            # Convert to 0-999 range (assuming screen dimensions)
+                            # For now, use direct coordinates - this may need adjustment
+                            action_text = f"left_click(start_box='[{x},{y}]')"
+                        elif action_type == "double_click":
+                            x, y = action.get("x", 0), action.get("y", 0)
+                            action_text = f"left_double_click(start_box='[{x},{y}]')"
+                        elif action_type == "right_click":
+                            x, y = action.get("x", 0), action.get("y", 0)
+                            action_text = f"right_click(start_box='[{x},{y}]')"
+                        elif action_type == "drag":
+                            # Handle drag with path
+                            path = action.get("path", [])
+                            if len(path) >= 2:
+                                start = path[0]
+                                end = path[-1]
+                                action_text = f"left_drag(start_box='[{start.get('x', 0)},{start.get('y', 0)}]', end_box='[{end.get('x', 0)},{end.get('y', 0)}]')"
+                        elif action_type == "keypress":
+                            key = action.get("key", "")
+                            action_text = f"key(keys='{key}')"
+                        elif action_type == "type":
+                            text = action.get("text", "")
+                            action_text = f"type(content='{text}')"
+                        elif action_type == "scroll":
+                            x, y = action.get("x", 0), action.get("y", 0)
+                            direction = action.get("direction", "down")
+                            action_text = f"scroll(start_box='[{x},{y}]', direction='{direction}')"
+                        elif action_type == "wait":
+                            action_text = "WAIT()"
+                        break
+                
+                # Extract screenshot from computer_call_output
+                screenshot_url = None
+                for item in current_step:
+                    if item.get("type") == "computer_call_output":
+                        output = item.get("output", {})
+                        if output.get("type") == "input_image":
+                            screenshot_url = output.get("image_url", "")
+                            break
+                
+                # Store step info
+                step_info = {
+                    "step_num": step_num,
+                    "bot_thought": bot_thought,
+                    "action_text": action_text,
+                    "screenshot_url": screenshot_url
+                }
+                history.append(step_info)
+                
+                # Store screenshot for last 4 steps
+                if screenshot_url:
+                    history_images.append(screenshot_url)
+                
+                current_step = []
+    
+    # Build content array with head, history, and tail
+    content = []
+    current_text = head_text
+    
+    total_history_steps = len(history)
+    history_image_count = min(4, len(history_images))  # Last 4 images
+    
+    for step_idx, step_info in enumerate(history):
+        step_num = step_info["step_num"]
+        bot_thought = step_info["bot_thought"]
+        action_text = step_info["action_text"]
+        
+        if step_idx < total_history_steps - history_image_count:
+            # For steps beyond the last 4, use text placeholder
+            current_text += f"\nstep {step_num}: Screenshot:(Omitted in context.) Thought: {bot_thought}\nAction: {action_text}"
+        else:
+            # For the last 4 steps, insert images
+            current_text += f"\nstep {step_num}: Screenshot:"
+            content.append({"type": "text", "text": current_text})
+            
+            # Add image
+            img_idx = step_idx - (total_history_steps - history_image_count)
+            if img_idx < len(history_images):
+                content.append({"type": "image_url", "image_url": {"url": history_images[img_idx]}})
+            
+            current_text = f" Thought: {bot_thought}\nAction: {action_text}"
+    
+    # Add tail
+    current_text += tail_text
+    content.append({"type": "text", "text": current_text})
+    
+    return content
 
 def model_dump(obj) -> Dict[str, Any]:
     if isinstance(obj, dict):
@@ -539,11 +695,19 @@ class Glm4vConfig(AsyncAgentConfig):
         Returns:
             Dict with "output" and "usage" keys
         """
-        # Convert responses items to completion messages
-        completion_messages = convert_responses_items_to_completion_messages(
-            messages, 
-            allow_images_in_tool_results=True
-        )
+        # Get the user instruction from the last user message
+        user_instruction = ""
+        for message in reversed(messages):
+            if isinstance(message, dict) and message.get("role") == "user":
+                content = message.get("content", "")
+                if isinstance(content, str):
+                    user_instruction = content
+                elif isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            user_instruction = item.get("text", "")
+                            break
+                break
         
         # Get the last image for processing
         last_image_b64 = get_last_image_from_messages(messages)
@@ -558,25 +722,18 @@ class Glm4vConfig(AsyncAgentConfig):
         if not last_image_b64:
             raise ValueError("No image available for GLM-4.5V processing")
         
-        # Get the user instruction from the last user message
-        user_instruction = ""
-        for message in reversed(completion_messages):
-            if message.get("role") == "user":
-                content = message.get("content", "")
-                if isinstance(content, str):
-                    user_instruction = content
-                elif isinstance(content, list):
-                    for item in content:
-                        if item.get("type") == "text":
-                            user_instruction = item.get("text", "")
-                            break
-                break
-        
-        # Construct prompt using GLM template
-        prompt = GLM_PROMPT_TEMPLATE.format(
+        # Convert responses items to GLM-4.5V PC prompt format with historical actions
+        prompt_content = convert_responses_items_to_glm45v_pc_prompt(
+            messages=messages,
             task=user_instruction,
-            action_space=GLM_ACTION_SPACE
+            memory="[]"  # Initialize with empty memory for now
         )
+        
+        # Add the current screenshot to the end
+        prompt_content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{last_image_b64}"}
+        })
         
         # Prepare messages for liteLLM
         litellm_messages = [
@@ -586,10 +743,7 @@ class Glm4vConfig(AsyncAgentConfig):
             },
             {
                 "role": "user", 
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{last_image_b64}"}}
-                ]
+                "content": prompt_content
             }
         ]
         
