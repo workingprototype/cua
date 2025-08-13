@@ -42,11 +42,12 @@ RUN sed -i 's/python -m venv .venv/echo "Skipping venv creation in Docker"/' /ap
     sed -i 's/find . -type d -name ".venv" -exec rm -rf {} +/echo "Skipping .venv removal in Docker"/' /app/scripts/build.sh && \
     chmod +x /app/scripts/build.sh
 
-# Install CUA dependencies for the real server
-RUN pip install --no-cache-dir cua-computer litellm pillow
-
-# Run the build script to install dependencies
+# Run the build script to install dependencies FIRST
 RUN cd /app && ./scripts/build.sh
+
+# Install additional CUA dependencies for the real server
+# Install them AFTER build.sh so they don't get overwritten by editable installs
+RUN pip install --no-cache-dir --force-reinstall cua-computer litellm pillow
 
 # Clean up the source files now that dependencies are installed
 # When we run the container, we'll mount the actual source code
