@@ -178,13 +178,20 @@ def create_computer_instance(
     """Create or get the global Computer instance."""
     global global_computer
     if global_computer is None:
-        global_computer = Computer(
-            verbosity=verbosity,
-            os_type=os_type,
-            provider_type=provider_type,
-            name=name if name else "",
-            api_key=api_key
-        )
+        if provider_type == "localhost":
+            global_computer = Computer(
+                verbosity=verbosity,
+                os_type=os_type,
+                use_host_computer_server=True
+            )
+        else:
+            global_computer = Computer(
+                verbosity=verbosity,
+                os_type=os_type,
+                provider_type=provider_type,
+                name=name if name else "",
+                api_key=api_key
+            )
     return global_computer
 
 

@@ -37,6 +37,7 @@ pip install "cua-agent[omni]"          # Omniparser + any LLM support
 pip install "cua-agent[uitars]"        # UI-TARS
 pip install "cua-agent[uitars-mlx]"    # UI-TARS + MLX support
 pip install "cua-agent[uitars-hf]"     # UI-TARS + Huggingface support
+pip install "cua-agent[glm45v-hf]"     # GLM-4.5V + Huggingface support
 pip install "cua-agent[ui]"            # Gradio UI support
 ```
 

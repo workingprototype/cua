@@ -211,7 +211,7 @@ if __name__ == "__main__":
                     is_windows = platform.system().lower() == "windows"
                     is_mac = platform.system().lower() == "darwin"
                     
-                    providers = ["cloud"]
+                    providers = ["cloud", "localhost"]
                     if is_mac:
                         providers += ["lume"]
                     if is_windows:
@@ -401,6 +401,23 @@ if __name__ == "__main__":
                         visible=(initial_model == "Custom model (OpenAI compatible API)"),
                         interactive=True,
                         type="password",
+                    )
+                    
+                    # Provider visibility update function
+                    def update_provider_visibility(provider):
+                        """Update visibility of container name and API key based on selected provider."""
+                        is_localhost = provider == "localhost"
+                        return [
+                            gr.update(visible=not is_localhost),  # container_name
+                            gr.update(visible=not is_localhost and not has_cua_key)  # cua_cloud_api_key
+                        ]
+                    
+                    # Connect provider change event
+                    computer_provider.change(
+                        fn=update_provider_visibility,
+                        inputs=[computer_provider],
+                        outputs=[container_name, cua_cloud_api_key],
+                        queue=False
                     )
                     
                     # Connect UI update events

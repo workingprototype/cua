@@ -5,8 +5,7 @@ Example usage of the agent library with docstring-based tool definitions.
 import asyncio
 import logging
 
-from agent import agent_loop, ComputerAgent
-from agent.types import Messages
+from agent import ComputerAgent
 from computer import Computer
 from computer.helpers import sandboxed
 

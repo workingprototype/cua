@@ -3,13 +3,16 @@
 	"description": "Build computer-using agents with the Agent SDK",
 	"pages": [
         "agent-loops",
-    	"supported-agents",
+        "supported-agents",
 		"chat-history",
 		"callbacks",
         "sandboxed-tools",
+		"custom-computer-handlers",
     	"local-models",
         "prompt-caching",
 		"usage-tracking",
-        "migration-guide"
+		"benchmarks",
+        "migration-guide",
+		"integrations"
 	]
 }

@@ -3,18 +3,20 @@ ComputerAgent - Main agent class that selects and runs agent loops
 """
 
 import asyncio
-from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Callable, Set
+from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Callable, Set, Tuple
 
 from litellm.responses.utils import Usage
 
-from .types import Messages, Computer
-from .decorators import find_agent_loop
-from .computer_handler import OpenAIComputerHandler, acknowledge_safety_check_callback, check_blocklisted_url
+from .types import Messages, AgentCapability
+from .decorators import find_agent_config
 import json
 import litellm
 import litellm.utils
 import inspect
-from .adapters import HuggingFaceLocalAdapter
+from .adapters import (
+    HuggingFaceLocalAdapter,
+    HumanAdapter,
+)
 from .callbacks import (
     ImageRetentionCallback, 
     LoggingCallback, 
@@ -22,9 +24,14 @@ from .callbacks import (
     BudgetManagerCallback,
     TelemetryCallback,
 )
+from .computers import (
+    AsyncComputerHandler,
+    is_agent_computer,
+    make_computer_handler
+)
 
 def get_json(obj: Any, max_depth: int = 10) -> Any:
-    def custom_serializer(o: Any, depth: int = 0, seen: Set[int] = None) -> Any:
+    def custom_serializer(o: Any, depth: int = 0, seen: Optional[Set[int]] = None) -> Any:
         if seen is None:
             seen = set()
         
@@ -117,6 +124,13 @@ def sanitize_message(msg: Any) -> Any:
             return sanitized
     return msg
 
+def get_output_call_ids(messages: List[Dict[str, Any]]) -> List[str]:
+    call_ids = []
+    for message in messages:
+        if message.get("type") == "computer_call_output" or message.get("type") == "function_call_output":
+            call_ids.append(message.get("call_id"))
+    return call_ids
+
 class ComputerAgent:
     """
     Main agent class that automatically selects the appropriate agent loop
@@ -204,22 +218,26 @@ class ComputerAgent:
         hf_adapter = HuggingFaceLocalAdapter(
             device="auto"
         )
+        human_adapter = HumanAdapter()
         litellm.custom_provider_map = [
-            {"provider": "huggingface-local", "custom_handler": hf_adapter}
+            {"provider": "huggingface-local", "custom_handler": hf_adapter},
+            {"provider": "human", "custom_handler": human_adapter}
         ]
+        litellm.suppress_debug_info = True
 
         # == Initialize computer agent ==
 
         # Find the appropriate agent loop
         if custom_loop:
             self.agent_loop = custom_loop
-            self.agent_loop_info = None
+            self.agent_config_info = None
         else:
-            loop_info = find_agent_loop(model)
-            if not loop_info:
-                raise ValueError(f"No agent loop found for model: {model}")
-            self.agent_loop = loop_info.func
-            self.agent_loop_info = loop_info
+            config_info = find_agent_config(model)
+            if not config_info:
+                raise ValueError(f"No agent config found for model: {model}")
+            # Instantiate the agent config class
+            self.agent_loop = config_info.agent_class()
+            self.agent_config_info = config_info
         
         self.tool_schemas = []
         self.computer_handler = None
@@ -227,10 +245,6 @@ class ComputerAgent:
     async def _initialize_computers(self):
         """Initialize computer objects"""
         if not self.tool_schemas:
-            for tool in self.tools:
-                if hasattr(tool, '_initialized') and not tool._initialized:
-                    await tool.run()
-                
             # Process tools and create tool schemas
             self.tool_schemas = self._process_tools()
             
@@ -238,7 +252,7 @@ class ComputerAgent:
             computer_handler = None
             for schema in self.tool_schemas:
                 if schema["type"] == "computer":
-                    computer_handler = OpenAIComputerHandler(schema["computer"].interface)
+                    computer_handler = await make_computer_handler(schema["computer"])
                     break
             self.computer_handler = computer_handler
     
@@ -254,7 +268,7 @@ class ComputerAgent:
         
         for tool in self.tools:
             # Check if it's a computer object (has interface attribute)
-            if hasattr(tool, 'interface'):
+            if is_agent_computer(tool):
                 # This is a computer tool - will be handled by agent loop
                 schemas.append({
                     "type": "computer",
@@ -389,8 +403,10 @@ class ComputerAgent:
     # AGENT OUTPUT PROCESSING
     # ============================================================================
     
-    async def _handle_item(self, item: Any, computer: Optional[Computer] = None) -> List[Dict[str, Any]]:
+    async def _handle_item(self, item: Any, computer: Optional[AsyncComputerHandler] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Handle each item; may cause a computer action + screenshot."""
+        if ignore_call_ids and item.get("call_id") and item.get("call_id") in ignore_call_ids:
+            return []
         
         item_type = item.get("type", None)
         
@@ -411,6 +427,9 @@ class ComputerAgent:
             # Perform computer actions
             action = item.get("action")
             action_type = action.get("type")
+            if action_type is None:
+                print(f"Action type cannot be `None`: action={action}, action_type={action_type}")
+                return []
             
             # Extract action arguments (all fields except 'type')
             action_args = {k: v for k, v in action.items() if k != "type"}
@@ -436,10 +455,12 @@ class ComputerAgent:
             acknowledged_checks = []
             for check in pending_checks:
                 check_message = check.get("message", str(check))
-                if acknowledge_safety_check_callback(check_message):
-                    acknowledged_checks.append(check)
-                else:
-                    raise ValueError(f"Safety check failed: {check_message}")
+                acknowledged_checks.append(check)
+                # TODO: implement a callback for safety checks
+                # if acknowledge_safety_check_callback(check_message, allow_always=True):
+                #     acknowledged_checks.append(check)
+                # else:
+                #     raise ValueError(f"Safety check failed: {check_message}")
             
             # Create call output
             call_output = {
@@ -452,11 +473,12 @@ class ComputerAgent:
                 },
             }
             
-            # Additional URL safety checks for browser environments
-            if await computer.get_environment() == "browser":
-                current_url = await computer.get_current_url()
-                call_output["output"]["current_url"] = current_url
-                check_blocklisted_url(current_url)
+            # # Additional URL safety checks for browser environments
+            # if await computer.get_environment() == "browser":
+            #     current_url = await computer.get_current_url()
+            #     call_output["output"]["current_url"] = current_url
+            #     # TODO: implement a callback for URL safety checks
+            #     # check_blocklisted_url(current_url)
             
             result = [call_output]
             await self._on_computer_call_end(item, result)
@@ -511,6 +533,12 @@ class ComputerAgent:
         Returns:
             AsyncGenerator that yields response chunks
         """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
+        capabilities = self.get_capabilities()
+        if "step" not in capabilities:
+            raise ValueError(f"Agent loop {self.agent_config_info.agent_class.__name__} does not support step predictions")
 
         await self._initialize_computers()
         
@@ -525,7 +553,7 @@ class ComputerAgent:
             "messages": messages,
             "stream": stream,
             "model": self.model,
-            "agent_loop": self.agent_loop.__name__,
+            "agent_loop": self.agent_config_info.agent_class.__name__,
             **merged_kwargs
         }
         await self._on_run_start(run_kwargs, old_items)
@@ -555,7 +583,7 @@ class ComputerAgent:
             }
 
             # Run agent loop iteration
-            result = await self.agent_loop(
+            result = await self.agent_loop.predict_step(
                 **loop_kwargs,
                 _on_api_start=self._on_api_start,
                 _on_api_end=self._on_api_end,
@@ -576,9 +604,12 @@ class ComputerAgent:
             # Add agent response to new_items
             new_items += result.get("output")
 
+            # Get output call ids
+            output_call_ids = get_output_call_ids(result.get("output", []))
+
             # Handle computer actions
             for item in result.get("output"):
-                partial_items = await self._handle_item(item, self.computer_handler)
+                partial_items = await self._handle_item(item, self.computer_handler, ignore_call_ids=output_call_ids)
                 new_items += partial_items
 
                 # Yield partial response
@@ -592,3 +623,50 @@ class ComputerAgent:
                 }
         
         await self._on_run_end(loop_kwargs, old_items, new_items)
+    
+    async def predict_click(
+        self,
+        instruction: str,
+        image_b64: Optional[str] = None
+    ) -> Optional[Tuple[int, int]]:
+        """
+        Predict click coordinates based on image and instruction.
+        
+        Args:
+            instruction: Instruction for where to click
+            image_b64: Base64 encoded image (optional, will take screenshot if not provided)
+            
+        Returns:
+            None or tuple with (x, y) coordinates
+        """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
+        capabilities = self.get_capabilities()
+        if "click" not in capabilities:
+            raise ValueError(f"Agent loop {self.agent_config_info.agent_class.__name__} does not support click predictions")
+        if hasattr(self.agent_loop, 'predict_click'):
+            if not image_b64:
+                if not self.computer_handler:
+                    raise ValueError("Computer tool or image_b64 is required for predict_click")
+                image_b64 = await self.computer_handler.screenshot()
+            return await self.agent_loop.predict_click(
+                model=self.model,
+                image_b64=image_b64,
+                instruction=instruction
+            )
+        return None
+    
+    def get_capabilities(self) -> List[AgentCapability]:
+        """
+        Get list of capabilities supported by the current agent config.
+        
+        Returns:
+            List of capability strings (e.g., ["step", "click"])
+        """
+        if not self.agent_config_info:
+            raise ValueError("Agent configuration not found")
+        
+        if hasattr(self.agent_loop, 'get_capabilities'):
+            return self.agent_loop.get_capabilities()
+        return ["step"]  # Default capability

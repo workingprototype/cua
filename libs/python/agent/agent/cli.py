@@ -94,14 +94,14 @@ def print_action(action_type: str, details: Dict[str, Any], total_cost: float):
     # Format action details
     args_str = ""
     if action_type == "click" and "x" in details and "y" in details:
-        args_str = f"({details['x']}, {details['y']})"
+        args_str = f"_{details['button']}({details['x']}, {details['y']})"
     elif action_type == "type" and "text" in details:
         text = details["text"]
         if len(text) > 50:
             text = text[:47] + "..."
-        args_str = f'"{text}"'
-    elif action_type == "key" and "key" in details:
-        args_str = f"'{details['key']}'"
+        args_str = f'("{text}")'
+    elif action_type == "key" and "text" in details:
+        args_str = f"('{details['text']}')"
     elif action_type == "scroll" and "x" in details and "y" in details:
         args_str = f"({details['x']}, {details['y']})"
     
@@ -120,7 +120,7 @@ async def ainput(prompt: str = ""):
 
 async def chat_loop(agent, model: str, container_name: str, initial_prompt: str = "", show_usage: bool = True):
     """Main chat loop with the agent."""
-    print_welcome(model, agent.agent_loop.__name__, container_name)
+    print_welcome(model, agent.agent_config_info.agent_class.__name__, container_name)
     
     history = []
     
@@ -130,7 +130,7 @@ async def chat_loop(agent, model: str, container_name: str, initial_prompt: str 
     total_cost = 0
 
     while True:
-        if history[-1].get("role") != "user":
+        if len(history) == 0 or history[-1].get("role") != "user":
             # Get user input with prompt
             print_colored("> ", end="")
             user_input = await ainput()
@@ -260,7 +260,12 @@ Examples:
         help="Show total cost of the agent runs"
     )
 
-
+    parser.add_argument(
+        "-r", "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for the LLM API calls"
+    )
     
     args = parser.parse_args()
     
@@ -327,6 +332,7 @@ Examples:
             "model": args.model,
             "tools": [computer],
             "verbosity": 20 if args.verbose else 30,  # DEBUG vs WARNING
+            "max_retries": args.max_retries
         }
 
         if args.images > 0:

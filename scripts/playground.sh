@@ -257,7 +257,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from computer import Computer
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
-from agent.ui.gradio.app import create_gradio_ui
+from agent.ui.gradio.ui_components import create_gradio_ui
 
 # Load environment variables from .env.local
 load_dotenv(Path(__file__).parent / ".env.local")
@@ -292,7 +292,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from computer import Computer
 from agent import ComputerAgent, LLM, AgentLoop, LLMProvider
-from agent.ui.gradio.app import create_gradio_ui
+from agent.ui.gradio.ui_components import create_gradio_ui
 
 # Load environment variables from .env.local
 load_dotenv(Path(__file__).parent / ".env.local")

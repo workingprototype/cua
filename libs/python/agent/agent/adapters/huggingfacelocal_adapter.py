@@ -1,5 +1,7 @@
 import asyncio
+import functools
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from typing import Iterator, AsyncIterator, Dict, List, Any, Optional
 from litellm.types.utils import GenericStreamingChunk, ModelResponse
 from litellm.llms.custom_llm import CustomLLM
@@ -8,7 +10,7 @@ from litellm import completion, acompletion
 # Try to import HuggingFace dependencies
 try:
     import torch
-    from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+    from transformers import AutoModelForImageTextToText, AutoProcessor
     HF_AVAILABLE = True
 except ImportError:
     HF_AVAILABLE = False
@@ -28,6 +30,7 @@ class HuggingFaceLocalAdapter(CustomLLM):
         self.device = device
         self.models = {}  # Cache for loaded models
         self.processors = {}  # Cache for loaded processors
+        self._executor = ThreadPoolExecutor(max_workers=1)  # Single thread pool
         
     def _load_model_and_processor(self, model_name: str):
         """Load model and processor if not already cached.
@@ -40,7 +43,7 @@ class HuggingFaceLocalAdapter(CustomLLM):
         """
         if model_name not in self.models:
             # Load model
-            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model = AutoModelForImageTextToText.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16,
                 device_map=self.device,
@@ -48,7 +51,12 @@ class HuggingFaceLocalAdapter(CustomLLM):
             )
             
             # Load processor
-            processor = AutoProcessor.from_pretrained(model_name)
+            processor = AutoProcessor.from_pretrained(
+                model_name,
+                min_pixels=3136,
+                max_pixels=4096 * 2160,
+                device_map=self.device
+            )
             
             # Cache them
             self.models[model_name] = model
@@ -141,8 +149,7 @@ class HuggingFaceLocalAdapter(CustomLLM):
         )
         
         # Move inputs to the same device as model
-        if torch.cuda.is_available() and self.device != "cpu":
-            inputs = inputs.to("cuda")
+        inputs = inputs.to(model.device)
         
         # Generate response
         with torch.no_grad():
@@ -182,7 +189,11 @@ class HuggingFaceLocalAdapter(CustomLLM):
             ModelResponse with generated text
         """
         # Run _generate in thread pool to avoid blocking
-        generated_text = await asyncio.to_thread(self._generate, **kwargs)
+        loop = asyncio.get_event_loop()
+        generated_text = await loop.run_in_executor(
+            self._executor, 
+            functools.partial(self._generate, **kwargs)
+        )
         
         return await acompletion(
             model=f"huggingface-local/{kwargs['model']}",
@@ -215,7 +226,11 @@ class HuggingFaceLocalAdapter(CustomLLM):
             AsyncIterator of GenericStreamingChunk
         """
         # Run _generate in thread pool to avoid blocking
-        generated_text = await asyncio.to_thread(self._generate, **kwargs)
+        loop = asyncio.get_event_loop()
+        generated_text = await loop.run_in_executor(
+            self._executor, 
+            functools.partial(self._generate, **kwargs)
+        )
         
         generic_streaming_chunk: GenericStreamingChunk = {
             "finish_reason": "stop",
