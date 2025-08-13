@@ -134,5 +134,29 @@ class VMProviderFactory:
                     "pywinsandbox is required for WinSandboxProvider. "
                     "Please install it with 'pip install -U git+https://github.com/karkason/pywinsandbox.git'"
                 ) from e
+        elif provider_type == VMProviderType.DOCKER:
+            try:
+                from .docker import DockerProvider, HAS_DOCKER
+                if not HAS_DOCKER:
+                    raise ImportError(
+                        "Docker is required for DockerProvider. "
+                        "Please install Docker and ensure it is running."
+                    )
+                return DockerProvider(
+                    port=port,
+                    host=host,
+                    storage=storage,
+                    shared_path=shared_path,
+                    image=image or "cua-ubuntu:latest",
+                    verbose=verbose,
+                    ephemeral=ephemeral,
+                    vnc_port=noVNC_port
+                )
+            except ImportError as e:
+                logger.error(f"Failed to import DockerProvider: {e}")
+                raise ImportError(
+                    "Docker is required for DockerProvider. "
+                    "Please install Docker and ensure it is running."
+                ) from e
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")

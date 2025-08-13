@@ -11,6 +11,7 @@ class VMProviderType(StrEnum):
     LUMIER = "lumier"
     CLOUD = "cloud"
     WINSANDBOX = "winsandbox"
+    DOCKER = "docker"
     UNKNOWN = "unknown"
 
 
