@@ -7,11 +7,12 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONPATH="/app/libs/python/core:/app/libs/python/computer:/app/libs/python/agent:/app/libs/python/som:/app/libs/python/pylume:/app/libs/python/computer-server:/app/libs/python/mcp-server"
 
-# Install system dependencies for ARM architecture
+# Install system dependencies for all platforms
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     build-essential \
-    libgl1-mesa-glx \
+    libglx-mesa0 \
+    libgl1 \
     libglib2.0-0 \
     libxcb-xinerama0 \
     libxkbcommon-x11-0 \
@@ -40,6 +41,9 @@ RUN sed -i 's/python -m venv .venv/echo "Skipping venv creation in Docker"/' /ap
     sed -i 's/source .venv\/bin\/activate/echo "Skipping venv activation in Docker"/' /app/scripts/build.sh && \
     sed -i 's/find . -type d -name ".venv" -exec rm -rf {} +/echo "Skipping .venv removal in Docker"/' /app/scripts/build.sh && \
     chmod +x /app/scripts/build.sh
+
+# Install CUA dependencies for the real server
+RUN pip install --no-cache-dir cua-computer litellm pillow
 
 # Run the build script to install dependencies
 RUN cd /app && ./scripts/build.sh
