@@ -4,6 +4,7 @@
 	"pages": [
 		"computer-use-agents",
 		"grounding-models", 
-		"composed-agents"
+		"composed-agents",
+		"human-in-the-loop"
 	]
 }

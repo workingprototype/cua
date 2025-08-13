@@ -42,6 +42,11 @@ uitars-hf = [
     "torch",
     "transformers>=4.54.0"
 ]
+glm45v-hf = [
+    "accelerate",
+    "torch",
+    "transformers-v4.55.0-GLM-4.5V-preview"
+]
 ui = [
     "gradio>=5.23.3",
     "python-dotenv>=1.0.1",
@@ -49,10 +54,8 @@ ui = [
 cli = [
     "yaspin>=3.1.0",
 ]
-glm45v-hf = [
-    "accelerate",
-    "torch",
-    "transformers-v4.55.0-GLM-4.5V-preview"
+hud = [
+    "hud-python==0.2.10",
 ]
 all = [
     # omni requirements
@@ -68,6 +71,8 @@ all = [
     "python-dotenv>=1.0.1",
     # cli requirements
     "yaspin>=3.1.0",
+    # hud requirements
+    "hud-python==0.2.10",
 ]
 
 [tool.uv]

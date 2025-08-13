@@ -7,14 +7,16 @@ from typing import Dict, List, Any, Optional, AsyncGenerator, Union, cast, Calla
 
 from litellm.responses.utils import Usage
 
-from .types import Messages, Computer, AgentCapability
+from .types import Messages, AgentCapability
 from .decorators import find_agent_config
-from .computer_handler import OpenAIComputerHandler, acknowledge_safety_check_callback, check_blocklisted_url
 import json
 import litellm
 import litellm.utils
 import inspect
-from .adapters import HuggingFaceLocalAdapter
+from .adapters import (
+    HuggingFaceLocalAdapter,
+    HumanAdapter,
+)
 from .callbacks import (
     ImageRetentionCallback, 
     LoggingCallback, 
@@ -22,9 +24,14 @@ from .callbacks import (
     BudgetManagerCallback,
     TelemetryCallback,
 )
+from .computers import (
+    AsyncComputerHandler,
+    is_agent_computer,
+    make_computer_handler
+)
 
 def get_json(obj: Any, max_depth: int = 10) -> Any:
-    def custom_serializer(o: Any, depth: int = 0, seen: Set[int] = None) -> Any:
+    def custom_serializer(o: Any, depth: int = 0, seen: Optional[Set[int]] = None) -> Any:
         if seen is None:
             seen = set()
         
@@ -211,8 +218,10 @@ class ComputerAgent:
         hf_adapter = HuggingFaceLocalAdapter(
             device="auto"
         )
+        human_adapter = HumanAdapter()
         litellm.custom_provider_map = [
-            {"provider": "huggingface-local", "custom_handler": hf_adapter}
+            {"provider": "huggingface-local", "custom_handler": hf_adapter},
+            {"provider": "human", "custom_handler": human_adapter}
         ]
         litellm.suppress_debug_info = True
 
@@ -236,10 +245,6 @@ class ComputerAgent:
     async def _initialize_computers(self):
         """Initialize computer objects"""
         if not self.tool_schemas:
-            for tool in self.tools:
-                if hasattr(tool, '_initialized') and not tool._initialized:
-                    await tool.run()
-                
             # Process tools and create tool schemas
             self.tool_schemas = self._process_tools()
             
@@ -247,7 +252,7 @@ class ComputerAgent:
             computer_handler = None
             for schema in self.tool_schemas:
                 if schema["type"] == "computer":
-                    computer_handler = OpenAIComputerHandler(schema["computer"].interface)
+                    computer_handler = await make_computer_handler(schema["computer"])
                     break
             self.computer_handler = computer_handler
     
@@ -263,7 +268,7 @@ class ComputerAgent:
         
         for tool in self.tools:
             # Check if it's a computer object (has interface attribute)
-            if hasattr(tool, 'interface'):
+            if is_agent_computer(tool):
                 # This is a computer tool - will be handled by agent loop
                 schemas.append({
                     "type": "computer",
@@ -398,7 +403,7 @@ class ComputerAgent:
     # AGENT OUTPUT PROCESSING
     # ============================================================================
     
-    async def _handle_item(self, item: Any, computer: Optional[Computer] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    async def _handle_item(self, item: Any, computer: Optional[AsyncComputerHandler] = None, ignore_call_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Handle each item; may cause a computer action + screenshot."""
         if ignore_call_ids and item.get("call_id") and item.get("call_id") in ignore_call_ids:
             return []
@@ -450,10 +455,12 @@ class ComputerAgent:
             acknowledged_checks = []
             for check in pending_checks:
                 check_message = check.get("message", str(check))
-                if acknowledge_safety_check_callback(check_message, allow_always=True): # TODO: implement a callback for safety checks
-                    acknowledged_checks.append(check)
-                else:
-                    raise ValueError(f"Safety check failed: {check_message}")
+                acknowledged_checks.append(check)
+                # TODO: implement a callback for safety checks
+                # if acknowledge_safety_check_callback(check_message, allow_always=True):
+                #     acknowledged_checks.append(check)
+                # else:
+                #     raise ValueError(f"Safety check failed: {check_message}")
             
             # Create call output
             call_output = {
@@ -466,11 +473,12 @@ class ComputerAgent:
                 },
             }
             
-            # Additional URL safety checks for browser environments
-            if await computer.get_environment() == "browser":
-                current_url = await computer.get_current_url()
-                call_output["output"]["current_url"] = current_url
-                check_blocklisted_url(current_url)
+            # # Additional URL safety checks for browser environments
+            # if await computer.get_environment() == "browser":
+            #     current_url = await computer.get_current_url()
+            #     call_output["output"]["current_url"] = current_url
+            #     # TODO: implement a callback for URL safety checks
+            #     # check_blocklisted_url(current_url)
             
             result = [call_output]
             await self._on_computer_call_end(item, result)
