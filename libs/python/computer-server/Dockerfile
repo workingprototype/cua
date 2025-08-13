@@ -27,6 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnome-screenshot \
     websockify \
     git \
+    fonts-liberation \
+    fonts-dejavu \
+    xfonts-base \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -90,8 +93,14 @@ while [ $timeout -gt 0 ]; do\n\
     timeout=$((timeout-1))\n\
 done\n\
 echo "X server started successfully"\n\
+# Set up fonts and environment\n\
+export DISPLAY=:99\n\
+export LANG=C.UTF-8\n\
 # Start window manager\n\
 fluxbox -display :99 &\n\
+sleep 2\n\
+# Start a simple application to make desktop visible\n\
+xterm -geometry 80x24+100+100 &\n\
 # Start VNC server for remote viewing\n\
 x11vnc -display :99 -nopw -listen localhost -xkb -forever -shared -bg\n\
 echo "VNC server started on localhost:5900"\n\
