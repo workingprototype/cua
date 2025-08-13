@@ -37,7 +37,7 @@ class DockerProvider(BaseVMProvider):
     
     def __init__(
         self, 
-        port: Optional[int] = 8080,
+        port: Optional[int] = 8000,
         host: str = "localhost",
         storage: Optional[str] = None,
         shared_path: Optional[str] = None,
@@ -49,7 +49,7 @@ class DockerProvider(BaseVMProvider):
         """Initialize the Docker VM Provider.
         
         Args:
-            port: Port for the computer-server API (default: 8080)
+            port: Port for the computer-server API (default: 8000)
             host: Hostname for the API server (default: localhost)
             storage: Path for persistent VM storage
             shared_path: Path for shared folder between host and container
@@ -159,11 +159,15 @@ class DockerProvider(BaseVMProvider):
             # Get port mappings
             ports = {}
             if "Ports" in network_settings and network_settings["Ports"]:
-                for port_info in network_settings["Ports"]:
-                    if port_info.get("PublicPort"):
-                        container_port = f"{port_info['PrivatePort']}/{port_info['Type']}"
-                        host_port = port_info["PublicPort"]
-                        ports[container_port] = host_port
+                # network_settings["Ports"] is a dict like:
+                # {'6901/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '6901'}, ...], ...}
+                for container_port, port_mappings in network_settings["Ports"].items():
+                    if port_mappings:  # Check if there are any port mappings
+                        # Take the first mapping (usually the IPv4 one)
+                        for mapping in port_mappings:
+                            if mapping.get("HostPort"):
+                                ports[container_port] = mapping["HostPort"]
+                                break  # Use the first valid mapping
             
             return {
                 "name": name,
@@ -179,6 +183,8 @@ class DockerProvider(BaseVMProvider):
             
         except Exception as e:
             logger.error(f"Error getting VM info for {name}: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "name": name,
                 "status": "error",
@@ -208,6 +214,8 @@ class DockerProvider(BaseVMProvider):
             return []
         except Exception as e:
             logger.error(f"Error listing VMs: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
@@ -264,7 +272,7 @@ class DockerProvider(BaseVMProvider):
             if vnc_port:
                 cmd.extend(["-p", f"{vnc_port}:6901"])  # VNC port
             if api_port:
-                cmd.extend(["-p", f"{api_port}:8080"])  # computer-server API port
+                cmd.extend(["-p", f"{api_port}:8000"])  # computer-server API port
             
             # Add volume mounts if storage is specified
             storage_path = storage or self.storage
@@ -433,6 +441,13 @@ class DockerProvider(BaseVMProvider):
                 if vm_info["status"] == "error":
                     raise Exception(f"VM is in error state: {vm_info.get('error', 'Unknown error')}")
                 
+                # TODO: for now, return localhost
+                # it seems the docker container is not accessible from the host
+                # on WSL2, unless you port forward? not sure
+                if True:
+                    logger.warning("Overriding container IP with localhost")
+                    return "localhost"
+
                 # Check if we got a valid IP
                 ip = vm_info.get("ip_address", None)
                 if ip and ip != "unknown" and not ip.startswith("0.0.0.0"):

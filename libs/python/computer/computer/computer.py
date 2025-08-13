@@ -301,6 +301,19 @@ class Computer:
                                     storage=storage,
                                     verbose=verbose,
                                     ephemeral=ephemeral,
+                                    noVNC_port=noVNC_port,
+                                )
+                            elif self.provider_type == VMProviderType.DOCKER:
+                                self.config.vm_provider = VMProviderFactory.create_provider(
+                                    self.provider_type,
+                                    port=port,
+                                    host=host,
+                                    storage=storage,
+                                    shared_path=shared_path,
+                                    image=image or "cua-ubuntu:latest",
+                                    verbose=verbose,
+                                    ephemeral=ephemeral,
+                                    noVNC_port=noVNC_port,
                                 )
                             else:
                                 raise ValueError(f"Unsupported provider type: {self.provider_type}")

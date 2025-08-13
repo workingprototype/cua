@@ -22,11 +22,11 @@ docker build -t cua-ubuntu:latest .
 ### Running the Container Manually
 
 ```bash
-docker run --rm -it --shm-size=512m -p 6901:6901 -p 8080:8080 -e VNC_PW=password cua-ubuntu:latest
+docker run --rm -it --shm-size=512m -p 6901:6901 -p 8000:8000 -e VNC_PW=password cua-ubuntu:latest
 ```
 
 - **VNC Access**: Available at `http://localhost:6901` (username: `kasm-user`, password: `password`)
-- **Computer Server API**: Available at `http://localhost:8080`
+- **Computer Server API**: Available at `http://localhost:8000`
 
 ### Using with CUA Docker Provider
 
@@ -39,8 +39,8 @@ from computer.providers.factory import VMProviderFactory
 provider = VMProviderFactory.create_provider(
     provider_type="docker",
     image="cua-ubuntu:latest",
-    port=8080,  # computer-server API port
-    vnc_port=6901  # VNC port
+    port=8000,  # computer-server API port
+    noVNC_port=6901  # VNC port
 )
 
 # Run a container
@@ -52,7 +52,7 @@ async with provider:
             "memory": "4GB",
             "cpu": 2,
             "vnc_port": 6901,
-            "api_port": 8080
+            "api_port": 8000
         }
     )
 ```
