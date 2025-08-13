@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
-# Install system dependencies including virtual display
+# Install system dependencies including virtual display and desktop environment
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libglx-mesa0 \
@@ -20,6 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dbus-x11 \
     python3-tk \
     python3-dev \
+    x11vnc \
+    fluxbox \
+    xterm \
+    firefox-esr \
+    gnome-screenshot \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -39,7 +44,7 @@ EXPOSE 8081
 ENV DISPLAY=:99
 ENV QT_X11_NO_MITSHM=1
 
-# Create startup script for virtual display
+# Create startup script for virtual display with desktop
 RUN echo '#!/bin/bash\n\
 # Clean up any existing X lock files\n\
 rm -f /tmp/.X*-lock\n\
@@ -56,6 +61,12 @@ while [ $timeout -gt 0 ]; do\n\
     sleep 1\n\
     timeout=$((timeout-1))\n\
 done\n\
+echo "X server started successfully"\n\
+# Start window manager\n\
+fluxbox -display :99 &\n\
+# Start VNC server for remote viewing\n\
+x11vnc -display :99 -nopw -listen localhost -xkb -forever -shared -bg\n\
+echo "VNC server started on localhost:5900"\n\
 # Start the computer server\n\
 python -m computer_server --host 0.0.0.0 --port 8081\n' > /app/start.sh && \
     chmod +x /app/start.sh
